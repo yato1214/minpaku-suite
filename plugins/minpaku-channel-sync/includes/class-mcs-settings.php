@@ -166,11 +166,31 @@ public static function sanitize( $input ) {
 		flush_rewrite_rules( false );
 	}
 
-	// ⑤ 無効行のWARN（任意）
-	if ( $invalid > 0 && class_exists( 'MCS_Logger' ) ) {
-		MCS_Logger::warning(
-			'Dropped invalid mapping rows during settings sanitize',
-			array( 'count' => $invalid )
+	// ⑤ 無効行の処理とnotice表示
+	if ( $invalid > 0 ) {
+		// Log the warning
+		if ( class_exists( 'MCS_Logger' ) ) {
+			MCS_Logger::warning(
+				'Dropped invalid mapping rows during settings sanitize',
+				array( 'count' => $invalid )
+			);
+		}
+
+		// Add settings error for admin notice
+		/* translators: %1$d is the number of invalid mapping rows */
+		add_settings_error(
+			self::OPT_KEY,
+			'invalid_mappings',
+			sprintf(
+				_n(
+					'%1$d invalid mapping row was dropped (invalid URL or missing post ID).',
+					'%1$d invalid mapping rows were dropped (invalid URL or missing post ID).',
+					$invalid,
+					'minpaku-channel-sync'
+				),
+				$invalid
+			),
+			'warning'
 		);
 	}
 
@@ -212,7 +232,9 @@ public static function sanitize( $input ) {
         <div class="notice notice-info">
           <h4><?php esc_html_e('Sync Results', 'minpaku-channel-sync'); ?></h4>
           <p><strong><?php esc_html_e('Total:', 'minpaku-channel-sync'); ?></strong>
-            <?php printf(esc_html__('Added: %d, Updated: %d, Skipped: %d, Errors: %d', 'minpaku-channel-sync'),
+            <?php
+            /* translators: %1$d: added count, %2$d: updated count, %3$d: skipped count, %4$d: error count */
+            printf(esc_html__('Added: %1$d, Updated: %2$d, Skipped: %3$d, Errors: %4$d', 'minpaku-channel-sync'),
               $sync_results['total']['added'], $sync_results['total']['updated'],
               $sync_results['total']['skipped'], $sync_results['total']['errors']); ?>
           </p>
@@ -222,7 +244,9 @@ public static function sanitize( $input ) {
               <ul>
                 <?php foreach ($sync_results['by_url'] as $url => $stats): ?>
                   <li><strong><?php echo esc_html($url); ?>:</strong>
-                    <?php printf(esc_html__('Added: %d, Updated: %d, Skipped: %d', 'minpaku-channel-sync'),
+                    <?php
+                    /* translators: %1$d: added count, %2$d: updated count, %3$d: skipped count */
+                    printf(esc_html__('Added: %1$d, Updated: %2$d, Skipped: %3$d', 'minpaku-channel-sync'),
                       $stats['added'], $stats['updated'], $stats['skipped']); ?>
                   </li>
                 <?php endforeach; ?>

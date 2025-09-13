@@ -200,6 +200,33 @@ curl -w "@curl-format.txt" -o /dev/null -s "http://localhost:8888/ics/123.ics"
 - ICSファイルの文字エンコーディング確認
 - WordPressのDB_CHARSETとDB_COLLATE設定
 
+### 既知の注意点
+
+1. **WordPress Cron実行の制限**
+- 低トラフィックサイトではcronが実行されない場合があります
+- サーバーcronでwp-cron.phpを定期実行することを推奨
+- `wp cron event run mcs_sync_event` でcronを手動実行可能
+
+2. **大量データの処理制限**
+- PHPのmax_execution_time制限に注意
+- メモリ使用量が多い場合はPHPのmemory_limitを調整
+- 大量の予約データがある場合は分割処理を検討
+
+3. **外部ICSアクセスの制限**
+- ファイアウォールやセキュリティプラグインでHTTPS通信が制限される場合あり
+- SSL証明書検証エラーが発生する場合は設定確認が必要
+- レート制限やAPIキーが必要な外部サービスに注意
+
+4. **ICSエンドポイントのキャッシュ**
+- CDNやキャッシュプラグインでICSファイルがキャッシュされる可能性
+- リアルタイムデータが必要な場合はキャッシュ除外設定が必要
+- `nocache_headers()` は設定済みですが、上位レイヤーでの対応も検討
+
+5. **投稿タイプとパーマリンクの依存関係**
+- カスタム投稿タイプの公開設定（`public => true, publicly_queryable => true`）が必要
+- プラグインの有効化・無効化時にパーマリンクの再設定が推奨
+- `.htaccess` の書き込み権限がない環境では手動設定が必要
+
 ## 開発者向け情報
 
 ### フィルターフック

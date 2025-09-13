@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2025-09-13T08:08:53+00:00\n"
+"POT-Creation-Date: 2025-09-13T08:15:28+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: minpaku-channel-sync\n"
@@ -30,12 +30,12 @@ msgid "Okamoto"
 msgstr ""
 
 #: includes/class-mcs-cron.php:14
-#: includes/class-mcs-settings.php:302
+#: includes/class-mcs-settings.php:308
 msgid "Every 2 hours"
 msgstr ""
 
 #: includes/class-mcs-cron.php:20
-#: includes/class-mcs-settings.php:303
+#: includes/class-mcs-settings.php:309
 msgid "Every 6 hours"
 msgstr ""
 
@@ -60,125 +60,129 @@ msgstr ""
 msgid "You do not have sufficient permissions to access this page."
 msgstr ""
 
-#: includes/class-mcs-settings.php:201
-msgid "Minpaku Sync Settings"
+#: includes/class-mcs-settings.php:79
+msgid "Security check failed. Please try again."
 msgstr ""
 
 #: includes/class-mcs-settings.php:207
+msgid "Minpaku Sync Settings"
+msgstr ""
+
+#: includes/class-mcs-settings.php:213
 msgid "Sync Results"
 msgstr ""
 
-#: includes/class-mcs-settings.php:208
+#: includes/class-mcs-settings.php:214
 msgid "Total:"
 msgstr ""
 
-#: includes/class-mcs-settings.php:209
+#: includes/class-mcs-settings.php:215
 #, php-format
 msgid "Added: %d, Updated: %d, Skipped: %d, Errors: %d"
 msgstr ""
 
-#: includes/class-mcs-settings.php:215
+#: includes/class-mcs-settings.php:221
 msgid "Details by URL"
 msgstr ""
 
-#: includes/class-mcs-settings.php:219
+#: includes/class-mcs-settings.php:225
 #, php-format
 msgid "Added: %d, Updated: %d, Skipped: %d"
 msgstr ""
 
-#: includes/class-mcs-settings.php:233
+#: includes/class-mcs-settings.php:239
 msgid "Next scheduled sync:"
 msgstr ""
 
-#: includes/class-mcs-settings.php:243
+#: includes/class-mcs-settings.php:249
 msgid "Target Post Type (slug)"
 msgstr ""
 
-#: includes/class-mcs-settings.php:247
+#: includes/class-mcs-settings.php:253
 msgid "ICS Import Mappings"
 msgstr ""
 
-#: includes/class-mcs-settings.php:252
+#: includes/class-mcs-settings.php:258
 msgid "ICS URL"
 msgstr ""
 
-#: includes/class-mcs-settings.php:253
+#: includes/class-mcs-settings.php:259
 msgid "Post ID"
 msgstr ""
 
-#: includes/class-mcs-settings.php:254
+#: includes/class-mcs-settings.php:260
 msgid "Action"
 msgstr ""
 
-#: includes/class-mcs-settings.php:262
-#: includes/class-mcs-settings.php:282
+#: includes/class-mcs-settings.php:268
+#: includes/class-mcs-settings.php:288
 msgid "Remove"
 msgstr ""
 
-#: includes/class-mcs-settings.php:268
+#: includes/class-mcs-settings.php:274
 msgid "Add"
 msgstr ""
 
-#: includes/class-mcs-settings.php:298
+#: includes/class-mcs-settings.php:304
 msgid "Sync interval"
 msgstr ""
 
-#: includes/class-mcs-settings.php:301
+#: includes/class-mcs-settings.php:307
 msgid "Hourly"
 msgstr ""
 
-#: includes/class-mcs-settings.php:308
+#: includes/class-mcs-settings.php:314
 msgid "ICS Export Content-Disposition"
 msgstr ""
 
-#: includes/class-mcs-settings.php:311
+#: includes/class-mcs-settings.php:317
 msgid "Inline (browser display)"
 msgstr ""
 
-#: includes/class-mcs-settings.php:312
+#: includes/class-mcs-settings.php:318
 msgid "Attachment (download)"
 msgstr ""
 
-#: includes/class-mcs-settings.php:317
+#: includes/class-mcs-settings.php:323
 msgid "Flush Rewrite Rules"
 msgstr ""
 
-#: includes/class-mcs-settings.php:321
+#: includes/class-mcs-settings.php:327
 msgid "Flush rewrite rules on save (use only when needed)"
 msgstr ""
 
-#: includes/class-mcs-settings.php:333
+#: includes/class-mcs-settings.php:339
 msgid "Run manual sync now"
 msgstr ""
 
-#: includes/class-mcs-settings.php:342
+#: includes/class-mcs-settings.php:348
 msgid "Recent Warnings & Errors"
 msgstr ""
 
-#: includes/class-mcs-settings.php:357
+#: includes/class-mcs-settings.php:363
 msgid "Recent Logs (Latest 50)"
 msgstr ""
 
-#: includes/class-mcs-settings.php:361
+#: includes/class-mcs-settings.php:367
 msgid "Clear Logs"
 msgstr ""
 
-#: includes/class-mcs-settings.php:361
+#: includes/class-mcs-settings.php:367
 msgid "Are you sure you want to clear all logs?"
 msgstr ""
 
-#: includes/class-mcs-settings.php:365
+#: includes/class-mcs-settings.php:371
 msgid "Time"
 msgstr ""
 
-#: includes/class-mcs-settings.php:365
+#: includes/class-mcs-settings.php:371
 msgid "Level"
 msgstr ""
 
-#: includes/class-mcs-settings.php:365
+#: includes/class-mcs-settings.php:371
 msgid "Message"
 msgstr ""
 
-#: includes/class-mcs-settings.php:365
+#: includes/class-mcs-settings.php:371
 msgid "Context"
 msgstr ""
