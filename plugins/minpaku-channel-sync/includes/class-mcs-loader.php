@@ -35,7 +35,7 @@ final class MCS_Loader {
     require_once MCS_PLUGIN_DIR . 'includes/class-mcs-cron.php';
     require_once MCS_PLUGIN_DIR . 'includes/class-mcs-ics-exporter.php';
     require_once MCS_PLUGIN_DIR . 'includes/class-mcs-ics-importer.php';
-    require_once MCS_PLUGIN_DIR . 'includes/class-mcs-cli.php';
+    require_once MCS_PLUGIN_DIR . 'includes/cli/class-mcs-cli.php';
 
     MCS_Settings::init();
     MCS_Cron::init();
