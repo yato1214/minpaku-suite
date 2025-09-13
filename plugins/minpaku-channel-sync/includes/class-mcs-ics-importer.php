@@ -35,7 +35,7 @@ class MCS_ICS_Importer {
       }
 
       if ($fetch_result['not_modified']) {
-        $url_skipped_not_modified++;
+        $url_skipped_not_modified = 1;
         $total_skipped_not_modified++;
         MCS_Logger::log('INFO', 'ICS not modified (304)', ['url' => $url, 'post_id' => $post_id]);
       } else {
@@ -203,6 +203,9 @@ class MCS_ICS_Importer {
   private static function fetch_with_cache($url) {
     // Get cached headers for this URL
     $cache = get_option('mcs_http_cache', []);
+    if (!is_array($cache)) {
+      $cache = [];
+    }
     $url_cache = isset($cache[$url]) ? $cache[$url] : [];
 
     // Prepare conditional headers
@@ -214,7 +217,7 @@ class MCS_ICS_Importer {
       $headers['If-Modified-Since'] = $url_cache['last_modified'];
     }
 
-    // Make HTTP request with conditional headers
+    // Make HTTP request with conditional headers (always pass headers)
     $args = [
       'timeout' => 30,
       'user-agent' => 'Minpaku Channel Sync/1.0',
@@ -236,7 +239,6 @@ class MCS_ICS_Importer {
     }
 
     $code = wp_remote_retrieve_response_code($response);
-    $headers = wp_remote_retrieve_headers($response);
     $body = wp_remote_retrieve_body($response);
 
     // Handle 304 Not Modified
@@ -254,15 +256,24 @@ class MCS_ICS_Importer {
 
     // Handle successful response (200)
     if ($code === 200) {
-      $etag = isset($headers['etag']) ? $headers['etag'] : '';
-      $last_modified = isset($headers['last-modified']) ? $headers['last-modified'] : '';
+      // Use wp_remote_retrieve_header for proper header extraction
+      $etag = wp_remote_retrieve_header($response, 'etag');
+      $last_modified = wp_remote_retrieve_header($response, 'last-modified');
+
+      // Handle potential array returns from wp_remote_retrieve_header
+      if (is_array($etag)) {
+        $etag = reset($etag);
+      }
+      if (is_array($last_modified)) {
+        $last_modified = reset($last_modified);
+      }
 
       return [
         'error' => false,
         'not_modified' => false,
         'body' => $body,
-        'etag' => $etag,
-        'last_modified' => $last_modified,
+        'etag' => $etag ?: '',
+        'last_modified' => $last_modified ?: '',
         'code' => $code,
         'message' => 'OK'
       ];
@@ -293,11 +304,15 @@ class MCS_ICS_Importer {
     }
 
     $cache = get_option('mcs_http_cache', []);
-    $cache[$url] = [
-      'etag' => $etag,
-      'last_modified' => $last_modified,
+    if (!is_array($cache)) {
+      $cache = [];
+    }
+
+    $cache[$url] = array_filter([
+      'etag' => is_array($etag) ? reset($etag) : $etag,
+      'last_modified' => is_array($last_modified) ? reset($last_modified) : $last_modified,
       'updated_at' => current_time('mysql')
-    ];
+    ]);
 
     // Limit cache size to prevent bloat (keep last 100 URLs)
     if (count($cache) > 100) {

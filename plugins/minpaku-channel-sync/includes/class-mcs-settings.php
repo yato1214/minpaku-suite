@@ -233,10 +233,12 @@ public static function sanitize( $input ) {
           <h4><?php esc_html_e('Sync Results', 'minpaku-channel-sync'); ?></h4>
           <p><strong><?php esc_html_e('Total:', 'minpaku-channel-sync'); ?></strong>
             <?php
-            /* translators: %1$d: added count, %2$d: updated count, %3$d: skipped count, %4$d: error count */
-            printf(esc_html__('Added: %1$d, Updated: %2$d, Skipped: %3$d, Errors: %4$d', 'minpaku-channel-sync'),
+            /* translators: %1$d: added count, %2$d: updated count, %3$d: skipped count, %4$d: not modified count, %5$d: error count */
+            printf(esc_html__('Added: %1$d, Updated: %2$d, Skipped: %3$d, Not Modified: %4$d, Errors: %5$d', 'minpaku-channel-sync'),
               $sync_results['total']['added'], $sync_results['total']['updated'],
-              $sync_results['total']['skipped'], $sync_results['total']['errors']); ?>
+              $sync_results['total']['skipped'],
+              $sync_results['total']['skipped_not_modified'] ?? 0,
+              $sync_results['total']['errors']); ?>
           </p>
           <?php if (!empty($sync_results['by_url'])): ?>
             <details>
@@ -245,9 +247,10 @@ public static function sanitize( $input ) {
                 <?php foreach ($sync_results['by_url'] as $url => $stats): ?>
                   <li><strong><?php echo esc_html($url); ?>:</strong>
                     <?php
-                    /* translators: %1$d: added count, %2$d: updated count, %3$d: skipped count */
-                    printf(esc_html__('Added: %1$d, Updated: %2$d, Skipped: %3$d', 'minpaku-channel-sync'),
-                      $stats['added'], $stats['updated'], $stats['skipped']); ?>
+                    /* translators: %1$d: added count, %2$d: updated count, %3$d: skipped count, %4$d: not modified count */
+                    printf(esc_html__('Added: %1$d, Updated: %2$d, Skipped: %3$d, Not Modified: %4$d', 'minpaku-channel-sync'),
+                      $stats['added'], $stats['updated'], $stats['skipped'],
+                      $stats['skipped_not_modified'] ?? 0); ?>
                   </li>
                 <?php endforeach; ?>
               </ul>

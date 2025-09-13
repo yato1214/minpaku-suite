@@ -12,6 +12,7 @@ class MCS_CLI {
     }
 
     WP_CLI::add_command( 'mcs mappings', [ __CLASS__, 'mappings_command' ] );
+    WP_CLI::add_command( 'mcs mappings list', [ __CLASS__, 'mappings_list_subcommand' ] );
     WP_CLI::add_command( 'mcs sync', [ __CLASS__, 'sync_command' ] );
     WP_CLI::add_command( 'mcs logs', [ __CLASS__, 'logs_command' ] );
   }
@@ -52,7 +53,7 @@ class MCS_CLI {
     }
 
     // Execute list subcommand
-    self::mappings_list_subcommand( $assoc_args );
+    self::mappings_list_subcommand( [], $assoc_args );
   }
 
   /**
@@ -71,7 +72,7 @@ class MCS_CLI {
    *     wp mcs mappings list
    *     wp mcs mappings list --format=json
    */
-  private static function mappings_list_subcommand( $assoc_args ) {
+  public static function mappings_list_subcommand( $args, $assoc_args ) {
     try {
       $format = WP_CLI\Utils\get_flag_value( $assoc_args, 'format', 'table' );
 
@@ -367,38 +368,47 @@ class MCS_CLI {
     $existing_slots = get_post_meta( $post_id, 'mcs_booked_slots', true );
     $existing_slots = is_array( $existing_slots ) ? $existing_slots : [];
 
-    // Fetch ICS data using the same logic as the main importer
-    $response = wp_remote_get( $url, [
-      'timeout' => 30,
-      'user-agent' => 'Minpaku Channel Sync/CLI'
-    ]);
-
-    if ( is_wp_error( $response ) ) {
-      throw new Exception( sprintf( 'Failed to fetch ICS: %s', $response->get_error_message() ) );
+    // Use the same conditional fetch logic as the main importer
+    if ( ! class_exists( 'MCS_ICS_Importer' ) ) {
+      throw new Exception( 'MCS_ICS_Importer class not found' );
     }
 
-    $status_code = wp_remote_retrieve_response_code( $response );
-    if ( $status_code !== 200 ) {
-      throw new Exception( sprintf( 'HTTP %d error fetching ICS', $status_code ) );
+    // Use reflection to access private fetch_with_cache method
+    $reflection = new ReflectionClass( 'MCS_ICS_Importer' );
+    $fetch_method = $reflection->getMethod( 'fetch_with_cache' );
+    $fetch_method->setAccessible( true );
+    $fetch_result = $fetch_method->invokeArgs( null, [ $url ] );
+
+    if ( $fetch_result['error'] ) {
+      throw new Exception( sprintf( 'Failed to fetch ICS: %s', $fetch_result['message'] ) );
     }
 
-    $ics_content = wp_remote_retrieve_body( $response );
+    if ( $fetch_result['not_modified'] ) {
+      return [
+        'added' => 0,
+        'updated' => 0,
+        'skipped' => 0,
+        'skipped_not_modified' => 1,
+        'errors' => 0
+      ];
+    }
+
+    $ics_content = $fetch_result['body'];
     if ( empty( $ics_content ) ) {
       throw new Exception( 'Empty ICS content received' );
     }
 
     // Parse ICS content using existing parser
-    if ( ! class_exists( 'MCS_ICS_Importer' ) ) {
-      throw new Exception( 'MCS_ICS_Importer class not found' );
-    }
-
-    // Use reflection to access private parse_ics method
-    $reflection = new ReflectionClass( 'MCS_ICS_Importer' );
     $parse_method = $reflection->getMethod( 'parse_ics' );
     $parse_method->setAccessible( true );
     $events = $parse_method->invokeArgs( null, [ $ics_content ] );
 
     if ( empty( $events ) ) {
+      // Update cache even if no events found
+      $update_cache_method = $reflection->getMethod( 'update_cache' );
+      $update_cache_method->setAccessible( true );
+      $update_cache_method->invokeArgs( null, [ $url, $fetch_result['etag'], $fetch_result['last_modified'] ] );
+
       return [
         'added' => 0,
         'updated' => 0,
@@ -413,6 +423,11 @@ class MCS_CLI {
     $apply_method->setAccessible( true );
     $result = $apply_method->invokeArgs( null, [ $post_id, $events ] );
 
+    // Update cache after successful sync
+    $update_cache_method = $reflection->getMethod( 'update_cache' );
+    $update_cache_method->setAccessible( true );
+    $update_cache_method->invokeArgs( null, [ $url, $fetch_result['etag'], $fetch_result['last_modified'] ] );
+
     // Log the CLI sync
     if ( class_exists( 'MCS_Logger' ) ) {
       MCS_Logger::log( 'INFO', sprintf( 'CLI sync completed for URL %s -> Post %d', $url, $post_id ), [
@@ -426,7 +441,7 @@ class MCS_CLI {
       'added' => $result['added'],
       'updated' => $result['updated'],
       'skipped' => $result['skipped'],
-      'skipped_not_modified' => 0, // CLI doesn't use conditional requests
+      'skipped_not_modified' => 0, // Content was modified, processed successfully
       'errors' => 0
     ];
   }
