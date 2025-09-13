@@ -1,15 +1,15 @@
-# WordPress env
-.wp-env
-.wp-env.json.lock
+﻿# WordPress local dev
+.wp-env/
+dist/
+_testdata/
 
-# Dependencies / builds
-node_modules/
-vendor/
-*.log
-*.zip
-*.map
+# IDE
+.idea/
+.vscode/
 
 # OS
 .DS_Store
 Thumbs.db
-.aider*
+
+# Node
+node_modules/
