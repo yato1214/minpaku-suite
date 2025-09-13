@@ -37,6 +37,12 @@ final class MCS_Loader {
     require_once MCS_PLUGIN_DIR . 'includes/class-mcs-ics-importer.php';
     require_once MCS_PLUGIN_DIR . 'includes/cli/class-mcs-cli.php';
 
+    // Load CLI mappings class only when WP-CLI is available
+    if ( defined( 'WP_CLI' ) && WP_CLI ) {
+      require_once MCS_PLUGIN_DIR . 'includes/class-mcs-cli-mappings.php';
+      WP_CLI::add_command( 'mcs mappings', 'MCS_Mappings_CLI' );
+    }
+
     MCS_Settings::init();
     MCS_Cron::init();
     MCS_CLI::init();
