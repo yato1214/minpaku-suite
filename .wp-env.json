@@ -1,0 +1,6 @@
+{
+  "core": "WordPress/WordPress",
+  "plugins": ["./plugins/minpaku-channel-sync"],
+  "config": { "WP_DEBUG": true, "SCRIPT_DEBUG": true },
+  "port": 8889
+}

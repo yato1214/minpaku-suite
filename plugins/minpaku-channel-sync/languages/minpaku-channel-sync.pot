@@ -1,0 +1,1 @@
+# POT file placeholder. Generate via: wp i18n make-pot . languages/minpaku-channel-sync.pot
