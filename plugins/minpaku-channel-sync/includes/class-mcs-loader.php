@@ -35,9 +35,11 @@ final class MCS_Loader {
     require_once MCS_PLUGIN_DIR . 'includes/class-mcs-cron.php';
     require_once MCS_PLUGIN_DIR . 'includes/class-mcs-ics-exporter.php';
     require_once MCS_PLUGIN_DIR . 'includes/class-mcs-ics-importer.php';
+    require_once MCS_PLUGIN_DIR . 'includes/class-mcs-cli.php';
 
     MCS_Settings::init();
     MCS_Cron::init();
+    MCS_CLI::init();
 
     // Cron hook
     add_action('mcs_sync_event', ['MCS_ICS_Importer', 'run']);
