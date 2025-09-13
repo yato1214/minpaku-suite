@@ -14,8 +14,16 @@ final class MCS_Loader {
 
     // Rewrite rule (activation also sets)
     add_action('init', function() {
-      add_rewrite_rule('^ics/([0-9]+)\.ics$', 'index.php?mcs_ics_post_id=$matches[1]', 'top');
+      add_rewrite_rule('^ics/([0-9]+)\.ics/?$', 'index.php?mcs_ics_post_id=$matches[1]', 'top');
     });
+
+    // Disable canonical redirect for ICS endpoints
+    add_filter('redirect_canonical', function($redirect_url, $requested_url) {
+      if (strpos($requested_url, '/ics/') !== false) {
+        return false;
+      }
+      return $redirect_url;
+    }, 10, 2);
 
     // Handle ICS output
     add_action('template_redirect', [__CLASS__, 'maybe_output_ics']);
