@@ -5,40 +5,83 @@ class MCS_ICS_Importer {
 
   public static function run() {
     $opts = MCS_Settings::get();
-    $urls = $opts['ics_urls'];
-    if (empty($urls)) {
-      MCS_Logger::log('INFO', 'No ICS URLs configured.');
+    $mappings = $opts['mappings'];
+    if (empty($mappings)) {
+      MCS_Logger::log('INFO', 'No ICS mappings configured.');
       return;
     }
 
-    $added = 0; $updated = 0; $skipped = 0; $errors = 0;
+    $total_added = 0; $total_updated = 0; $total_skipped = 0; $total_errors = 0;
+    $results_by_url = [];
 
-    foreach ($urls as $url) {
-      $res = wp_remote_get($url, ['timeout' => 15]);
+    foreach ($mappings as $mapping) {
+      $url = $mapping['url'];
+      $post_id = $mapping['post_id'];
+      
+      $url_added = 0; $url_updated = 0; $url_skipped = 0;
+      
+      $res = wp_remote_get($url, ['timeout' => 10]);
       if (is_wp_error($res)) {
-        $errors++;
-        MCS_Logger::log('ERROR', 'Fetch failed', ['url' => $url, 'error' => $res->get_error_message()]);
+        $total_errors++;
+        MCS_Logger::log('ERROR', 'Fetch failed', ['url' => $url, 'post_id' => $post_id, 'error' => $res->get_error_message()]);
         continue;
       }
+      
       $code = wp_remote_retrieve_response_code($res);
       $body = wp_remote_retrieve_body($res);
       if ($code !== 200 || empty($body)) {
-        $errors++;
-        MCS_Logger::log('ERROR', 'Invalid response', ['url' => $url, 'code' => $code]);
+        $total_errors++;
+        MCS_Logger::log('ERROR', 'Invalid response', ['url' => $url, 'post_id' => $post_id, 'code' => $code]);
         continue;
       }
 
       $events = self::parse_ics($body);
-      // For MVP: map to a single post (first found) — later, map by UID/URL mapping
-      // Here we simply store into a "global" resource post if needed.
-      // For now, skip post mapping: just log count.
-      $added += count($events);
+      if (empty($events)) {
+        MCS_Logger::log('INFO', 'No events found in ICS', ['url' => $url, 'post_id' => $post_id]);
+        continue;
+      }
 
-      // TODO: Decide mapping to posts: by CPT, meta 'ics_source', or a designated "property" id list.
-      // You may extend: self::apply_to_post($post_id, $events);
+      $merge_result = self::apply_to_post($post_id, $events);
+      $url_added = $merge_result['added'];
+      $url_updated = $merge_result['updated'];
+      $url_skipped = $merge_result['skipped'];
+      
+      $total_added += $url_added;
+      $total_updated += $url_updated;
+      $total_skipped += $url_skipped;
+      
+      $results_by_url[$url] = [
+        'added' => $url_added,
+        'updated' => $url_updated,
+        'skipped' => $url_skipped
+      ];
+      
+      MCS_Logger::log('INFO', 'URL processed', [
+        'url' => $url,
+        'post_id' => $post_id,
+        'added' => $url_added,
+        'updated' => $url_updated,
+        'skipped' => $url_skipped
+      ]);
     }
 
-    MCS_Logger::log('INFO', 'Sync done', compact('added','updated','skipped','errors'));
+    $total_results = [
+      'total' => compact('total_added', 'total_updated', 'total_skipped', 'total_errors'),
+      'by_url' => $results_by_url
+    ];
+    
+    // Store results for display in admin
+    set_transient('mcs_last_sync_results', [
+      'total' => [
+        'added' => $total_added,
+        'updated' => $total_updated,
+        'skipped' => $total_skipped,
+        'errors' => $total_errors
+      ],
+      'by_url' => $results_by_url
+    ], 300); // 5 minutes
+
+    MCS_Logger::log('INFO', 'Sync completed', $total_results['total']);
   }
 
   // Very simple ics parser for DTSTART/DTEND/UID inside VEVENT
@@ -87,14 +130,55 @@ class MCS_ICS_Importer {
     return $ts ? $ts : 0;
   }
 
-  // Placeholder for applying to a post (not wired in MVP)
   private static function apply_to_post($post_id, $events) {
     $stored = get_post_meta($post_id, 'mcs_booked_slots', true);
     if ( ! is_array($stored)) $stored = [];
-    // TODO: diff merge: update or append by UID / by (start,end)
-    foreach ($events as $e) {
-      $stored[] = $e;
+    
+    $added = 0; $updated = 0; $skipped = 0;
+    
+    foreach ($events as $new_event) {
+      $new_start = $new_event[0];
+      $new_end = $new_event[1];
+      $new_source = $new_event[2];
+      $new_uid = isset($new_event[3]) ? $new_event[3] : null;
+      
+      $found_index = -1;
+      
+      // Find existing event by UID first, then by (start, end)
+      foreach ($stored as $i => $existing) {
+        $existing_uid = isset($existing[3]) ? $existing[3] : null;
+        
+        if ($new_uid && $existing_uid && $new_uid === $existing_uid) {
+          $found_index = $i;
+          break;
+        } elseif (!$new_uid || !$existing_uid) {
+          // Fallback to (start, end) matching
+          if ($existing[0] == $new_start && $existing[1] == $new_end) {
+            $found_index = $i;
+            break;
+          }
+        }
+      }
+      
+      if ($found_index >= 0) {
+        // Check if update is needed
+        $existing = $stored[$found_index];
+        if ($existing[0] != $new_start || $existing[1] != $new_end || 
+            (isset($existing[3]) ? $existing[3] : null) != $new_uid) {
+          $stored[$found_index] = $new_event;
+          $updated++;
+        } else {
+          $skipped++;
+        }
+      } else {
+        // Add new event
+        $stored[] = $new_event;
+        $added++;
+      }
     }
+    
     update_post_meta($post_id, 'mcs_booked_slots', $stored);
+    
+    return compact('added', 'updated', 'skipped');
   }
 }

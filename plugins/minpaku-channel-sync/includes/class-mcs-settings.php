@@ -15,6 +15,7 @@ class MCS_Settings {
     return [
       'cpt' => 'property',
       'ics_urls' => [],
+      'mappings' => [],
       'interval' => 'hourly',
       'export_disposition' => 'inline',
       'flush_rewrite_rules' => false
@@ -62,6 +63,24 @@ class MCS_Settings {
       }
       $out['ics_urls'] = $urls;
     }
+    if (isset($input['mappings'])) {
+      $mappings = [];
+      if (is_array($input['mappings'])) {
+        foreach ($input['mappings'] as $mapping) {
+          $url = isset($mapping['url']) ? esc_url_raw(trim($mapping['url'])) : '';
+          $post_id = isset($mapping['post_id']) ? absint($mapping['post_id']) : 0;
+          if ($url && $post_id) {
+            $mappings[] = ['url' => $url, 'post_id' => $post_id];
+          }
+        }
+      }
+      $out['mappings'] = $mappings;
+      
+      // Migration from old ics_urls format (one-time)
+      if (empty($mappings) && !empty($out['ics_urls'])) {
+        MCS_Logger::log('INFO', 'Migrating from old ics_urls format to mappings (post_id required)');
+      }
+    }
     if (isset($input['export_disposition'])) {
       $allowed_dispositions = ['inline', 'attachment'];
       $out['export_disposition'] = in_array($input['export_disposition'], $allowed_dispositions, true) ? $input['export_disposition'] : 'inline';
@@ -104,6 +123,31 @@ class MCS_Settings {
 
       <?php if ( isset($_GET['mcs_synced']) ): ?>
         <div class="notice notice-success"><p><?php _e('Manual sync executed.', 'minpaku-channel-sync'); ?></p></div>
+        <?php 
+        $sync_results = get_transient('mcs_last_sync_results');
+        if ($sync_results): ?>
+          <div class="notice notice-info">
+            <h4><?php _e('Sync Results', 'minpaku-channel-sync'); ?></h4>
+            <p><strong><?php _e('Total:', 'minpaku-channel-sync'); ?></strong> 
+              <?php printf(__('Added: %d, Updated: %d, Skipped: %d, Errors: %d', 'minpaku-channel-sync'), 
+                $sync_results['total']['added'], $sync_results['total']['updated'], 
+                $sync_results['total']['skipped'], $sync_results['total']['errors']); ?>
+            </p>
+            <?php if (!empty($sync_results['by_url'])): ?>
+              <details>
+                <summary><?php _e('Details by URL', 'minpaku-channel-sync'); ?></summary>
+                <ul>
+                  <?php foreach ($sync_results['by_url'] as $url => $stats): ?>
+                    <li><strong><?php echo esc_html($url); ?>:</strong> 
+                      <?php printf(__('Added: %d, Updated: %d, Skipped: %d', 'minpaku-channel-sync'), 
+                        $stats['added'], $stats['updated'], $stats['skipped']); ?>
+                    </li>
+                  <?php endforeach; ?>
+                </ul>
+              </details>
+            <?php endif; ?>
+          </div>
+        <?php endif; ?>
       <?php endif; ?>
 
       <form method="post" action="options.php">
@@ -114,8 +158,55 @@ class MCS_Settings {
             <td><input name="<?php echo self::OPT_KEY; ?>[cpt]" id="mcs_cpt" type="text" value="<?php echo esc_attr($o['cpt']); ?>" class="regular-text" /></td>
           </tr>
           <tr>
-            <th scope="row"><label for="mcs_ics_urls"><?php _e('ICS import URLs (one per line)', 'minpaku-channel-sync'); ?></label></th>
-            <td><textarea name="<?php echo self::OPT_KEY; ?>[ics_urls]" id="mcs_ics_urls" rows="6" class="large-text"><?php echo esc_textarea(implode("\n",$o['ics_urls'])); ?></textarea></td>
+            <th scope="row"><?php _e('ICS Import Mappings', 'minpaku-channel-sync'); ?></th>
+            <td>
+              <table class="widefat" id="mcs-mappings-table">
+                <thead>
+                  <tr>
+                    <th><?php _e('ICS URL', 'minpaku-channel-sync'); ?></th>
+                    <th><?php _e('Post ID', 'minpaku-channel-sync'); ?></th>
+                    <th><?php _e('Action', 'minpaku-channel-sync'); ?></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <?php foreach ($o['mappings'] as $i => $mapping): ?>
+                  <tr>
+                    <td><input type="url" name="<?php echo self::OPT_KEY; ?>[mappings][<?php echo $i; ?>][url]" value="<?php echo esc_attr($mapping['url']); ?>" class="regular-text" /></td>
+                    <td><input type="number" name="<?php echo self::OPT_KEY; ?>[mappings][<?php echo $i; ?>][post_id]" value="<?php echo esc_attr($mapping['post_id']); ?>" min="1" class="small-text" /></td>
+                    <td><button type="button" class="button mcs-remove-mapping"><?php _e('Remove', 'minpaku-channel-sync'); ?></button></td>
+                  </tr>
+                  <?php endforeach; ?>
+                  <tr id="mcs-new-mapping-row">
+                    <td><input type="url" name="<?php echo self::OPT_KEY; ?>[mappings][new][url]" placeholder="https://example.com/calendar.ics" class="regular-text" /></td>
+                    <td><input type="number" name="<?php echo self::OPT_KEY; ?>[mappings][new][post_id]" placeholder="123" min="1" class="small-text" /></td>
+                    <td><button type="button" class="button" id="mcs-add-mapping"><?php _e('Add', 'minpaku-channel-sync'); ?></button></td>
+                  </tr>
+                </tbody>
+              </table>
+              <script>
+              jQuery(document).ready(function($) {
+                var mappingIndex = <?php echo count($o['mappings']); ?>;
+                $('#mcs-add-mapping').on('click', function() {
+                  var url = $('input[name="<?php echo self::OPT_KEY; ?>[mappings][new][url]"]').val();
+                  var postId = $('input[name="<?php echo self::OPT_KEY; ?>[mappings][new][post_id]"]').val();
+                  if (url && postId) {
+                    var newRow = '<tr>' +
+                      '<td><input type="url" name="<?php echo self::OPT_KEY; ?>[mappings][' + mappingIndex + '][url]" value="' + url + '" class="regular-text" /></td>' +
+                      '<td><input type="number" name="<?php echo self::OPT_KEY; ?>[mappings][' + mappingIndex + '][post_id]" value="' + postId + '" min="1" class="small-text" /></td>' +
+                      '<td><button type="button" class="button mcs-remove-mapping"><?php _e('Remove', 'minpaku-channel-sync'); ?></button></td>' +
+                      '</tr>';
+                    $('#mcs-new-mapping-row').before(newRow);
+                    $('input[name="<?php echo self::OPT_KEY; ?>[mappings][new][url]"]').val('');
+                    $('input[name="<?php echo self::OPT_KEY; ?>[mappings][new][post_id]"]').val('');
+                    mappingIndex++;
+                  }
+                });
+                $(document).on('click', '.mcs-remove-mapping', function() {
+                  $(this).closest('tr').remove();
+                });
+              });
+              </script>
+            </td>
           </tr>
           <tr>
             <th scope="row"><?php _e('Sync interval', 'minpaku-channel-sync'); ?></th>
