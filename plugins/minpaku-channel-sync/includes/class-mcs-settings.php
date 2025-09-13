@@ -9,6 +9,7 @@ class MCS_Settings {
     add_action('admin_menu', [__CLASS__, 'add_settings_page']);
     add_action('admin_init', [__CLASS__, 'register']);
     add_action('admin_post_mcs_manual_sync', [__CLASS__, 'handle_manual_sync']);
+    add_action('admin_post_mcs_clear_logs', [__CLASS__, 'handle_clear_logs']);
   }
 
   public static function defaults() {
@@ -114,6 +115,16 @@ class MCS_Settings {
     exit;
   }
 
+  public static function handle_clear_logs() {
+    if ( ! current_user_can('manage_options') ) {
+      wp_die('forbidden');
+    }
+    check_admin_referer('mcs_clear_logs');
+    MCS_Logger::clear();
+    wp_redirect( add_query_arg('logs_cleared', '1', admin_url('options-general.php?page=mcs-settings')) );
+    exit;
+  }
+
   public static function render() {
     if ( ! current_user_can('manage_options') ) return;
     $o = self::get();
@@ -123,6 +134,9 @@ class MCS_Settings {
 
       <?php if ( isset($_GET['mcs_synced']) ): ?>
         <div class="notice notice-success"><p><?php _e('Manual sync executed.', 'minpaku-channel-sync'); ?></p></div>
+      <?php endif; ?>
+      <?php if ( isset($_GET['logs_cleared']) ): ?>
+        <div class="notice notice-success"><p><?php _e('Logs cleared successfully.', 'minpaku-channel-sync'); ?></p></div>
         <?php 
         $sync_results = get_transient('mcs_last_sync_results');
         if ($sync_results): ?>
@@ -148,6 +162,16 @@ class MCS_Settings {
             <?php endif; ?>
           </div>
         <?php endif; ?>
+      <?php endif; ?>
+
+      <?php 
+      $next_cron = wp_next_scheduled('mcs_sync_event');
+      if ($next_cron): ?>
+        <div class="notice notice-info">
+          <p><strong><?php _e('Next scheduled sync:', 'minpaku-channel-sync'); ?></strong> 
+            <?php echo esc_html(wp_date(get_option('date_format') . ' ' . get_option('time_format'), $next_cron)); ?>
+          </p>
+        </div>
       <?php endif; ?>
 
       <form method="post" action="options.php">
@@ -248,19 +272,50 @@ class MCS_Settings {
       </form>
 
       <hr/>
-      <h2><?php _e('Recent Logs', 'minpaku-channel-sync'); ?></h2>
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h2><?php _e('Recent Logs (Latest 50)', 'minpaku-channel-sync'); ?></h2>
+        <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" style="margin: 0;">
+          <?php wp_nonce_field('mcs_clear_logs'); ?>
+          <input type="hidden" name="action" value="mcs_clear_logs"/>
+          <input type="submit" class="button button-secondary" value="<?php _e('Clear Logs', 'minpaku-channel-sync'); ?>" onclick="return confirm('<?php _e('Are you sure you want to clear all logs?', 'minpaku-channel-sync'); ?>');" />
+        </form>
+      </div>
       <table class="widefat striped">
-        <thead><tr><th>Time</th><th>Level</th><th>Message</th></tr></thead>
+        <thead><tr><th><?php _e('Time', 'minpaku-channel-sync'); ?></th><th><?php _e('Level', 'minpaku-channel-sync'); ?></th><th><?php _e('Message', 'minpaku-channel-sync'); ?></th><th><?php _e('Context', 'minpaku-channel-sync'); ?></th></tr></thead>
         <tbody>
-        <?php foreach (MCS_Logger::get_logs(20) as $row): ?>
+        <?php foreach (MCS_Logger::get_logs(50) as $row): ?>
           <tr>
             <td><?php echo esc_html($row['time']); ?></td>
-            <td><?php echo esc_html($row['level']); ?></td>
+            <td><span class="mcs-log-level mcs-log-<?php echo esc_attr(strtolower($row['level'])); ?>"><?php echo esc_html($row['level']); ?></span></td>
             <td><?php echo esc_html($row['message']); ?></td>
+            <td>
+              <?php 
+              if (!empty($row['context']) && is_array($row['context'])) {
+                $context_parts = [];
+                foreach ($row['context'] as $key => $value) {
+                  if (is_scalar($value)) {
+                    $context_parts[] = esc_html($key) . ': ' . esc_html($value);
+                  }
+                }
+                echo implode(', ', $context_parts);
+              }
+              ?>
+            </td>
           </tr>
         <?php endforeach; ?>
         </tbody>
       </table>
+      <style>
+      .mcs-log-level {
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-size: 11px;
+        font-weight: bold;
+      }
+      .mcs-log-info { background: #d1ecf1; color: #0c5460; }
+      .mcs-log-warning { background: #fff3cd; color: #856404; }
+      .mcs-log-error { background: #f8d7da; color: #721c24; }
+      </style>
     </div>
     <?php
   }
