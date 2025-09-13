@@ -17,7 +17,11 @@ class MCS_CLI {
   }
 
   /**
-   * List ICS URL mappings
+   * Manage ICS URL mappings
+   *
+   * ## SUBCOMMANDS
+   *
+   * * list - List all ICS URL mappings
    *
    * ## OPTIONS
    *
@@ -34,10 +38,40 @@ class MCS_CLI {
    *
    * ## EXAMPLES
    *
+   *     wp mcs mappings
    *     wp mcs mappings list
    *     wp mcs mappings list --format=json
    */
   public static function mappings_command( $args, $assoc_args ) {
+    // Handle subcommand structure with backward compatibility
+    $subcommand = isset( $args[0] ) ? $args[0] : 'list';
+
+    // Validate subcommand
+    if ( $subcommand !== 'list' ) {
+      WP_CLI::error( sprintf( 'Unknown subcommand: %s. Available subcommands: list', $subcommand ) );
+    }
+
+    // Execute list subcommand
+    self::mappings_list_subcommand( $assoc_args );
+  }
+
+  /**
+   * List ICS URL mappings
+   *
+   * ## OPTIONS
+   *
+   * [--format=<format>]
+   * : Output format (table, json, csv, yaml, etc.)
+   * ---
+   * default: table
+   * ---
+   *
+   * ## EXAMPLES
+   *
+   *     wp mcs mappings list
+   *     wp mcs mappings list --format=json
+   */
+  private static function mappings_list_subcommand( $assoc_args ) {
     try {
       $format = WP_CLI\Utils\get_flag_value( $assoc_args, 'format', 'table' );
 
