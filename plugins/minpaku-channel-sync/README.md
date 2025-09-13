@@ -121,6 +121,46 @@ update_post_meta($post_id, 'mcs_booked_slots', $slots);
 - ICSファイルがダウンロード/表示される
 - 内容が正しいフォーマットで出力される
 
+**wp-cliでのテスト例:**
+```bash
+# 投稿にテストデータを追加
+wp post meta update 123 mcs_booked_slots '[[[1733068800,1733072400,"","test-uid-1@example.com"]]]' --format=json
+
+# 投稿メタデータの確認
+wp post meta get 123 mcs_booked_slots
+
+# ICSエンドポイントの確認（curl使用）
+curl -I "http://localhost:8888/ics/123.ics"
+curl "http://localhost:8888/ics/123.ics"
+```
+
+**curlでのAPIテスト例:**
+```bash
+# ICSファイルのヘッダー確認
+curl -I "http://localhost:8888/ics/123.ics"
+
+# ICSファイルの内容取得
+curl "http://localhost:8888/ics/123.ics"
+
+# 外部ICSファイルの取得テスト
+curl -L "https://example.com/calendar.ics" | head -20
+
+# レスポンスタイムの計測
+curl -w "@curl-format.txt" -o /dev/null -s "http://localhost:8888/ics/123.ics"
+```
+
+**curl-format.txt（レスポンス計測用）:**
+```
+     time_namelookup:  %{time_namelookup}\n
+        time_connect:  %{time_connect}\n
+     time_appconnect:  %{time_appconnect}\n
+    time_pretransfer:  %{time_pretransfer}\n
+       time_redirect:  %{time_redirect}\n
+  time_starttransfer:  %{time_starttransfer}\n
+                     ----------\n
+          time_total:  %{time_total}\n
+```
+
 3. **外部カレンダーでの検証**
 - Google Calendar、Outlook等でICS URLを購読
 - 予約情報が正しく表示される

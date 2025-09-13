@@ -74,6 +74,12 @@ public static function sanitize( $input ) {
 		return get_option( self::OPT_KEY, self::defaults() );
 	}
 
+	// Additional nonce verification for settings page
+	if ( ! wp_verify_nonce( $_POST['_wpnonce'] ?? '', 'mcs_settings_group-options' ) ) {
+		add_settings_error( self::OPT_KEY, 'nonce_failed', __( 'Security check failed. Please try again.', 'minpaku-channel-sync' ) );
+		return get_option( self::OPT_KEY, self::defaults() );
+	}
+
 	// ① 入力の型を保証
 	if ( ! is_array( $input ) ) {
 		$input = array();
