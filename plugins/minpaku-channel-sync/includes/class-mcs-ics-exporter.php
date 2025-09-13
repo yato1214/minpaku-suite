@@ -39,10 +39,10 @@ class MCS_ICS_Exporter {
       $uid = isset($slot[3]) && $slot[3] ? $slot[3] : sprintf('%d-%d-%d@%s', $post_id, $start, $end, $uid_base);
       $lines[] = 'BEGIN:VEVENT';
       $lines[] = self::fold_line('UID:' . $uid);
-      $lines[] = 'DTSTAMP:' . gmdate('Ymd\THis\Z');
-      $lines[] = 'DTSTART:' . gmdate('Ymd\THis\Z', $start);
-      $lines[] = 'DTEND:'   . gmdate('Ymd\THis\Z', $end);
-      // Improved SUMMARY format with post title first
+      $lines[] = self::fold_line('DTSTAMP:' . gmdate('Ymd\THis\Z'));
+      $lines[] = self::fold_line('DTSTART:' . gmdate('Ymd\THis\Z', $start));
+      $lines[] = self::fold_line('DTEND:' . gmdate('Ymd\THis\Z', $end));
+      // SUMMARY must include post title as per requirements
       $summary = sprintf('%s - Booked', $post_title);
       $lines[] = self::fold_line('SUMMARY:' . self::escape_text($summary));
       $lines[] = 'END:VEVENT';
@@ -72,28 +72,34 @@ class MCS_ICS_Exporter {
 
   /**
    * Fold lines at 75 bytes as per RFC5545
+   * Lines longer than 75 octets are folded with CRLF followed by a space
    * @param string $line
    * @return string
    */
   private static function fold_line($line) {
-    if (strlen($line) <= 75) {
+    // Convert to bytes for accurate measurement (UTF-8 support)
+    $bytes = strlen($line);
+    if ($bytes <= 75) {
       return $line;
     }
 
     $folded = [];
     $pos = 0;
-    while ($pos < strlen($line)) {
+    while ($pos < $bytes) {
       if ($pos === 0) {
-        // First line can be 75 chars
-        $folded[] = substr($line, 0, 75);
+        // First line can be up to 75 octets
+        $chunk = substr($line, 0, 75);
+        $folded[] = $chunk;
         $pos = 75;
       } else {
-        // Continuation lines start with space and can be 74 chars (75 - 1 space)
+        // Continuation lines start with space and can be 74 octets (75 - 1 space)
         $chunk = substr($line, $pos, 74);
         if ($chunk !== '') {
           $folded[] = ' ' . $chunk;
+          $pos += 74;
+        } else {
+          break;
         }
-        $pos += 74;
       }
     }
     return implode("\r\n", $folded);
