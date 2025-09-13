@@ -1,0 +1,7 @@
+vendor/
+node_modules/
+*.min.js
+*.map
+*.zip
+*.log
+.DS_Store
