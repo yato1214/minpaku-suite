@@ -365,7 +365,7 @@ class MCS_CLI {
           if ( $existing_slot[3] !== $uid ) {
             $updated++;
           } else {
-            $skipped_not_modified++;
+            $skipped++;  // Use skipped for CLI (not skipped_not_modified)
           }
           break;
         }

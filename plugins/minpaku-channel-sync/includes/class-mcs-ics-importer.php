@@ -11,71 +11,83 @@ class MCS_ICS_Importer {
       return;
     }
 
-    $total_added = 0; $total_updated = 0; $total_skipped = 0; $total_errors = 0;
+    $total_added = 0; $total_updated = 0; $total_skipped = 0; $total_skipped_not_modified = 0; $total_errors = 0;
     $results_by_url = [];
 
     foreach ($mappings as $mapping) {
       $url = $mapping['url'];
       $post_id = $mapping['post_id'];
-      
-      $url_added = 0; $url_updated = 0; $url_skipped = 0;
-      
-      $res = wp_remote_get($url, ['timeout' => 10]);
-      if (is_wp_error($res)) {
+
+      $url_added = 0; $url_updated = 0; $url_skipped = 0; $url_skipped_not_modified = 0;
+
+      // Fetch with conditional request headers
+      $fetch_result = self::fetch_with_cache($url);
+
+      if ($fetch_result['error']) {
         $total_errors++;
-        MCS_Logger::log('ERROR', 'Fetch failed', ['url' => $url, 'post_id' => $post_id, 'error' => $res->get_error_message()]);
-        continue;
-      }
-      
-      $code = wp_remote_retrieve_response_code($res);
-      $body = wp_remote_retrieve_body($res);
-      if ($code !== 200 || empty($body)) {
-        $total_errors++;
-        MCS_Logger::log('ERROR', 'Invalid response', ['url' => $url, 'post_id' => $post_id, 'code' => $code]);
+        MCS_Logger::log('ERROR', 'Fetch failed', [
+          'url' => $url,
+          'post_id' => $post_id,
+          'code' => $fetch_result['code'],
+          'message' => $fetch_result['message']
+        ]);
         continue;
       }
 
-      $events = self::parse_ics($body);
-      if (empty($events)) {
-        MCS_Logger::log('INFO', 'No events found in ICS', ['url' => $url, 'post_id' => $post_id]);
-        continue;
+      if ($fetch_result['not_modified']) {
+        $url_skipped_not_modified++;
+        $total_skipped_not_modified++;
+        MCS_Logger::log('INFO', 'ICS not modified (304)', ['url' => $url, 'post_id' => $post_id]);
+      } else {
+        // Parse and process the ICS content
+        $events = self::parse_ics($fetch_result['body']);
+        if (empty($events)) {
+          MCS_Logger::log('INFO', 'No events found in ICS', ['url' => $url, 'post_id' => $post_id]);
+        } else {
+          $merge_result = self::apply_to_post($post_id, $events);
+          $url_added = $merge_result['added'];
+          $url_updated = $merge_result['updated'];
+          $url_skipped = $merge_result['skipped'];
+        }
+
+        // Update cache with new ETag/Last-Modified
+        self::update_cache($url, $fetch_result['etag'], $fetch_result['last_modified']);
       }
 
-      $merge_result = self::apply_to_post($post_id, $events);
-      $url_added = $merge_result['added'];
-      $url_updated = $merge_result['updated'];
-      $url_skipped = $merge_result['skipped'];
-      
       $total_added += $url_added;
       $total_updated += $url_updated;
       $total_skipped += $url_skipped;
-      
+      $total_skipped_not_modified += $url_skipped_not_modified;
+
       $results_by_url[$url] = [
         'added' => $url_added,
         'updated' => $url_updated,
-        'skipped' => $url_skipped
+        'skipped' => $url_skipped,
+        'skipped_not_modified' => $url_skipped_not_modified
       ];
-      
+
       MCS_Logger::log('INFO', 'URL processed', [
         'url' => $url,
         'post_id' => $post_id,
         'added' => $url_added,
         'updated' => $url_updated,
-        'skipped' => $url_skipped
+        'skipped' => $url_skipped,
+        'skipped_not_modified' => $url_skipped_not_modified
       ]);
     }
 
     $total_results = [
-      'total' => compact('total_added', 'total_updated', 'total_skipped', 'total_errors'),
+      'total' => compact('total_added', 'total_updated', 'total_skipped', 'total_skipped_not_modified', 'total_errors'),
       'by_url' => $results_by_url
     ];
-    
+
     // Store results for display in admin
     set_transient('mcs_last_sync_results', [
       'total' => [
         'added' => $total_added,
         'updated' => $total_updated,
         'skipped' => $total_skipped,
+        'skipped_not_modified' => $total_skipped_not_modified,
         'errors' => $total_errors
       ],
       'by_url' => $results_by_url
@@ -180,5 +192,118 @@ class MCS_ICS_Importer {
     update_post_meta($post_id, 'mcs_booked_slots', $stored);
     
     return compact('added', 'updated', 'skipped');
+  }
+
+  /**
+   * Fetch ICS with conditional request headers
+   *
+   * @param string $url
+   * @return array ['error' => bool, 'not_modified' => bool, 'body' => string, 'etag' => string, 'last_modified' => string, 'code' => int, 'message' => string]
+   */
+  private static function fetch_with_cache($url) {
+    // Get cached headers for this URL
+    $cache = get_option('mcs_http_cache', []);
+    $url_cache = isset($cache[$url]) ? $cache[$url] : [];
+
+    // Prepare conditional headers
+    $headers = [];
+    if (!empty($url_cache['etag'])) {
+      $headers['If-None-Match'] = $url_cache['etag'];
+    }
+    if (!empty($url_cache['last_modified'])) {
+      $headers['If-Modified-Since'] = $url_cache['last_modified'];
+    }
+
+    // Make HTTP request with conditional headers
+    $args = [
+      'timeout' => 30,
+      'user-agent' => 'Minpaku Channel Sync/1.0',
+      'headers' => $headers
+    ];
+
+    $response = wp_remote_get($url, $args);
+
+    if (is_wp_error($response)) {
+      return [
+        'error' => true,
+        'not_modified' => false,
+        'body' => '',
+        'etag' => '',
+        'last_modified' => '',
+        'code' => 0,
+        'message' => $response->get_error_message()
+      ];
+    }
+
+    $code = wp_remote_retrieve_response_code($response);
+    $headers = wp_remote_retrieve_headers($response);
+    $body = wp_remote_retrieve_body($response);
+
+    // Handle 304 Not Modified
+    if ($code === 304) {
+      return [
+        'error' => false,
+        'not_modified' => true,
+        'body' => '',
+        'etag' => '',
+        'last_modified' => '',
+        'code' => $code,
+        'message' => 'Not Modified'
+      ];
+    }
+
+    // Handle successful response (200)
+    if ($code === 200) {
+      $etag = isset($headers['etag']) ? $headers['etag'] : '';
+      $last_modified = isset($headers['last-modified']) ? $headers['last-modified'] : '';
+
+      return [
+        'error' => false,
+        'not_modified' => false,
+        'body' => $body,
+        'etag' => $etag,
+        'last_modified' => $last_modified,
+        'code' => $code,
+        'message' => 'OK'
+      ];
+    }
+
+    // Handle error responses
+    return [
+      'error' => true,
+      'not_modified' => false,
+      'body' => '',
+      'etag' => '',
+      'last_modified' => '',
+      'code' => $code,
+      'message' => sprintf('HTTP %d error', $code)
+    ];
+  }
+
+  /**
+   * Update HTTP cache for URL
+   *
+   * @param string $url
+   * @param string $etag
+   * @param string $last_modified
+   */
+  private static function update_cache($url, $etag, $last_modified) {
+    if (empty($etag) && empty($last_modified)) {
+      return; // Nothing to cache
+    }
+
+    $cache = get_option('mcs_http_cache', []);
+    $cache[$url] = [
+      'etag' => $etag,
+      'last_modified' => $last_modified,
+      'updated_at' => current_time('mysql')
+    ];
+
+    // Limit cache size to prevent bloat (keep last 100 URLs)
+    if (count($cache) > 100) {
+      $cache = array_slice($cache, -100, null, true);
+    }
+
+    update_option('mcs_http_cache', $cache, false);
   }
 }
