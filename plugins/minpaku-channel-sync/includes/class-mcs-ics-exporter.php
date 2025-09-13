@@ -16,6 +16,7 @@ class MCS_ICS_Exporter {
 
     $site = get_bloginfo('name');
     $uid_base = wp_parse_url(home_url(), PHP_URL_HOST);
+    $post_title = $post->post_title;
 
     $lines = [];
     $lines[] = 'BEGIN:VCALENDAR';
@@ -26,14 +27,22 @@ class MCS_ICS_Exporter {
     foreach ($slots as $i => $slot) {
       $start = isset($slot[0]) ? intval($slot[0]) : 0;
       $end   = isset($slot[1]) ? intval($slot[1]) : 0;
-      if (!$start || !$end) continue;
+      if (!$start || !$end) {
+        MCS_Logger::log('WARNING', 'Invalid slot skipped during ICS export', [
+          'post_id' => $post_id,
+          'slot_index' => $i,
+          'start' => $start,
+          'end' => $end
+        ]);
+        continue;
+      }
       $uid = isset($slot[3]) && $slot[3] ? $slot[3] : sprintf('%d-%d-%d@%s', $post_id, $start, $end, $uid_base);
       $lines[] = 'BEGIN:VEVENT';
       $lines[] = 'UID:' . $uid;
       $lines[] = 'DTSTAMP:' . gmdate('Ymd\THis\Z');
       $lines[] = 'DTSTART:' . gmdate('Ymd\THis\Z', $start);
       $lines[] = 'DTEND:'   . gmdate('Ymd\THis\Z', $end);
-      $summary = sprintf('%s #%d booked', $site, $post_id);
+      $summary = sprintf('%s #%d booked – %s', $site, $post_id, $post_title);
       $lines[] = 'SUMMARY:' . self::escape_text($summary);
       $lines[] = 'END:VEVENT';
     }
@@ -41,9 +50,13 @@ class MCS_ICS_Exporter {
     $lines[] = 'END:VCALENDAR';
     $ics = implode("\r\n", $lines) . "\r\n";
 
+    // Get export disposition setting
+    $settings = MCS_Settings::get();
+    $disposition = $settings['export_disposition'];
+
     nocache_headers();
     header('Content-Type: text/calendar; charset=utf-8');
-    header('Content-Disposition: inline; filename="property-' . $post_id . '.ics"');
+    header('Content-Disposition: ' . $disposition . '; filename="property-' . $post_id . '.ics"');
     echo $ics;
   }
 

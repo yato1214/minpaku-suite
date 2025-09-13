@@ -15,7 +15,9 @@ class MCS_Settings {
     return [
       'cpt' => 'property',
       'ics_urls' => [],
-      'interval' => 'hourly'
+      'interval' => 'hourly',
+      'export_disposition' => 'inline',
+      'flush_rewrite_rules' => false
     ];
   }
 
@@ -59,6 +61,19 @@ class MCS_Settings {
         if ($u) $urls[] = $u;
       }
       $out['ics_urls'] = $urls;
+    }
+    if (isset($input['export_disposition'])) {
+      $allowed_dispositions = ['inline', 'attachment'];
+      $out['export_disposition'] = in_array($input['export_disposition'], $allowed_dispositions, true) ? $input['export_disposition'] : 'inline';
+    }
+    if (isset($input['flush_rewrite_rules'])) {
+      $flush_requested = (bool) $input['flush_rewrite_rules'];
+      if ($flush_requested) {
+        flush_rewrite_rules(false);
+        MCS_Logger::log('INFO', 'Rewrite rules flushed via settings.');
+      }
+      // Always reset to false after processing
+      $out['flush_rewrite_rules'] = false;
     }
 
     // Re-schedule cron if interval changed
@@ -110,6 +125,24 @@ class MCS_Settings {
                 <option value="2hours" <?php selected($o['interval'],'2hours'); ?>>2 hours</option>
                 <option value="6hours" <?php selected($o['interval'],'6hours'); ?>>6 hours</option>
               </select>
+            </td>
+          </tr>
+          <tr>
+            <th scope="row"><?php _e('ICS Export Content-Disposition', 'minpaku-channel-sync'); ?></th>
+            <td>
+              <select name="<?php echo self::OPT_KEY; ?>[export_disposition]">
+                <option value="inline" <?php selected($o['export_disposition'],'inline'); ?>><?php _e('Inline (browser display)', 'minpaku-channel-sync'); ?></option>
+                <option value="attachment" <?php selected($o['export_disposition'],'attachment'); ?>><?php _e('Attachment (download)', 'minpaku-channel-sync'); ?></option>
+              </select>
+            </td>
+          </tr>
+          <tr>
+            <th scope="row"><?php _e('Flush Rewrite Rules', 'minpaku-channel-sync'); ?></th>
+            <td>
+              <label>
+                <input type="checkbox" name="<?php echo self::OPT_KEY; ?>[flush_rewrite_rules]" value="1" />
+                <?php _e('Flush rewrite rules on save (use only when needed)', 'minpaku-channel-sync'); ?>
+              </label>
             </td>
           </tr>
         </table>
