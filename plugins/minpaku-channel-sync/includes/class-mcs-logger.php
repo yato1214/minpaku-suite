@@ -27,4 +27,20 @@ class MCS_Logger {
   public static function clear() {
     delete_option(self::OPT_KEY);
   }
+
+  public static function warning($message, $context = []) {
+    self::log('WARNING', $message, $context);
+  }
+
+  public static function error($message, $context = []) {
+    self::log('ERROR', $message, $context);
+  }
+
+  public static function get_warning_error_summary($limit = 10) {
+    $logs = get_option(self::OPT_KEY, []);
+    $filtered = array_filter($logs, function($log) {
+      return in_array($log['level'], ['WARNING', 'ERROR'], true);
+    });
+    return array_slice(array_reverse($filtered), 0, $limit);
+  }
 }

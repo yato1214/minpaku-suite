@@ -10,6 +10,7 @@ class MCS_Settings {
     add_action('admin_init', [__CLASS__, 'register']);
     add_action('admin_post_mcs_manual_sync', [__CLASS__, 'handle_manual_sync']);
     add_action('admin_post_mcs_clear_logs', [__CLASS__, 'handle_clear_logs']);
+    add_action('admin_notices', [__CLASS__, 'admin_notices']);
   }
 
   public static function defaults() {
@@ -45,64 +46,131 @@ class MCS_Settings {
     ]);
   }
 
-  public static function sanitize($input) {
-    $out = self::get();
-    if (isset($input['cpt'])) {
-      $out['cpt'] = sanitize_key($input['cpt']);
-    }
-    if (isset($input['interval'])) {
-      $allowed = ['hourly','2hours','6hours'];
-      $out['interval'] = in_array($input['interval'], $allowed, true) ? $input['interval'] : 'hourly';
-    }
-    if (isset($input['ics_urls'])) {
-      // textarea with one URL per line
-      $lines = array_filter(array_map('trim', explode("\n", $input['ics_urls'])));
-      $urls = [];
-      foreach ($lines as $u) {
-        $u = esc_url_raw($u);
-        if ($u) $urls[] = $u;
-      }
-      $out['ics_urls'] = $urls;
-    }
-    if (isset($input['mappings'])) {
-      $mappings = [];
-      if (is_array($input['mappings'])) {
-        foreach ($input['mappings'] as $mapping) {
-          $url = isset($mapping['url']) ? esc_url_raw(trim($mapping['url'])) : '';
-          $post_id = isset($mapping['post_id']) ? absint($mapping['post_id']) : 0;
-          if ($url && $post_id) {
-            $mappings[] = ['url' => $url, 'post_id' => $post_id];
-          }
-        }
-      }
-      $out['mappings'] = $mappings;
-      
-      // Migration from old ics_urls format (one-time)
-      if (empty($mappings) && !empty($out['ics_urls'])) {
-        MCS_Logger::log('INFO', 'Migrating from old ics_urls format to mappings (post_id required)');
-      }
-    }
-    if (isset($input['export_disposition'])) {
-      $allowed_dispositions = ['inline', 'attachment'];
-      $out['export_disposition'] = in_array($input['export_disposition'], $allowed_dispositions, true) ? $input['export_disposition'] : 'inline';
-    }
-    if (isset($input['flush_rewrite_rules'])) {
-      $flush_requested = (bool) $input['flush_rewrite_rules'];
-      if ($flush_requested) {
-        flush_rewrite_rules(false);
-        MCS_Logger::log('INFO', 'Rewrite rules flushed via settings.');
-      }
-      // Always reset to false after processing
-      $out['flush_rewrite_rules'] = false;
+  public static function admin_notices() {
+    if (!current_user_can('manage_options')) {
+      return;
     }
 
-    // Re-schedule cron if interval changed
-    if ($out['interval'] !== self::get()['interval']) {
-      MCS_Cron::reschedule($out['interval']);
+    // Settings saved successfully
+    if (isset($_GET['settings-updated']) && $_GET['settings-updated']) {
+      echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__('Settings saved successfully.', 'minpaku-channel-sync') . '</p></div>';
     }
 
-    return $out;
+    // Manual sync completed
+    if (isset($_GET['mcs_synced'])) {
+      echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__('Manual sync executed.', 'minpaku-channel-sync') . '</p></div>';
+    }
+
+    // Logs cleared
+    if (isset($_GET['logs_cleared'])) {
+      echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__('Logs cleared successfully.', 'minpaku-channel-sync') . '</p></div>';
+    }
   }
+
+public static function sanitize( $input ) {
+	// Security: Verify user capabilities and nonce
+	if ( ! current_user_can( 'manage_options' ) ) {
+		add_settings_error( self::OPT_KEY, 'access_denied', __( 'You do not have sufficient permissions to access this page.', 'minpaku-channel-sync' ) );
+		return get_option( self::OPT_KEY, self::defaults() );
+	}
+
+	// ① 入力の型を保証
+	if ( ! is_array( $input ) ) {
+		$input = array();
+	}
+
+	$out = array();
+
+	// ② 単純項目
+	$out['cpt'] = isset( $input['cpt'] ) ? sanitize_text_field( $input['cpt'] ) : 'property';
+	$out['interval'] = isset( $input['interval'] ) && in_array( $input['interval'], ['hourly', '2hours', '6hours'], true ) ? $input['interval'] : 'hourly';
+	$disp = isset( $input['export_disposition'] ) ? $input['export_disposition'] : '';
+	$out['export_disposition'] = in_array( $disp, array( 'inline', 'attachment' ), true ) ? $disp : 'inline';
+	$out['flush_rewrite_rules'] = ! empty( $input['flush_rewrite_rules'] ) ? 1 : 0;
+
+	// ③ マッピング正規化（配列/JSON/テキスト全部OK）
+	$mappings = array();
+	$invalid  = 0;
+
+	$push = function ( $url, $pid ) use ( &$mappings, &$invalid ) {
+		$url = is_string( $url ) ? trim( $url ) : '';
+		$pid = absint( $pid );
+		if ( $url && filter_var( $url, FILTER_VALIDATE_URL ) && $pid > 0 ) {
+			$mappings[] = array( 'url' => esc_url_raw( $url ), 'post_id' => $pid );
+		} else {
+			$invalid++;
+		}
+	};
+
+	// 3-1) 新形式: mappings
+	if ( array_key_exists( 'mappings', $input ) ) {
+		$m = $input['mappings'];
+
+		if ( is_array( $m ) ) {
+			// 行配列: [ {url:'', post_id:''}, ... ]
+			if ( isset( $m[0] ) && is_array( $m[0] ) ) {
+				foreach ( $m as $row ) {
+					$push( $row['url'] ?? '', $row['post_id'] ?? 0 );
+				}
+			} else {
+				// カラム配列: { url:[], post_id:[] }
+				$urls = isset( $m['url'] ) ? (array) $m['url'] : array();
+				$pids = isset( $m['post_id'] ) ? (array) $m['post_id'] : array();
+				$n    = max( count( $urls ), count( $pids ) );
+				for ( $i = 0; $i < $n; $i++ ) {
+					$push( $urls[ $i ] ?? '', $pids[ $i ] ?? 0 );
+				}
+			}
+		} elseif ( is_string( $m ) ) {
+			// JSON か 1行1件のテキスト "URL,post_id"
+			$decoded = json_decode( $m, true );
+			if ( is_array( $decoded ) ) {
+				foreach ( $decoded as $row ) {
+					$push( $row['url'] ?? '', $row['post_id'] ?? 0 );
+				}
+			} else {
+				$lines = preg_split( '/\R/', $m ) ?: array();
+				foreach ( $lines as $line ) {
+					$line = trim( $line );
+					if ( '' === $line ) {
+						continue;
+					}
+					$parts = array_map( 'trim', explode( ',', $line ) );
+					$push( $parts[0] ?? '', $parts[1] ?? 0 );
+				}
+			}
+		}
+	}
+
+	// 3-2) 旧形式: ics_urls（後方互換。post_id不明→無効としてカウントのみ）
+	if ( array_key_exists( 'ics_urls', $input ) ) {
+		$old = $input['ics_urls'];
+		if ( is_array( $old ) ) {
+			foreach ( $old as $url ) { $push( $url, 0 ); }
+		} elseif ( is_string( $old ) ) {
+			$lines = preg_split( '/\R/', $old ) ?: array();
+			foreach ( $lines as $url ) { $push( $url, 0 ); }
+		}
+	}
+
+	$out['mappings'] = $mappings;
+
+	// ④ flushオプション
+	if ( ! empty( $out['flush_rewrite_rules'] ) && function_exists( 'flush_rewrite_rules' ) ) {
+		flush_rewrite_rules( false );
+	}
+
+	// ⑤ 無効行のWARN（任意）
+	if ( $invalid > 0 && class_exists( 'MCS_Logger' ) ) {
+		MCS_Logger::warning(
+			'Dropped invalid mapping rows during settings sanitize',
+			array( 'count' => $invalid )
+		);
+	}
+
+	return $out;
+}
+
 
   public static function handle_manual_sync() {
     if ( ! current_user_can('manage_options') ) {
@@ -132,36 +200,30 @@ class MCS_Settings {
     <div class="wrap">
       <h1><?php _e('Minpaku Sync Settings', 'minpaku-channel-sync'); ?></h1>
 
-      <?php if ( isset($_GET['mcs_synced']) ): ?>
-        <div class="notice notice-success"><p><?php _e('Manual sync executed.', 'minpaku-channel-sync'); ?></p></div>
-      <?php endif; ?>
-      <?php if ( isset($_GET['logs_cleared']) ): ?>
-        <div class="notice notice-success"><p><?php _e('Logs cleared successfully.', 'minpaku-channel-sync'); ?></p></div>
-        <?php 
-        $sync_results = get_transient('mcs_last_sync_results');
-        if ($sync_results): ?>
-          <div class="notice notice-info">
-            <h4><?php _e('Sync Results', 'minpaku-channel-sync'); ?></h4>
-            <p><strong><?php _e('Total:', 'minpaku-channel-sync'); ?></strong> 
-              <?php printf(__('Added: %d, Updated: %d, Skipped: %d, Errors: %d', 'minpaku-channel-sync'), 
-                $sync_results['total']['added'], $sync_results['total']['updated'], 
-                $sync_results['total']['skipped'], $sync_results['total']['errors']); ?>
-            </p>
-            <?php if (!empty($sync_results['by_url'])): ?>
-              <details>
-                <summary><?php _e('Details by URL', 'minpaku-channel-sync'); ?></summary>
-                <ul>
-                  <?php foreach ($sync_results['by_url'] as $url => $stats): ?>
-                    <li><strong><?php echo esc_html($url); ?>:</strong> 
-                      <?php printf(__('Added: %d, Updated: %d, Skipped: %d', 'minpaku-channel-sync'), 
-                        $stats['added'], $stats['updated'], $stats['skipped']); ?>
-                    </li>
-                  <?php endforeach; ?>
-                </ul>
-              </details>
-            <?php endif; ?>
-          </div>
-        <?php endif; ?>
+      <?php
+      $sync_results = get_transient('mcs_last_sync_results');
+      if ($sync_results): ?>
+        <div class="notice notice-info">
+          <h4><?php esc_html_e('Sync Results', 'minpaku-channel-sync'); ?></h4>
+          <p><strong><?php esc_html_e('Total:', 'minpaku-channel-sync'); ?></strong>
+            <?php printf(esc_html__('Added: %d, Updated: %d, Skipped: %d, Errors: %d', 'minpaku-channel-sync'),
+              $sync_results['total']['added'], $sync_results['total']['updated'],
+              $sync_results['total']['skipped'], $sync_results['total']['errors']); ?>
+          </p>
+          <?php if (!empty($sync_results['by_url'])): ?>
+            <details>
+              <summary><?php esc_html_e('Details by URL', 'minpaku-channel-sync'); ?></summary>
+              <ul>
+                <?php foreach ($sync_results['by_url'] as $url => $stats): ?>
+                  <li><strong><?php echo esc_html($url); ?>:</strong>
+                    <?php printf(esc_html__('Added: %d, Updated: %d, Skipped: %d', 'minpaku-channel-sync'),
+                      $stats['added'], $stats['updated'], $stats['skipped']); ?>
+                  </li>
+                <?php endforeach; ?>
+              </ul>
+            </details>
+          <?php endif; ?>
+        </div>
       <?php endif; ?>
 
       <?php 
@@ -236,9 +298,9 @@ class MCS_Settings {
             <th scope="row"><?php _e('Sync interval', 'minpaku-channel-sync'); ?></th>
             <td>
               <select name="<?php echo self::OPT_KEY; ?>[interval]">
-                <option value="hourly" <?php selected($o['interval'],'hourly'); ?>>hourly</option>
-                <option value="2hours" <?php selected($o['interval'],'2hours'); ?>>2 hours</option>
-                <option value="6hours" <?php selected($o['interval'],'6hours'); ?>>6 hours</option>
+                <option value="hourly" <?php selected($o['interval'],'hourly'); ?>><?php esc_html_e('Hourly', 'minpaku-channel-sync'); ?></option>
+                <option value="2hours" <?php selected($o['interval'],'2hours'); ?>><?php esc_html_e('Every 2 hours', 'minpaku-channel-sync'); ?></option>
+                <option value="6hours" <?php selected($o['interval'],'6hours'); ?>><?php esc_html_e('Every 6 hours', 'minpaku-channel-sync'); ?></option>
               </select>
             </td>
           </tr>
@@ -272,8 +334,27 @@ class MCS_Settings {
       </form>
 
       <hr/>
+
+      <?php
+      $warning_error_logs = MCS_Logger::get_warning_error_summary(5);
+      if (!empty($warning_error_logs)): ?>
+        <div class="notice notice-warning">
+          <h4><?php esc_html_e('Recent Warnings & Errors', 'minpaku-channel-sync'); ?></h4>
+          <ul style="margin: 10px 0;">
+            <?php foreach ($warning_error_logs as $log): ?>
+              <li>
+                <strong>[<?php echo esc_html($log['level']); ?>]</strong>
+                <span><?php echo esc_html($log['time']); ?>:</span>
+                <?php echo esc_html($log['message']); ?>
+              </li>
+            <?php endforeach; ?>
+          </ul>
+        </div>
+      <?php endif; ?>
+
+      <hr/>
       <div style="display: flex; justify-content: space-between; align-items: center;">
-        <h2><?php _e('Recent Logs (Latest 50)', 'minpaku-channel-sync'); ?></h2>
+        <h2><?php esc_html_e('Recent Logs (Latest 50)', 'minpaku-channel-sync'); ?></h2>
         <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" style="margin: 0;">
           <?php wp_nonce_field('mcs_clear_logs'); ?>
           <input type="hidden" name="action" value="mcs_clear_logs"/>

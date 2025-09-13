@@ -17,9 +17,10 @@ final class MCS_Loader {
       add_rewrite_rule('^ics/([0-9]+)\.ics/?$', 'index.php?mcs_ics_post_id=$matches[1]', 'top');
     });
 
-    // Disable canonical redirect for ICS endpoints
+    // Disable canonical redirect for ICS endpoints only
     add_filter('redirect_canonical', function($redirect_url, $requested_url) {
-      if (strpos($requested_url, '/ics/') !== false) {
+      // Only disable canonical redirect when actually accessing an ICS endpoint
+      if (get_query_var('mcs_ics_post_id')) {
         return false;
       }
       return $redirect_url;

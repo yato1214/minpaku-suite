@@ -20,8 +20,8 @@ register_activation_hook(__FILE__, function() {
   if ( ! wp_next_scheduled('mcs_sync_event') ) {
     wp_schedule_event(time() + 60, 'hourly', 'mcs_sync_event');
   }
-  // rewrite rules for ICS
-  add_rewrite_rule('^ics/([0-9]+)\.ics$', 'index.php?mcs_ics_post_id=$matches[1]', 'top');
+  // rewrite rules for ICS (support both with and without trailing slash)
+  add_rewrite_rule('^ics/([0-9]+)\.ics/?$', 'index.php?mcs_ics_post_id=$matches[1]', 'top');
   flush_rewrite_rules();
 });
 
