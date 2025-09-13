@@ -10,6 +10,7 @@ class MCS_Settings {
     add_action('admin_init', [__CLASS__, 'register']);
     add_action('admin_post_mcs_manual_sync', [__CLASS__, 'handle_manual_sync']);
     add_action('admin_post_mcs_clear_logs', [__CLASS__, 'handle_clear_logs']);
+    add_action('admin_post_mcs_clear_http_cache', [__CLASS__, 'handle_clear_http_cache']);
     add_action('admin_notices', [__CLASS__, 'admin_notices']);
   }
 
@@ -64,6 +65,11 @@ class MCS_Settings {
     // Logs cleared
     if (isset($_GET['logs_cleared'])) {
       echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__('Logs cleared successfully.', 'minpaku-channel-sync') . '</p></div>';
+    }
+
+    // HTTP cache cleared
+    if (isset($_GET['http_cache_cleared'])) {
+      echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__('HTTP cache cleared successfully.', 'minpaku-channel-sync') . '</p></div>';
     }
   }
 
@@ -219,6 +225,16 @@ public static function sanitize( $input ) {
     exit;
   }
 
+  public static function handle_clear_http_cache() {
+    if ( ! current_user_can('manage_options') ) {
+      wp_die('forbidden');
+    }
+    check_admin_referer('mcs_clear_http_cache');
+    delete_option('mcs_http_cache');
+    wp_redirect( add_query_arg('http_cache_cleared', '1', admin_url('options-general.php?page=mcs-settings')) );
+    exit;
+  }
+
   public static function render() {
     if ( ! current_user_can('manage_options') ) return;
     $o = self::get();
@@ -364,6 +380,12 @@ public static function sanitize( $input ) {
         <?php wp_nonce_field('mcs_manual_sync'); ?>
         <input type="hidden" name="action" value="mcs_manual_sync"/>
         <?php submit_button(__('Run manual sync now', 'minpaku-channel-sync'), 'secondary'); ?>
+      </form>
+
+      <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" onsubmit="return confirm('<?php esc_attr_e('Are you sure you want to clear the HTTP cache?', 'minpaku-channel-sync'); ?>');">
+        <?php wp_nonce_field('mcs_clear_http_cache'); ?>
+        <input type="hidden" name="action" value="mcs_clear_http_cache"/>
+        <?php submit_button(__('Clear HTTP cache', 'minpaku-channel-sync'), 'secondary'); ?>
       </form>
 
       <hr/>
