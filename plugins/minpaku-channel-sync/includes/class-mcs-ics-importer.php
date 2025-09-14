@@ -31,6 +31,7 @@ class MCS_ICS_Importer {
           'code' => $fetch_result['code'],
           'message' => $fetch_result['message']
         ]);
+        MCS_Alerts::record_failure($url, $fetch_result['message']);
         continue;
       }
 
@@ -38,9 +39,10 @@ class MCS_ICS_Importer {
         $url_skipped_not_modified = 1;
         $total_skipped_not_modified++;
         MCS_Logger::log('INFO', 'ICS not modified (304)', ['url' => $url, 'post_id' => $post_id]);
+        MCS_Alerts::record_success($url);
       } else {
         // Parse and process the ICS content
-        $events = self::parse_ics($fetch_result['body']);
+        $events = self::parse_ics($fetch_result['body'], $url);
         if (empty($events)) {
           MCS_Logger::log('INFO', 'No events found in ICS', ['url' => $url, 'post_id' => $post_id]);
         } else {
@@ -52,6 +54,7 @@ class MCS_ICS_Importer {
 
         // Update cache with new ETag/Last-Modified
         self::update_cache($url, $fetch_result['etag'], $fetch_result['last_modified']);
+        MCS_Alerts::record_success($url);
       }
 
       $total_added += $url_added;
@@ -97,7 +100,7 @@ class MCS_ICS_Importer {
   }
 
   // Very simple ics parser for DTSTART/DTEND/UID inside VEVENT
-  private static function parse_ics($ics) {
+  private static function parse_ics($ics, $url = '') {
     $events = [];
     $lines = preg_split('/\r\n|\n|\r/', $ics);
     $in = false; $cur = ['UID'=>null,'DTSTART'=>null,'DTEND'=>null];
@@ -123,7 +126,55 @@ class MCS_ICS_Importer {
         }
       }
     }
-    return $events;
+
+    // UID duplicate detection and deduplication
+    $by_uid = [];
+    $dupes = [];
+    $final_events = [];
+
+    foreach ($events as $ev) {
+      $uid = trim($ev[3] ?? '');
+      if ($uid === '') {
+        // No UID, add directly
+        $final_events[] = $ev;
+        continue;
+      }
+
+      // Calculate ranking for duplicate resolution
+      // Try to use DTSTART as timestamp for comparison
+      $rank = $ev[0]; // start timestamp
+
+      if (!isset($by_uid[$uid])) {
+        $by_uid[$uid] = ['rank' => $rank, 'ev' => $ev];
+      } else {
+        // Duplicate UID found
+        if ($rank >= $by_uid[$uid]['rank']) {
+          // New event is newer or same, replace
+          $dupes[$uid] = ($dupes[$uid] ?? 0) + 1;
+          $by_uid[$uid] = ['rank' => $rank, 'ev' => $ev];
+        } else {
+          // Keep existing, count duplicate
+          $dupes[$uid] = ($dupes[$uid] ?? 0) + 1;
+        }
+      }
+    }
+
+    // Add deduplicated events with UIDs
+    foreach ($by_uid as $uid => $data) {
+      $final_events[] = $data['ev'];
+    }
+
+    // Log duplicate UIDs if found
+    if (!empty($dupes)) {
+      $sample = array_slice(array_keys($dupes), 0, 5);
+      MCS_Logger::warning('Duplicate UID detected', [
+        'url' => $url,
+        'count' => count($dupes),
+        'uids' => implode(',', $sample)
+      ]);
+    }
+
+    return $final_events;
   }
 
   private static function parse_dt($v) {

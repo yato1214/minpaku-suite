@@ -20,7 +20,13 @@ class MCS_Settings {
       'mappings' => [],
       'interval' => 'hourly',
       'export_disposition' => 'inline',
-      'flush_rewrite_rules' => false
+      'flush_rewrite_rules' => false,
+      'alerts' => [
+        'enabled' => true,
+        'threshold' => 3,
+        'cooldown_hours' => 12,
+        'recipient' => get_option('admin_email'),
+      ]
     ];
   }
 
@@ -207,6 +213,20 @@ public static function sanitize( $input ) {
 		);
 	}
 
+	// ⑥ Alerts設定
+	$alerts = [];
+	if ( array_key_exists( 'alerts', $input ) && is_array( $input['alerts'] ) ) {
+		$a = $input['alerts'];
+		$alerts['enabled'] = ! empty( $a['enabled'] );
+		$alerts['threshold'] = max( 1, min( 20, absint( $a['threshold'] ?? 3 ) ) );
+		$alerts['cooldown_hours'] = max( 1, min( 168, absint( $a['cooldown_hours'] ?? 12 ) ) );
+		$alerts['recipient'] = is_email( $a['recipient'] ?? '' ) ? sanitize_email( $a['recipient'] ) : get_option( 'admin_email' );
+	} else {
+		$defaults = self::defaults();
+		$alerts = $defaults['alerts'];
+	}
+	$out['alerts'] = $alerts;
+
 	return $out;
 }
 
@@ -367,6 +387,39 @@ public static function sanitize( $input ) {
                 <input type="checkbox" name="<?php echo self::OPT_KEY; ?>[flush_rewrite_rules]" value="1" />
                 <?php _e('Flush rewrite rules on save (use only when needed)', 'minpaku-channel-sync'); ?>
               </label>
+            </td>
+          </tr>
+          <tr>
+            <th scope="row" colspan="2"><h3><?php _e('Email Alerts', 'minpaku-channel-sync'); ?></h3></th>
+          </tr>
+          <tr>
+            <th scope="row"><?php _e('Enable Alerts', 'minpaku-channel-sync'); ?></th>
+            <td>
+              <label>
+                <input type="checkbox" name="<?php echo self::OPT_KEY; ?>[alerts][enabled]" value="1" <?php checked($o['alerts']['enabled']); ?> />
+                <?php _e('Send email alerts on repeated sync failures', 'minpaku-channel-sync'); ?>
+              </label>
+            </td>
+          </tr>
+          <tr>
+            <th scope="row"><?php _e('Failure Threshold', 'minpaku-channel-sync'); ?></th>
+            <td>
+              <input type="number" name="<?php echo self::OPT_KEY; ?>[alerts][threshold]" value="<?php echo esc_attr($o['alerts']['threshold']); ?>" min="1" max="20" class="small-text" />
+              <p class="description"><?php _e('Number of consecutive failures before sending alert (1-20)', 'minpaku-channel-sync'); ?></p>
+            </td>
+          </tr>
+          <tr>
+            <th scope="row"><?php _e('Cooldown Hours', 'minpaku-channel-sync'); ?></th>
+            <td>
+              <input type="number" name="<?php echo self::OPT_KEY; ?>[alerts][cooldown_hours]" value="<?php echo esc_attr($o['alerts']['cooldown_hours']); ?>" min="1" max="168" class="small-text" />
+              <p class="description"><?php _e('Hours to wait before sending another alert for the same URL (1-168)', 'minpaku-channel-sync'); ?></p>
+            </td>
+          </tr>
+          <tr>
+            <th scope="row"><?php _e('Email Recipient', 'minpaku-channel-sync'); ?></th>
+            <td>
+              <input type="email" name="<?php echo self::OPT_KEY; ?>[alerts][recipient]" value="<?php echo esc_attr($o['alerts']['recipient']); ?>" class="regular-text" />
+              <p class="description"><?php _e('Email address to receive failure alerts', 'minpaku-channel-sync'); ?></p>
             </td>
           </tr>
         </table>
