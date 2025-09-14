@@ -10,7 +10,6 @@ class MCS_Settings {
     add_action('admin_init', [__CLASS__, 'register']);
     add_action('admin_post_mcs_manual_sync', [__CLASS__, 'handle_manual_sync']);
     add_action('admin_post_mcs_clear_logs', [__CLASS__, 'handle_clear_logs']);
-    add_action('admin_post_mcs_clear_http_cache', [__CLASS__, 'handle_clear_http_cache']);
     add_action('admin_notices', [__CLASS__, 'admin_notices']);
   }
 
@@ -67,10 +66,6 @@ class MCS_Settings {
       echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__('Logs cleared successfully.', 'minpaku-channel-sync') . '</p></div>';
     }
 
-    // HTTP cache cleared
-    if (isset($_GET['http_cache_cleared'])) {
-      echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__('HTTP cache cleared successfully.', 'minpaku-channel-sync') . '</p></div>';
-    }
   }
 
 public static function sanitize( $input ) {
@@ -78,6 +73,18 @@ public static function sanitize( $input ) {
 	if ( ! current_user_can( 'manage_options' ) ) {
 		add_settings_error( self::OPT_KEY, 'access_denied', __( 'You do not have sufficient permissions to access this page.', 'minpaku-channel-sync' ) );
 		return get_option( self::OPT_KEY, self::defaults() );
+	}
+
+	// Handle HTTP cache clear button
+	if ( isset( $_POST['mcs_clear_http_cache'] ) ) {
+		if ( wp_verify_nonce( $_POST['mcs_clear_http_cache_nonce'] ?? '', 'mcs_clear_http_cache' ) ) {
+			delete_option( 'mcs_http_cache' );
+			add_settings_error( self::OPT_KEY, 'mcs_cache_cleared', __( 'HTTP cache cleared.', 'minpaku-channel-sync' ), 'updated' );
+			return get_option( self::OPT_KEY, self::defaults() );
+		} else {
+			add_settings_error( self::OPT_KEY, 'cache_clear_nonce_failed', __( 'Security check failed for cache clear. Please try again.', 'minpaku-channel-sync' ) );
+			return get_option( self::OPT_KEY, self::defaults() );
+		}
 	}
 
 	// Additional nonce verification for settings page
@@ -225,15 +232,6 @@ public static function sanitize( $input ) {
     exit;
   }
 
-  public static function handle_clear_http_cache() {
-    if ( ! current_user_can('manage_options') ) {
-      wp_die('forbidden');
-    }
-    check_admin_referer('mcs_clear_http_cache');
-    delete_option('mcs_http_cache');
-    wp_redirect( add_query_arg('http_cache_cleared', '1', admin_url('options-general.php?page=mcs-settings')) );
-    exit;
-  }
 
   public static function render() {
     if ( ! current_user_can('manage_options') ) return;
@@ -373,6 +371,9 @@ public static function sanitize( $input ) {
           </tr>
         </table>
         <?php submit_button(); ?>
+
+        <button type="submit" name="mcs_clear_http_cache" class="button"><?php _e('Clear HTTP cache', 'minpaku-channel-sync'); ?></button>
+        <?php wp_nonce_field('mcs_clear_http_cache', 'mcs_clear_http_cache_nonce'); ?>
       </form>
 
       <hr/>
@@ -382,11 +383,6 @@ public static function sanitize( $input ) {
         <?php submit_button(__('Run manual sync now', 'minpaku-channel-sync'), 'secondary'); ?>
       </form>
 
-      <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" onsubmit="return confirm('<?php esc_attr_e('Are you sure you want to clear the HTTP cache?', 'minpaku-channel-sync'); ?>');">
-        <?php wp_nonce_field('mcs_clear_http_cache'); ?>
-        <input type="hidden" name="action" value="mcs_clear_http_cache"/>
-        <?php submit_button(__('Clear HTTP cache', 'minpaku-channel-sync'), 'secondary'); ?>
-      </form>
 
       <hr/>
 
