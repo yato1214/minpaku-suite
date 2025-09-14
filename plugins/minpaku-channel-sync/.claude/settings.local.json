@@ -3,7 +3,8 @@
     "allow": [
       "Read(//c/dev/minpaku-suite/plugins/minpaku-channel-sync/**)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(php:*)"
     ],
     "deny": [],
     "ask": []

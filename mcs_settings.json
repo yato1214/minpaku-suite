@@ -2,6 +2,6 @@
   "export_disposition": "inline",
   "flush_on_save": 0,
   "mappings": [
-    { "url": "http://localhost:9020/test-a.ics", "post_id": 25 }
+    { "url": "http://minpaku-dev.local/wp-content/uploads/test-a.ics", "post_id": 25 }
   ]
 }
