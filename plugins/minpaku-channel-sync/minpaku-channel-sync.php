@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Minpaku Channel Sync
  * Description: iCal(ICS) import/export for stock sync (mini channel manager).
- * Version: 0.1.0
+ * Version: 0.2.0
  * Author: Okamoto
  * Requires PHP: 8.1
  * Text Domain: minpaku-channel-sync
