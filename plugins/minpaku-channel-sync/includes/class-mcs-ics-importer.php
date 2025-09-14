@@ -167,10 +167,14 @@ class MCS_ICS_Importer {
     // Log duplicate UIDs if found
     if (!empty($dupes)) {
       $sample = array_slice(array_keys($dupes), 0, 5);
+      $log_url = '';
+      if ( isset($url) && is_string($url) && $url !== '' ) { $log_url = $url; }
+      elseif ( isset($source_url) && is_string($source_url) && $source_url !== '' ) { $log_url = $source_url; }
+
       MCS_Logger::warning('Duplicate UID detected', [
-        'url' => $url,
+        'url' => $log_url,
         'count' => count($dupes),
-        'uids' => implode(',', $sample)
+        'uids' => implode(',', $sample),
       ]);
     }
 
