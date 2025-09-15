@@ -9,6 +9,41 @@ Text Domain: minpaku-suite
 */
 if (!defined('ABSPATH')) exit;
 
+// Plugin activation hook
+register_activation_hook(__FILE__, 'mcs_activate_plugin');
+
+// Plugin deactivation hook
+register_deactivation_hook(__FILE__, 'mcs_deactivate_plugin');
+
+/**
+ * Plugin activation callback
+ */
+function mcs_activate_plugin() {
+    // Load ICS class to register rewrite rules
+    require_once __DIR__ . '/includes/class-mcs-ics.php';
+    MCS_Ics::flush_rewrite_rules();
+}
+
+/**
+ * Plugin deactivation callback
+ */
+function mcs_deactivate_plugin() {
+    // Flush rewrite rules to clean up
+    flush_rewrite_rules();
+}
+
+// Load core functionality
+require_once __DIR__ . '/includes/class-mcs-ics.php';
+require_once __DIR__ . '/includes/class-mcs-sync.php';
+require_once __DIR__ . '/includes/class-mcs-cli.php';
+require_once __DIR__ . '/includes/cpt-property.php';
+
+// Initialize ICS handler
+add_action('init', ['MCS_Ics', 'init']);
+
+// Initialize WP-CLI commands
+add_action('init', ['MCS_CLI', 'init']);
+
 // Load admin UI if in admin area
 if (is_admin()) {
     require_once __DIR__ . '/admin/class-mcs-admin.php';
@@ -23,9 +58,6 @@ add_filter('plugin_action_links_' . plugin_basename(__FILE__), function($links) 
     }
     return $links;
 });
-
-// Load core sync functionality
-require_once __DIR__ . '/includes/class-mcs-sync.php';
 
 // 必要ならここから読み込み
 // require_once __DIR__ . '/includes/bootstrap.php';

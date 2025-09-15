@@ -1,0 +1,197 @@
+/**
+ * Minpaku Suite Admin CSS
+ *
+ * @package MinpakuSuite
+ */
+
+/* Mappings table styling */
+.mcs-mappings-table {
+    margin-top: 20px;
+}
+
+.mcs-mappings-table th {
+    font-weight: 600;
+}
+
+.mcs-mappings-table .mcs-url-display {
+    background: #f5f5f5;
+    padding: 4px 8px;
+    border-radius: 3px;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+    font-size: 12px;
+    color: #333;
+    word-break: break-all;
+    display: inline-block;
+    max-width: 100%;
+}
+
+.mcs-mappings-table td {
+    vertical-align: middle;
+}
+
+.mcs-mappings-table .mcs-copy-btn {
+    font-size: 11px;
+    height: 26px;
+    line-height: 24px;
+    padding: 0 8px;
+    min-height: auto;
+}
+
+.mcs-mappings-table .mcs-copy-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.mcs-mappings-table .mcs-copy-btn.button-danger {
+    background: #dc3232;
+    border-color: #dc3232;
+    color: #fff;
+}
+
+/* Action buttons */
+.mcs-action-buttons {
+    margin: 20px 0;
+    padding: 15px 0;
+    border-top: 1px solid #ddd;
+    border-bottom: 1px solid #ddd;
+}
+
+.mcs-action-buttons .button {
+    margin-right: 10px;
+}
+
+.mcs-action-buttons .button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Settings form styling */
+.form-table th {
+    width: 200px;
+}
+
+.form-table .description {
+    font-style: italic;
+    color: #666;
+}
+
+/* Notice styling */
+.mcs-notice {
+    margin: 20px 0 15px;
+}
+
+.mcs-notice p {
+    margin: 0.5em 0;
+}
+
+/* Legacy forms (hidden by default) */
+.mcs-legacy-forms {
+    opacity: 0.7;
+    border: 1px dashed #ccc;
+    padding: 15px;
+    margin-top: 20px;
+}
+
+.mcs-legacy-forms h3 {
+    margin-top: 0;
+    color: #666;
+}
+
+/* Responsive adjustments */
+@media screen and (max-width: 782px) {
+    .mcs-mappings-table .mcs-url-display {
+        font-size: 11px;
+        padding: 3px 6px;
+    }
+
+    .mcs-action-buttons .button {
+        margin-bottom: 10px;
+        display: block;
+        width: 100%;
+        text-align: center;
+    }
+
+    .mcs-mappings-table td {
+        padding: 8px 4px;
+    }
+}
+
+/* WordPress admin color scheme compatibility */
+.wp-core-ui .button-danger:hover,
+.wp-core-ui .button-danger:focus {
+    background: #b32d2e;
+    border-color: #b32d2e;
+}
+
+/* Loading state animations */
+.mcs-copy-btn:disabled,
+#mcs-regen-btn:disabled,
+#mcs-sync-btn:disabled {
+    position: relative;
+}
+
+.mcs-copy-btn:disabled::after,
+#mcs-regen-btn:disabled::after,
+#mcs-sync-btn:disabled::after {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    margin: auto;
+    border: 2px solid transparent;
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: mcs-spin 1s linear infinite;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+}
+
+@keyframes mcs-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Table column widths */
+.mcs-mappings-table th:nth-child(1),
+.mcs-mappings-table td:nth-child(1) {
+    width: 80px;
+}
+
+.mcs-mappings-table th:nth-child(2),
+.mcs-mappings-table td:nth-child(2) {
+    width: 200px;
+}
+
+.mcs-mappings-table th:nth-child(3),
+.mcs-mappings-table td:nth-child(3) {
+    width: auto;
+}
+
+.mcs-mappings-table th:nth-child(4),
+.mcs-mappings-table td:nth-child(4) {
+    width: 120px;
+    text-align: center;
+}
+
+/* Settings sections */
+.form-table {
+    margin-top: 10px;
+}
+
+.form-table th {
+    padding-left: 0;
+}
+
+/* Success and error states for copy buttons */
+.mcs-copy-btn.button-primary {
+    background: #00a32a;
+    border-color: #00a32a;
+    color: #fff;
+}
+
+.mcs-copy-btn.button-primary:hover {
+    background: #008a20;
+    border-color: #008a20;
+}

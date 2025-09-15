@@ -509,4 +509,18 @@ class MCS_Sync {
 
         update_option('mcs_http_cache', $cache, false);
     }
+
+    /**
+     * Trigger sync for all mappings (called from admin interface)
+     * This is a wrapper around run_all_mappings with additional action hooks
+     *
+     * @return array
+     */
+    public static function sync_all() {
+        // Fire action hook for extensibility
+        do_action('mcs/sync_all');
+
+        // Run the actual sync
+        return self::run_all_mappings();
+    }
 }

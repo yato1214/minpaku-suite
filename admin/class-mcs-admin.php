@@ -28,6 +28,9 @@ class MCS_Admin {
         add_action('admin_notices', [$instance, 'show_notices']);
         add_action('admin_post_mcs_regen_mappings', [$instance, 'handle_regen_mappings']);
         add_action('admin_post_mcs_sync_now', [$instance, 'handle_sync_now']);
+        add_action('admin_enqueue_scripts', [$instance, 'enqueue_admin_assets']);
+        add_action('wp_ajax_mcs_regenerate_mappings', [$instance, 'ajax_regenerate_mappings']);
+        add_action('wp_ajax_mcs_sync_now', [$instance, 'ajax_sync_now']);
     }
 
     /**
@@ -200,22 +203,33 @@ class MCS_Admin {
 
             <?php $this->render_mappings_table($settings['mappings']); ?>
 
-            <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
-                <?php wp_nonce_field('mcs_regen_mappings', 'mcs_regen_nonce'); ?>
-                <input type="hidden" name="action" value="mcs_regen_mappings">
-                <?php submit_button(__('Regenerate Mappings', 'minpaku-suite'), 'secondary'); ?>
-            </form>
+            <div class="mcs-action-buttons">
+                <button type="button" id="mcs-regen-btn" class="button button-secondary">
+                    <?php echo esc_html(__('Regenerate Mappings', 'minpaku-suite')); ?>
+                </button>
+                <button type="button" id="mcs-sync-btn" class="button button-primary">
+                    <?php echo esc_html(__('Sync Now', 'minpaku-suite')); ?>
+                </button>
+            </div>
 
             <hr>
 
             <h2><?php echo esc_html(__('Sync Management', 'minpaku-suite')); ?></h2>
             <p><?php echo esc_html(__('Manually trigger synchronization for all configured mappings.', 'minpaku-suite')); ?></p>
 
-            <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
-                <?php wp_nonce_field('mcs_sync_now', 'mcs_sync_nonce'); ?>
-                <input type="hidden" name="action" value="mcs_sync_now">
-                <?php submit_button(__('Sync Now', 'minpaku-suite'), 'primary'); ?>
-            </form>
+            <div class="mcs-legacy-forms" style="display: none;">
+                <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
+                    <?php wp_nonce_field('mcs_regen_mappings', 'mcs_regen_nonce'); ?>
+                    <input type="hidden" name="action" value="mcs_regen_mappings">
+                    <?php submit_button(__('Regenerate Mappings (Fallback)', 'minpaku-suite'), 'secondary'); ?>
+                </form>
+
+                <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
+                    <?php wp_nonce_field('mcs_sync_now', 'mcs_sync_nonce'); ?>
+                    <input type="hidden" name="action" value="mcs_sync_now">
+                    <?php submit_button(__('Sync Now (Fallback)', 'minpaku-suite'), 'primary'); ?>
+                </form>
+            </div>
         </div>
         <?php
     }
@@ -231,12 +245,13 @@ class MCS_Admin {
             return;
         }
         ?>
-        <table class="widefat fixed striped">
+        <table class="widefat fixed striped mcs-mappings-table">
             <thead>
                 <tr>
                     <th><?php echo esc_html(__('Post ID', 'minpaku-suite')); ?></th>
                     <th><?php echo esc_html(__('Property Title', 'minpaku-suite')); ?></th>
                     <th><?php echo esc_html(__('ICS URL', 'minpaku-suite')); ?></th>
+                    <th><?php echo esc_html(__('Actions', 'minpaku-suite')); ?></th>
                 </tr>
             </thead>
             <tbody>
@@ -250,9 +265,12 @@ class MCS_Admin {
                             ?>
                         </td>
                         <td>
-                            <a href="<?php echo esc_url($mapping['url']); ?>" target="_blank">
-                                <?php echo esc_html($mapping['url']); ?>
-                            </a>
+                            <code class="mcs-url-display"><?php echo esc_html($mapping['url']); ?></code>
+                        </td>
+                        <td>
+                            <button type="button" class="button button-small mcs-copy-btn" data-url="<?php echo esc_attr($mapping['url']); ?>">
+                                <?php echo esc_html(__('Copy URL', 'minpaku-suite')); ?>
+                            </button>
                         </td>
                     </tr>
                 <?php endforeach; ?>
@@ -513,5 +531,159 @@ class MCS_Admin {
         <input type="email" name="mcs_settings[alerts][recipient]" id="alerts_recipient" value="<?php echo esc_attr($value); ?>" class="regular-text">
         <p class="description"><?php echo esc_html(__('Email address to receive alert notifications.', 'minpaku-suite')); ?></p>
         <?php
+    }
+
+    /**
+     * Enqueue admin assets
+     */
+    public function enqueue_admin_assets($hook) {
+        if ($hook !== 'toplevel_page_mcs-settings') {
+            return;
+        }
+
+        $plugin_url = plugin_dir_url(dirname(__FILE__));
+
+        wp_enqueue_script(
+            'mcs-admin',
+            $plugin_url . 'assets/admin.js',
+            ['jquery'],
+            '1.0.0',
+            true
+        );
+
+        wp_enqueue_style(
+            'mcs-admin',
+            $plugin_url . 'assets/admin.css',
+            [],
+            '1.0.0'
+        );
+
+        wp_localize_script('mcs-admin', 'mcsAdmin', [
+            'ajaxUrl' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce('mcs_ajax_nonce'),
+            'strings' => [
+                'confirmRegen' => __('Are you sure you want to regenerate all mappings?', 'minpaku-suite'),
+                'confirmSync' => __('Are you sure you want to sync all properties now?', 'minpaku-suite'),
+                'copying' => __('Copying...', 'minpaku-suite'),
+                'copied' => __('Copied!', 'minpaku-suite'),
+                'copyFailed' => __('Copy failed', 'minpaku-suite'),
+                'processing' => __('Processing...', 'minpaku-suite'),
+                'error' => __('Error occurred', 'minpaku-suite'),
+            ],
+        ]);
+    }
+
+    /**
+     * Ajax handler for regenerating mappings
+     */
+    public function ajax_regenerate_mappings() {
+        if (!wp_verify_nonce($_POST['nonce'], 'mcs_ajax_nonce')) {
+            wp_die(__('Security check failed.', 'minpaku-suite'));
+        }
+
+        if (!current_user_can('manage_options')) {
+            wp_die(__('You do not have sufficient permissions to perform this action.', 'minpaku-suite'));
+        }
+
+        // Check for existing lock
+        if (get_transient('mcs_regen_lock')) {
+            wp_send_json_error(['message' => __('Regeneration is already in progress.', 'minpaku-suite')]);
+        }
+
+        // Set lock for 60 seconds
+        set_transient('mcs_regen_lock', time(), 60);
+
+        try {
+            $properties = get_posts([
+                'post_type' => 'property',
+                'post_status' => 'publish',
+                'numberposts' => -1,
+                'fields' => 'ids',
+            ]);
+
+            $mappings = [];
+
+            foreach ($properties as $post_id) {
+                $ics_key = get_post_meta($post_id, '_ics_key', true);
+
+                if (empty($ics_key)) {
+                    $ics_key = wp_generate_password(24, false, false);
+                    update_post_meta($post_id, '_ics_key', $ics_key);
+                }
+
+                $ics_url = home_url("ics/property/{$post_id}/{$ics_key}.ics");
+
+                $mappings[] = [
+                    'url' => $ics_url,
+                    'post_id' => $post_id,
+                ];
+            }
+
+            $settings = wp_parse_args(get_option('mcs_settings', []), $this->get_default_settings());
+            $settings['mappings'] = $mappings;
+            update_option('mcs_settings', $settings);
+
+            delete_transient('mcs_regen_lock');
+
+            wp_send_json_success([
+                'count' => count($mappings),
+                'message' => sprintf(
+                    __('Successfully regenerated %d mappings.', 'minpaku-suite'),
+                    count($mappings)
+                )
+            ]);
+
+        } catch (Exception $e) {
+            delete_transient('mcs_regen_lock');
+            wp_send_json_error(['message' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Ajax handler for sync now
+     */
+    public function ajax_sync_now() {
+        if (!wp_verify_nonce($_POST['nonce'], 'mcs_ajax_nonce')) {
+            wp_die(__('Security check failed.', 'minpaku-suite'));
+        }
+
+        if (!current_user_can('manage_options')) {
+            wp_die(__('You do not have sufficient permissions to perform this action.', 'minpaku-suite'));
+        }
+
+        // Check for existing lock
+        if (get_transient('mcs_sync_lock')) {
+            wp_send_json_error(['message' => __('Sync is already in progress.', 'minpaku-suite')]);
+        }
+
+        // Set lock for 60 seconds
+        set_transient('mcs_sync_lock', time(), 60);
+
+        if (!class_exists('MCS_Sync')) {
+            delete_transient('mcs_sync_lock');
+            wp_send_json_error(['message' => __('MCS_Sync class not found. Core sync functionality may not be loaded.', 'minpaku-suite')]);
+        }
+
+        try {
+            $results = MCS_Sync::sync_all();
+
+            delete_transient('mcs_sync_lock');
+
+            wp_send_json_success([
+                'results' => $results,
+                'message' => sprintf(
+                    __('Sync completed: %d added, %d updated, %d skipped, %d not modified, %d errors', 'minpaku-suite'),
+                    $results['added'],
+                    $results['updated'],
+                    $results['skipped'],
+                    $results['skipped_not_modified'],
+                    $results['errors']
+                )
+            ]);
+
+        } catch (Exception $e) {
+            delete_transient('mcs_sync_lock');
+            wp_send_json_error(['message' => $e->getMessage()]);
+        }
     }
 }
