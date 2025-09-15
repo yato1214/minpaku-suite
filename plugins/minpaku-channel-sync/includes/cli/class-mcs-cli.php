@@ -42,94 +42,33 @@ class MCS_CLI {
       $post_id = WP_CLI\Utils\get_flag_value( $assoc_args, 'post_id' );
       $all = WP_CLI\Utils\get_flag_value( $assoc_args, 'all', false );
 
-      if ( ! class_exists( 'MCS_Settings' ) ) {
-        WP_CLI::error( 'MCS_Settings class not found. Plugin may not be activated.' );
+      if ( ! class_exists( 'MCS_Sync' ) ) {
+        WP_CLI::error( 'MCS_Sync class not found. Plugin may not be activated.' );
       }
 
-      if ( ! class_exists( 'MCS_ICS_Importer' ) ) {
-        WP_CLI::error( 'MCS_ICS_Importer class not found. Plugin may not be activated.' );
+      // If specific filters are requested, use the old filtered approach
+      if ( $url || $post_id ) {
+        self::sync_filtered( $url, $post_id );
+        return;
       }
 
-      $settings = MCS_Settings::get();
-      $mappings = $settings['mappings'] ?? [];
+      // Use the shared sync service for --all or default behavior
+      WP_CLI::line( 'Starting sync for all mappings...' );
 
-      if ( empty( $mappings ) ) {
-        WP_CLI::error( 'No mappings configured.' );
-      }
+      $results = MCS_Sync::run_all_mappings();
 
-      // Filter mappings based on options
-      $filtered_mappings = $mappings;
-
-      if ( $url ) {
-        $filtered_mappings = array_filter( $mappings, function( $mapping ) use ( $url ) {
-          return $mapping['url'] === $url;
-        });
-        if ( empty( $filtered_mappings ) ) {
-          WP_CLI::error( sprintf( 'No mapping found for URL: %s', $url ) );
-        }
-      }
-
-      if ( $post_id ) {
-        $post_id = absint( $post_id );
-        $filtered_mappings = array_filter( $mappings, function( $mapping ) use ( $post_id ) {
-          return $mapping['post_id'] === $post_id;
-        });
-        if ( empty( $filtered_mappings ) ) {
-          WP_CLI::error( sprintf( 'No mapping found for Post ID: %d', $post_id ) );
-        }
-      }
-
-      WP_CLI::line( sprintf( 'Starting sync for %d mapping(s)...', count( $filtered_mappings ) ) );
-
-      $results = [
-        'total' => [
-          'added' => 0,
-          'updated' => 0,
-          'skipped' => 0,
-          'skipped_not_modified' => 0,
-          'errors' => 0
-        ],
-        'by_url' => []
-      ];
-
-      foreach ( $filtered_mappings as $mapping ) {
-        $mapping_url = $mapping['url'];
-        $mapping_post_id = $mapping['post_id'];
-
-        WP_CLI::line( sprintf( 'Processing: %s -> Post ID %d', $mapping_url, $mapping_post_id ) );
-
-        try {
-          $sync_result = self::sync_single_mapping( $mapping_url, $mapping_post_id );
-
-          $results['by_url'][$mapping_url] = $sync_result;
-          $results['total']['added'] += $sync_result['added'];
-          $results['total']['updated'] += $sync_result['updated'];
-          $results['total']['skipped'] += $sync_result['skipped'];
-          $results['total']['skipped_not_modified'] += $sync_result['skipped_not_modified'];
-          $results['total']['errors'] += $sync_result['errors'];
-
-        } catch ( Exception $e ) {
-          $results['total']['errors']++;
-          $results['by_url'][$mapping_url] = [
-            'added' => 0,
-            'updated' => 0,
-            'skipped' => 0,
-            'skipped_not_modified' => 0,
-            'errors' => 1,
-            'error_message' => $e->getMessage()
-          ];
-          WP_CLI::line( sprintf( 'Error processing %s: %s', $mapping_url, $e->getMessage() ) );
-        }
-      }
+      // Get detailed results by URL from transient for table display
+      $detailed_results = get_transient( 'mcs_last_sync_results' );
+      $results_by_url = $detailed_results['by_url'] ?? [];
 
       // Output results in table format
       WP_CLI::line( '' );
       WP_CLI::line( 'Sync Results:' );
 
       $table_data = [];
-      foreach ( $results['by_url'] as $url => $stats ) {
+      foreach ( $results_by_url as $mapping_url => $stats ) {
         $table_data[] = [
-          'url' => substr( $url, 0, 50 ) . ( strlen( $url ) > 50 ? '...' : '' ),
+          'url' => substr( $mapping_url, 0, 50 ) . ( strlen( $mapping_url ) > 50 ? '...' : '' ),
           'added' => $stats['added'],
           'updated' => $stats['updated'],
           'skipped' => $stats['skipped'],
@@ -141,26 +80,145 @@ class MCS_CLI {
       // Add total row
       $table_data[] = [
         'url' => 'TOTAL',
-        'added' => $results['total']['added'],
-        'updated' => $results['total']['updated'],
-        'skipped' => $results['total']['skipped'],
-        'skipped_not_modified' => $results['total']['skipped_not_modified'],
-        'errors' => $results['total']['errors']
+        'added' => $results['added'],
+        'updated' => $results['updated'],
+        'skipped' => $results['skipped'],
+        'skipped_not_modified' => $results['skipped_not_modified'],
+        'errors' => $results['errors']
       ];
 
       WP_CLI\Utils\format_items( 'table', $table_data, [ 'url', 'added', 'updated', 'skipped', 'skipped_not_modified', 'errors' ] );
 
-      // Store results for potential later use
-      set_transient( 'mcs_last_sync_results', $results, HOUR_IN_SECONDS );
-
-      if ( $results['total']['errors'] > 0 ) {
-        WP_CLI::error( sprintf( 'Sync completed with %d error(s).', $results['total']['errors'] ) );
+      if ( $results['errors'] > 0 ) {
+        WP_CLI::error( sprintf( 'Sync completed with %d error(s).', $results['errors'] ) );
       } else {
         WP_CLI::success( 'Sync completed successfully.' );
       }
 
     } catch ( Exception $e ) {
       WP_CLI::error( sprintf( 'Error during sync: %s', $e->getMessage() ) );
+    }
+  }
+
+  /**
+   * Handle filtered sync requests (by URL or post_id)
+   *
+   * @param string|null $url
+   * @param int|null $post_id
+   */
+  private static function sync_filtered( $url, $post_id ) {
+    // Get settings - try mcs_settings first, then fall back to MCS_Settings
+    $settings = get_option('mcs_settings', []);
+    if (empty($settings['mappings']) && class_exists('MCS_Settings')) {
+      $settings = MCS_Settings::get();
+    }
+
+    $mappings = $settings['mappings'] ?? [];
+
+    if ( empty( $mappings ) ) {
+      WP_CLI::error( 'No mappings configured.' );
+    }
+
+    // Filter mappings based on options
+    $filtered_mappings = $mappings;
+
+    if ( $url ) {
+      $filtered_mappings = array_filter( $mappings, function( $mapping ) use ( $url ) {
+        return $mapping['url'] === $url;
+      });
+      if ( empty( $filtered_mappings ) ) {
+        WP_CLI::error( sprintf( 'No mapping found for URL: %s', $url ) );
+      }
+    }
+
+    if ( $post_id ) {
+      $post_id = absint( $post_id );
+      $filtered_mappings = array_filter( $mappings, function( $mapping ) use ( $post_id ) {
+        return $mapping['post_id'] === $post_id;
+      });
+      if ( empty( $filtered_mappings ) ) {
+        WP_CLI::error( sprintf( 'No mapping found for Post ID: %d', $post_id ) );
+      }
+    }
+
+    WP_CLI::line( sprintf( 'Starting sync for %d filtered mapping(s)...', count( $filtered_mappings ) ) );
+
+    $results = [
+      'total' => [
+        'added' => 0,
+        'updated' => 0,
+        'skipped' => 0,
+        'skipped_not_modified' => 0,
+        'errors' => 0
+      ],
+      'by_url' => []
+    ];
+
+    foreach ( $filtered_mappings as $mapping ) {
+      $mapping_url = $mapping['url'];
+      $mapping_post_id = $mapping['post_id'];
+
+      WP_CLI::line( sprintf( 'Processing: %s -> Post ID %d', $mapping_url, $mapping_post_id ) );
+
+      try {
+        $sync_result = MCS_Sync::sync_single_mapping( $mapping_url, $mapping_post_id );
+
+        $results['by_url'][$mapping_url] = $sync_result;
+        $results['total']['added'] += $sync_result['added'];
+        $results['total']['updated'] += $sync_result['updated'];
+        $results['total']['skipped'] += $sync_result['skipped'];
+        $results['total']['skipped_not_modified'] += $sync_result['skipped_not_modified'];
+        $results['total']['errors'] += $sync_result['errors'];
+
+      } catch ( Exception $e ) {
+        $results['total']['errors']++;
+        $results['by_url'][$mapping_url] = [
+          'added' => 0,
+          'updated' => 0,
+          'skipped' => 0,
+          'skipped_not_modified' => 0,
+          'errors' => 1,
+          'error_message' => $e->getMessage()
+        ];
+        WP_CLI::line( sprintf( 'Error processing %s: %s', $mapping_url, $e->getMessage() ) );
+      }
+    }
+
+    // Output results in table format
+    WP_CLI::line( '' );
+    WP_CLI::line( 'Sync Results:' );
+
+    $table_data = [];
+    foreach ( $results['by_url'] as $mapping_url => $stats ) {
+      $table_data[] = [
+        'url' => substr( $mapping_url, 0, 50 ) . ( strlen( $mapping_url ) > 50 ? '...' : '' ),
+        'added' => $stats['added'],
+        'updated' => $stats['updated'],
+        'skipped' => $stats['skipped'],
+        'skipped_not_modified' => $stats['skipped_not_modified'],
+        'errors' => $stats['errors']
+      ];
+    }
+
+    // Add total row
+    $table_data[] = [
+      'url' => 'TOTAL',
+      'added' => $results['total']['added'],
+      'updated' => $results['total']['updated'],
+      'skipped' => $results['total']['skipped'],
+      'skipped_not_modified' => $results['total']['skipped_not_modified'],
+      'errors' => $results['total']['errors']
+    ];
+
+    WP_CLI\Utils\format_items( 'table', $table_data, [ 'url', 'added', 'updated', 'skipped', 'skipped_not_modified', 'errors' ] );
+
+    // Store results for potential later use
+    set_transient( 'mcs_last_sync_results', $results, HOUR_IN_SECONDS );
+
+    if ( $results['total']['errors'] > 0 ) {
+      WP_CLI::error( sprintf( 'Sync completed with %d error(s).', $results['total']['errors'] ) );
+    } else {
+      WP_CLI::success( 'Sync completed successfully.' );
     }
   }
 
@@ -253,100 +311,4 @@ class MCS_CLI {
     }
   }
 
-  /**
-   * Sync a single mapping (helper method)
-   *
-   * @param string $url
-   * @param int $post_id
-   * @return array
-   * @throws Exception
-   */
-  private static function sync_single_mapping( $url, $post_id ) {
-    // Validate post exists
-    $post = get_post( $post_id );
-    if ( ! $post ) {
-      throw new Exception( sprintf( 'Post ID %d not found', $post_id ) );
-    }
-
-    // Get existing slots for comparison
-    $existing_slots = get_post_meta( $post_id, 'mcs_booked_slots', true );
-    $existing_slots = is_array( $existing_slots ) ? $existing_slots : [];
-
-    // Use the same conditional fetch logic as the main importer
-    if ( ! class_exists( 'MCS_ICS_Importer' ) ) {
-      throw new Exception( 'MCS_ICS_Importer class not found' );
-    }
-
-    // Use reflection to access private fetch_with_cache method
-    $reflection = new ReflectionClass( 'MCS_ICS_Importer' );
-    $fetch_method = $reflection->getMethod( 'fetch_with_cache' );
-    $fetch_method->setAccessible( true );
-    $fetch_result = $fetch_method->invokeArgs( null, [ $url ] );
-
-    if ( $fetch_result['error'] ) {
-      throw new Exception( sprintf( 'Failed to fetch ICS: %s', $fetch_result['message'] ) );
-    }
-
-    if ( $fetch_result['not_modified'] ) {
-      return [
-        'added' => 0,
-        'updated' => 0,
-        'skipped' => 0,
-        'skipped_not_modified' => 1,
-        'errors' => 0
-      ];
-    }
-
-    $ics_content = $fetch_result['body'];
-    if ( empty( $ics_content ) ) {
-      throw new Exception( 'Empty ICS content received' );
-    }
-
-    // Parse ICS content using existing parser
-    $parse_method = $reflection->getMethod( 'parse_ics' );
-    $parse_method->setAccessible( true );
-    $events = $parse_method->invokeArgs( null, [ $ics_content ] );
-
-    if ( empty( $events ) ) {
-      // Update cache even if no events found
-      $update_cache_method = $reflection->getMethod( 'update_cache' );
-      $update_cache_method->setAccessible( true );
-      $update_cache_method->invokeArgs( null, [ $url, $fetch_result['etag'], $fetch_result['last_modified'] ] );
-
-      return [
-        'added' => 0,
-        'updated' => 0,
-        'skipped' => 0,
-        'skipped_not_modified' => 0,
-        'errors' => 0
-      ];
-    }
-
-    // Use reflection to access private apply_to_post method
-    $apply_method = $reflection->getMethod( 'apply_to_post' );
-    $apply_method->setAccessible( true );
-    $result = $apply_method->invokeArgs( null, [ $post_id, $events ] );
-
-    // Update cache after successful sync
-    $update_cache_method = $reflection->getMethod( 'update_cache' );
-    $update_cache_method->setAccessible( true );
-    $update_cache_method->invokeArgs( null, [ $url, $fetch_result['etag'], $fetch_result['last_modified'] ] );
-
-    // Log the CLI sync
-    if ( class_exists( 'MCS_Logger' ) ) {
-      MCS_Logger::log( 'INFO', sprintf( 'CLI sync completed for URL %s -> Post %d', $url, $post_id ), [
-        'added' => $result['added'],
-        'updated' => $result['updated'],
-        'skipped' => $result['skipped']
-      ]);
-    }
-
-    return [
-      'added' => $result['added'],
-      'updated' => $result['updated'],
-      'skipped' => $result['skipped'],
-      'skipped_not_modified' => 0, // Content was modified, processed successfully
-      'errors' => 0
-    ];
-  }
 }

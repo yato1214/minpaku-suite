@@ -1,0 +1,512 @@
+<?php
+/**
+ * Shared sync logic for Minpaku Suite
+ * Used by both WP-CLI commands and admin interface
+ *
+ * @package MinpakuSuite
+ */
+
+if (!defined('ABSPATH')) {
+    exit;
+}
+
+/**
+ * Shared synchronization service for Minpaku Suite
+ */
+class MCS_Sync {
+
+    /**
+     * Run sync for all configured mappings
+     *
+     * @return array ['added' => int, 'updated' => int, 'skipped' => int, 'skipped_not_modified' => int, 'errors' => int]
+     */
+    public static function run_all_mappings() {
+        // Get settings - try mcs_settings first, then fall back to MCS_Settings
+        $settings = get_option('mcs_settings', []);
+        if (empty($settings['mappings']) && class_exists('MCS_Settings')) {
+            $settings = MCS_Settings::get();
+        }
+
+        $mappings = $settings['mappings'] ?? [];
+
+        if (empty($mappings)) {
+            if (class_exists('MCS_Logger')) {
+                MCS_Logger::log('INFO', 'No mappings configured for sync.');
+            }
+            return [
+                'added' => 0,
+                'updated' => 0,
+                'skipped' => 0,
+                'skipped_not_modified' => 0,
+                'errors' => 0
+            ];
+        }
+
+        $results = [
+            'added' => 0,
+            'updated' => 0,
+            'skipped' => 0,
+            'skipped_not_modified' => 0,
+            'errors' => 0
+        ];
+
+        $results_by_url = [];
+
+        foreach ($mappings as $mapping) {
+            $url = $mapping['url'];
+            $post_id = $mapping['post_id'];
+
+            try {
+                $sync_result = self::sync_single_mapping($url, $post_id);
+
+                $results['added'] += $sync_result['added'];
+                $results['updated'] += $sync_result['updated'];
+                $results['skipped'] += $sync_result['skipped'];
+                $results['skipped_not_modified'] += $sync_result['skipped_not_modified'];
+                $results['errors'] += $sync_result['errors'];
+
+                $results_by_url[$url] = $sync_result;
+
+            } catch (Exception $e) {
+                $results['errors']++;
+                $results_by_url[$url] = [
+                    'added' => 0,
+                    'updated' => 0,
+                    'skipped' => 0,
+                    'skipped_not_modified' => 0,
+                    'errors' => 1,
+                    'error_message' => $e->getMessage()
+                ];
+
+                if (class_exists('MCS_Logger')) {
+                    MCS_Logger::log('ERROR', 'Sync failed for mapping', [
+                        'url' => $url,
+                        'post_id' => $post_id,
+                        'error' => $e->getMessage()
+                    ]);
+                }
+
+                // Record alert failure if alerts system is available
+                if (class_exists('MCS_Alerts')) {
+                    MCS_Alerts::record_failure($url, $e->getMessage());
+                }
+            }
+        }
+
+        // Store results in transient for admin display
+        set_transient('mcs_last_sync_results', [
+            'total' => $results,
+            'by_url' => $results_by_url
+        ], HOUR_IN_SECONDS);
+
+        // Log overall sync completion
+        if (class_exists('MCS_Logger')) {
+            MCS_Logger::log('INFO', 'Sync completed for all mappings', $results);
+        }
+
+        return $results;
+    }
+
+    /**
+     * Sync a single mapping (URL to post)
+     *
+     * @param string $url
+     * @param int $post_id
+     * @return array ['added' => int, 'updated' => int, 'skipped' => int, 'skipped_not_modified' => int, 'errors' => int]
+     * @throws Exception
+     */
+    public static function sync_single_mapping($url, $post_id) {
+        // Validate post exists
+        $post = get_post($post_id);
+        if (!$post) {
+            throw new Exception(sprintf('Post ID %d not found', $post_id));
+        }
+
+        // Fetch with conditional request headers using the same logic as MCS_ICS_Importer
+        $fetch_result = self::fetch_with_cache($url);
+
+        if ($fetch_result['error']) {
+            if (class_exists('MCS_Logger')) {
+                MCS_Logger::log('ERROR', 'Fetch failed', [
+                    'url' => $url,
+                    'post_id' => $post_id,
+                    'code' => $fetch_result['code'],
+                    'message' => $fetch_result['message']
+                ]);
+            }
+
+            // Record alert failure
+            if (class_exists('MCS_Alerts')) {
+                MCS_Alerts::record_failure($url, $fetch_result['message']);
+            }
+
+            throw new Exception(sprintf('Failed to fetch ICS: %s', $fetch_result['message']));
+        }
+
+        if ($fetch_result['not_modified']) {
+            if (class_exists('MCS_Logger')) {
+                MCS_Logger::log('INFO', 'ICS not modified (304)', ['url' => $url, 'post_id' => $post_id]);
+            }
+
+            // Record success for alerts
+            if (class_exists('MCS_Alerts')) {
+                MCS_Alerts::record_success($url);
+            }
+
+            return [
+                'added' => 0,
+                'updated' => 0,
+                'skipped' => 0,
+                'skipped_not_modified' => 1,
+                'errors' => 0
+            ];
+        }
+
+        $ics_content = $fetch_result['body'];
+        if (empty($ics_content)) {
+            throw new Exception('Empty ICS content received');
+        }
+
+        // Parse ICS content using the same logic as MCS_ICS_Importer
+        $events = self::parse_ics($ics_content, $url);
+
+        if (empty($events)) {
+            if (class_exists('MCS_Logger')) {
+                MCS_Logger::log('INFO', 'No events found in ICS', ['url' => $url, 'post_id' => $post_id]);
+            }
+        }
+
+        // Apply events to post
+        $merge_result = self::apply_to_post($post_id, $events);
+
+        // Update cache with new ETag/Last-Modified
+        self::update_cache($url, $fetch_result['etag'], $fetch_result['last_modified']);
+
+        // Record success for alerts
+        if (class_exists('MCS_Alerts')) {
+            MCS_Alerts::record_success($url);
+        }
+
+        // Log the sync operation
+        if (class_exists('MCS_Logger')) {
+            MCS_Logger::log('INFO', 'Sync completed for mapping', [
+                'url' => $url,
+                'post_id' => $post_id,
+                'added' => $merge_result['added'],
+                'updated' => $merge_result['updated'],
+                'skipped' => $merge_result['skipped']
+            ]);
+        }
+
+        return [
+            'added' => $merge_result['added'],
+            'updated' => $merge_result['updated'],
+            'skipped' => $merge_result['skipped'],
+            'skipped_not_modified' => 0, // Content was modified, processed successfully
+            'errors' => 0
+        ];
+    }
+
+    /**
+     * Fetch ICS with conditional request headers (same logic as MCS_ICS_Importer)
+     *
+     * @param string $url
+     * @return array ['error' => bool, 'not_modified' => bool, 'body' => string, 'etag' => string, 'last_modified' => string, 'code' => int, 'message' => string]
+     */
+    private static function fetch_with_cache($url) {
+        // Get cached headers for this URL
+        $cache = get_option('mcs_http_cache', []);
+        if (!is_array($cache)) {
+            $cache = [];
+        }
+        $url_cache = isset($cache[$url]) ? $cache[$url] : [];
+
+        // Prepare conditional headers
+        $headers = [];
+        if (!empty($url_cache['etag'])) {
+            $headers['If-None-Match'] = $url_cache['etag'];
+        }
+        if (!empty($url_cache['last_modified'])) {
+            $headers['If-Modified-Since'] = $url_cache['last_modified'];
+        }
+
+        // Make HTTP request with conditional headers
+        $args = [
+            'timeout' => 30,
+            'user-agent' => 'Minpaku Channel Sync/1.0',
+            'headers' => $headers
+        ];
+
+        $response = wp_remote_get($url, $args);
+
+        if (is_wp_error($response)) {
+            return [
+                'error' => true,
+                'not_modified' => false,
+                'body' => '',
+                'etag' => '',
+                'last_modified' => '',
+                'code' => 0,
+                'message' => $response->get_error_message()
+            ];
+        }
+
+        $code = wp_remote_retrieve_response_code($response);
+        $body = wp_remote_retrieve_body($response);
+
+        // Handle 304 Not Modified
+        if ($code === 304) {
+            return [
+                'error' => false,
+                'not_modified' => true,
+                'body' => '',
+                'etag' => '',
+                'last_modified' => '',
+                'code' => $code,
+                'message' => 'Not Modified'
+            ];
+        }
+
+        // Handle successful response (200)
+        if ($code === 200) {
+            $etag = wp_remote_retrieve_header($response, 'etag');
+            $last_modified = wp_remote_retrieve_header($response, 'last-modified');
+
+            // Handle potential array returns from wp_remote_retrieve_header
+            if (is_array($etag)) {
+                $etag = reset($etag);
+            }
+            if (is_array($last_modified)) {
+                $last_modified = reset($last_modified);
+            }
+
+            return [
+                'error' => false,
+                'not_modified' => false,
+                'body' => $body,
+                'etag' => $etag ?: '',
+                'last_modified' => $last_modified ?: '',
+                'code' => $code,
+                'message' => 'OK'
+            ];
+        }
+
+        // Handle error responses
+        return [
+            'error' => true,
+            'not_modified' => false,
+            'body' => '',
+            'etag' => '',
+            'last_modified' => '',
+            'code' => $code,
+            'message' => sprintf('HTTP %d error', $code)
+        ];
+    }
+
+    /**
+     * Parse ICS content (same logic as MCS_ICS_Importer)
+     *
+     * @param string $ics
+     * @param string $url
+     * @return array
+     */
+    private static function parse_ics($ics, $url = '') {
+        $events = [];
+        $lines = preg_split('/\r\n|\n|\r/', $ics);
+        $in = false;
+        $cur = ['UID' => null, 'DTSTART' => null, 'DTEND' => null];
+
+        foreach ($lines as $ln) {
+            $ln = trim($ln);
+            if ($ln === 'BEGIN:VEVENT') {
+                $in = true;
+                $cur = ['UID' => null, 'DTSTART' => null, 'DTEND' => null];
+                continue;
+            }
+            if ($ln === 'END:VEVENT') {
+                if ($cur['DTSTART'] && $cur['DTEND']) {
+                    $start = self::parse_dt($cur['DTSTART']);
+                    $end = self::parse_dt($cur['DTEND']);
+                    $uid = $cur['UID'] ?: null;
+                    if ($start && $end) {
+                        $events[] = [$start, $end, 'import', $uid];
+                    }
+                }
+                $in = false;
+                continue;
+            }
+            if ($in) {
+                if (stripos($ln, 'UID:') === 0) {
+                    $cur['UID'] = substr($ln, 4);
+                } elseif (stripos($ln, 'DTSTART') === 0) {
+                    $cur['DTSTART'] = preg_replace('/^DTSTART[^:]*:/', '', $ln);
+                } elseif (stripos($ln, 'DTEND') === 0) {
+                    $cur['DTEND'] = preg_replace('/^DTEND[^:]*:/', '', $ln);
+                }
+            }
+        }
+
+        // UID duplicate detection and deduplication
+        $by_uid = [];
+        $dupes = [];
+        $final_events = [];
+
+        foreach ($events as $ev) {
+            $uid = trim($ev[3] ?? '');
+            if ($uid === '') {
+                // No UID, add directly
+                $final_events[] = $ev;
+                continue;
+            }
+
+            // Calculate ranking for duplicate resolution
+            $rank = $ev[0]; // start timestamp
+
+            if (!isset($by_uid[$uid])) {
+                $by_uid[$uid] = ['rank' => $rank, 'ev' => $ev];
+            } else {
+                // Duplicate UID found
+                if ($rank >= $by_uid[$uid]['rank']) {
+                    // New event is newer or same, replace
+                    $dupes[$uid] = ($dupes[$uid] ?? 0) + 1;
+                    $by_uid[$uid] = ['rank' => $rank, 'ev' => $ev];
+                } else {
+                    // Keep existing, count duplicate
+                    $dupes[$uid] = ($dupes[$uid] ?? 0) + 1;
+                }
+            }
+        }
+
+        // Add deduplicated events with UIDs
+        foreach ($by_uid as $uid => $data) {
+            $final_events[] = $data['ev'];
+        }
+
+        // Log duplicate UIDs if found
+        if (!empty($dupes) && class_exists('MCS_Logger')) {
+            MCS_Logger::log('WARNING', 'Duplicate UID detected', [
+                'url' => $url,
+                'count' => count($dupes),
+                'uids' => implode(',', array_slice(array_keys($dupes), 0, 5)),
+            ]);
+        }
+
+        return $final_events;
+    }
+
+    /**
+     * Parse datetime string (same logic as MCS_ICS_Importer)
+     *
+     * @param string $v
+     * @return int
+     */
+    private static function parse_dt($v) {
+        // Accept YYYYMMDD or YYYYMMDDTHHMMSSZ
+        $v = trim($v);
+        if (preg_match('/^\d{8}$/', $v)) {
+            $dt = DateTime::createFromFormat('Ymd', $v, new DateTimeZone('UTC'));
+            return $dt ? $dt->getTimestamp() : 0;
+        }
+        if (preg_match('/^\d{8}T\d{6}Z$/', $v)) {
+            $dt = DateTime::createFromFormat('Ymd\THis\Z', $v, new DateTimeZone('UTC'));
+            return $dt ? $dt->getTimestamp() : 0;
+        }
+        // Fallback
+        $ts = strtotime($v);
+        return $ts ? $ts : 0;
+    }
+
+    /**
+     * Apply events to post (same logic as MCS_ICS_Importer)
+     *
+     * @param int $post_id
+     * @param array $events
+     * @return array ['added' => int, 'updated' => int, 'skipped' => int]
+     */
+    private static function apply_to_post($post_id, $events) {
+        $stored = get_post_meta($post_id, 'mcs_booked_slots', true);
+        if (!is_array($stored)) {
+            $stored = [];
+        }
+
+        $added = 0;
+        $updated = 0;
+        $skipped = 0;
+
+        foreach ($events as $new_event) {
+            $new_start = $new_event[0];
+            $new_end = $new_event[1];
+            $new_source = $new_event[2];
+            $new_uid = isset($new_event[3]) ? $new_event[3] : null;
+
+            $found_index = -1;
+
+            // Find existing event by UID first, then by (start, end)
+            foreach ($stored as $i => $existing) {
+                $existing_uid = isset($existing[3]) ? $existing[3] : null;
+
+                if ($new_uid && $existing_uid && $new_uid === $existing_uid) {
+                    $found_index = $i;
+                    break;
+                } elseif (!$new_uid || !$existing_uid) {
+                    // Fallback to (start, end) matching
+                    if ($existing[0] == $new_start && $existing[1] == $new_end) {
+                        $found_index = $i;
+                        break;
+                    }
+                }
+            }
+
+            if ($found_index >= 0) {
+                // Check if update is needed
+                $existing = $stored[$found_index];
+                if ($existing[0] != $new_start || $existing[1] != $new_end ||
+                    (isset($existing[3]) ? $existing[3] : null) != $new_uid) {
+                    $stored[$found_index] = $new_event;
+                    $updated++;
+                } else {
+                    $skipped++;
+                }
+            } else {
+                // Add new event
+                $stored[] = $new_event;
+                $added++;
+            }
+        }
+
+        update_post_meta($post_id, 'mcs_booked_slots', $stored);
+
+        return compact('added', 'updated', 'skipped');
+    }
+
+    /**
+     * Update HTTP cache for URL (same logic as MCS_ICS_Importer)
+     *
+     * @param string $url
+     * @param string $etag
+     * @param string $last_modified
+     */
+    private static function update_cache($url, $etag, $last_modified) {
+        if (empty($etag) && empty($last_modified)) {
+            return; // Nothing to cache
+        }
+
+        $cache = get_option('mcs_http_cache', []);
+        if (!is_array($cache)) {
+            $cache = [];
+        }
+
+        $cache[$url] = array_filter([
+            'etag' => is_array($etag) ? reset($etag) : $etag,
+            'last_modified' => is_array($last_modified) ? reset($last_modified) : $last_modified,
+            'updated_at' => current_time('mysql')
+        ]);
+
+        // Limit cache size to prevent bloat (keep last 100 URLs)
+        if (count($cache) > 100) {
+            $cache = array_slice($cache, -100, null, true);
+        }
+
+        update_option('mcs_http_cache', $cache, false);
+    }
+}
