@@ -59,5 +59,5 @@ add_filter('plugin_action_links_' . plugin_basename(__FILE__), function($links) 
     return $links;
 });
 
-// 必要ならここから読み込み
-// require_once __DIR__ . '/includes/bootstrap.php';
+// Load all system components
+require_once __DIR__ . '/includes/bootstrap.php';
