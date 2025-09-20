@@ -21,6 +21,8 @@ class MCS_CLI {
         if (defined('WP_CLI') && WP_CLI) {
             WP_CLI::add_command('mcs mappings', [__CLASS__, 'mappings_command']);
             WP_CLI::add_command('mcs sync', [__CLASS__, 'sync_command']);
+            WP_CLI::add_command('minpaku seed-demo', [__CLASS__, 'seed_demo_command']);
+            WP_CLI::add_command('minpaku cleanup-demo', [__CLASS__, 'cleanup_demo_command']);
         }
     }
 
@@ -326,5 +328,243 @@ class MCS_CLI {
         } catch (Exception $e) {
             WP_CLI::error('Sync failed: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Seed demo data for testing and development
+     *
+     * Creates demo properties, owners, reservations, and rates for testing the MinPaku Suite.
+     *
+     * ## OPTIONS
+     *
+     * [--force]
+     * : Skip confirmation and force seed demo data
+     *
+     * [--cleanup-first]
+     * : Clean up existing demo data before seeding new data
+     *
+     * ## EXAMPLES
+     *
+     *     wp minpaku seed-demo
+     *     wp minpaku seed-demo --force
+     *     wp minpaku seed-demo --cleanup-first --force
+     *
+     * @param array $args
+     * @param array $assoc_args
+     */
+    public static function seed_demo_command($args, $assoc_args) {
+        $force = isset($assoc_args['force']);
+        $cleanup_first = isset($assoc_args['cleanup-first']);
+
+        // Load the demo seeder
+        require_once plugin_dir_path(dirname(__FILE__)) . 'tools/seed-demo.php';
+
+        if (!class_exists('MinPakuDemoSeeder')) {
+            WP_CLI::error('MinPakuDemoSeeder class not found. Make sure tools/seed-demo.php exists.');
+        }
+
+        if (!$force) {
+            WP_CLI::confirm('This will create demo data in your WordPress installation. Continue?');
+        }
+
+        $seeder = new MinPakuDemoSeeder();
+
+        // Cleanup first if requested
+        if ($cleanup_first) {
+            WP_CLI::log('Cleaning up existing demo data...');
+            $cleanup_result = $seeder->cleanup_demo_data();
+
+            if ($cleanup_result['success']) {
+                WP_CLI::success('Existing demo data cleaned up successfully.');
+            } else {
+                WP_CLI::warning('Cleanup failed or had issues: ' . $cleanup_result['message']);
+            }
+        }
+
+        WP_CLI::log('Starting demo data seeding...');
+
+        try {
+            $results = $seeder->seed_all();
+
+            if ($results['success']) {
+                WP_CLI::success('Demo data seeded successfully!');
+
+                WP_CLI::log('');
+                WP_CLI::log('Summary:');
+                $summary = $results['summary'];
+                WP_CLI::log("  • Owners created: {$summary['owners_created']}");
+                WP_CLI::log("  • Properties created: {$summary['properties_created']}");
+                WP_CLI::log("  • Reservations created: {$summary['reservations_created']}");
+                WP_CLI::log("  • Rate rules created: {$summary['rate_rules_created']}");
+                WP_CLI::log("  • Total items: {$summary['total_items']}");
+
+                WP_CLI::log('');
+                WP_CLI::log('Demo Properties Created:');
+                foreach ($results['properties'] as $property) {
+                    WP_CLI::log("  • {$property['title']} (ID: {$property['property_id']}) - \${$property['base_rate']}/night");
+                }
+
+                WP_CLI::log('');
+                WP_CLI::log('Demo Owners Created:');
+                foreach ($results['owners'] as $owner) {
+                    WP_CLI::log("  • {$owner['username']} ({$owner['email']}) - {$owner['plan']} plan");
+                }
+
+                WP_CLI::log('');
+                WP_CLI::log('You can now test the following features:');
+                WP_CLI::log('  • Owner portal dashboard');
+                WP_CLI::log('  • Property calendar and availability');
+                WP_CLI::log('  • Quote calculator with real rates');
+                WP_CLI::log('  • iCal export and import');
+                WP_CLI::log('  • Reservation management');
+
+                WP_CLI::log('');
+                WP_CLI::log('Login credentials for demo owners:');
+                WP_CLI::log('  Username: karuizawa_owner, tokyo_owner, or kyoto_owner');
+                WP_CLI::log('  Password: demo_password_123');
+
+            } else {
+                WP_CLI::error('Demo seeding failed: ' . $results['message']);
+            }
+
+        } catch (Exception $e) {
+            WP_CLI::error('Demo seeding failed with exception: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Clean up demo data
+     *
+     * Removes all demo data created by the seed-demo command.
+     *
+     * ## OPTIONS
+     *
+     * [--force]
+     * : Skip confirmation and force cleanup
+     *
+     * ## EXAMPLES
+     *
+     *     wp minpaku cleanup-demo
+     *     wp minpaku cleanup-demo --force
+     *
+     * @param array $args
+     * @param array $assoc_args
+     */
+    public static function cleanup_demo_command($args, $assoc_args) {
+        $force = isset($assoc_args['force']);
+
+        if (!$force) {
+            WP_CLI::confirm('This will remove all demo data from your WordPress installation. Continue?');
+        }
+
+        // Load the demo seeder
+        require_once plugin_dir_path(dirname(__FILE__)) . 'tools/seed-demo.php';
+
+        if (!class_exists('MinPakuDemoSeeder')) {
+            WP_CLI::error('MinPakuDemoSeeder class not found. Make sure tools/seed-demo.php exists.');
+        }
+
+        WP_CLI::log('Starting demo data cleanup...');
+
+        try {
+            $seeder = new MinPakuDemoSeeder();
+
+            // Find and clean up demo data
+            $cleanup_result = self::cleanup_all_demo_data();
+
+            if ($cleanup_result['success']) {
+                WP_CLI::success('Demo data cleaned up successfully!');
+
+                WP_CLI::log('');
+                WP_CLI::log('Cleanup Summary:');
+                WP_CLI::log("  • Users removed: {$cleanup_result['users']}");
+                WP_CLI::log("  • Properties removed: {$cleanup_result['properties']}");
+                WP_CLI::log("  • Reservations removed: {$cleanup_result['reservations']}");
+                WP_CLI::log("  • Rate rules removed: {$cleanup_result['rates']}");
+
+            } else {
+                WP_CLI::warning('Cleanup completed with issues: ' . $cleanup_result['message']);
+            }
+
+        } catch (Exception $e) {
+            WP_CLI::error('Demo cleanup failed with exception: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Clean up all demo data by finding items marked as demo
+     */
+    private static function cleanup_all_demo_data(): array {
+        $cleanup_results = [
+            'users' => 0,
+            'properties' => 0,
+            'reservations' => 0,
+            'rates' => 0,
+            'success' => true,
+            'message' => 'Cleanup completed'
+        ];
+
+        try {
+            // Clean up demo users
+            $demo_users = get_users([
+                'meta_key' => 'demo_account',
+                'meta_value' => true,
+                'fields' => 'ID'
+            ]);
+
+            foreach ($demo_users as $user_id) {
+                wp_delete_user($user_id);
+                $cleanup_results['users']++;
+            }
+
+            // Clean up demo properties
+            $demo_properties = get_posts([
+                'post_type' => 'property',
+                'meta_key' => 'demo_property',
+                'meta_value' => true,
+                'post_status' => 'any',
+                'numberposts' => -1,
+                'fields' => 'ids'
+            ]);
+
+            foreach ($demo_properties as $property_id) {
+                wp_delete_post($property_id, true);
+                $cleanup_results['properties']++;
+            }
+
+            // Clean up demo reservations
+            $demo_reservations = get_posts([
+                'post_type' => 'reservation',
+                'meta_key' => 'demo_reservation',
+                'meta_value' => true,
+                'post_status' => 'any',
+                'numberposts' => -1,
+                'fields' => 'ids'
+            ]);
+
+            foreach ($demo_reservations as $reservation_id) {
+                wp_delete_post($reservation_id, true);
+                $cleanup_results['reservations']++;
+            }
+
+            // Clean up rate rules (they should be deleted with properties, but clean up any orphaned ones)
+            global $wpdb;
+            $rate_posts = $wpdb->get_col("
+                SELECT ID FROM {$wpdb->posts}
+                WHERE post_type IN ('rate_rule', 'seasonal_rate')
+                AND post_title LIKE '%demo%' OR post_title LIKE '%Test%'
+            ");
+
+            foreach ($rate_posts as $rate_id) {
+                wp_delete_post($rate_id, true);
+                $cleanup_results['rates']++;
+            }
+
+        } catch (Exception $e) {
+            $cleanup_results['success'] = false;
+            $cleanup_results['message'] = 'Cleanup failed: ' . $e->getMessage();
+        }
+
+        return $cleanup_results;
     }
 }
