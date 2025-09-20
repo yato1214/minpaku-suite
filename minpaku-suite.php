@@ -56,6 +56,55 @@ foreach ([
 }
 
 
+//
+// --- Load core functionality (guarded to avoid double-load with subplugin) ---
+require_once ABSPATH . 'wp-admin/includes/plugin.php';
+
+$ics_local_path = __DIR__ . '/includes/class-mcs-ics.php';
+$ics_subplugin  = 'minpaku-channel-sync/minpaku-channel-sync.php';
+$ics_sub_active = function_exists('is_plugin_active') && is_plugin_active($ics_subplugin);
+
+// ★ 追加：サブプラグインが有効なら、まずサブプラグイン側のクラスを読み込む
+if ( $ics_sub_active && ! class_exists('MCS_Ics') ) {
+    $sub_cls = WP_PLUGIN_DIR . '/minpaku-channel-sync/includes/class-mcs-ics.php';
+    if ( file_exists($sub_cls) ) {
+        require_once $sub_cls;
+    }
+}
+
+// サブプラグインが無効のときだけ本体のICSを読み込む
+if ( ! $ics_sub_active && file_exists($ics_local_path) && ! class_exists('MCS_Ics') ) {
+    require_once $ics_local_path;
+}
+
+// 他コア（存在確認のうえ読み込み）
+foreach ([
+    __DIR__ . '/includes/class-mcs-sync.php',
+    __DIR__ . '/includes/class-mcs-cli.php',
+    __DIR__ . '/includes/cpt-property.php',
+] as $core_file) {
+    if (file_exists($core_file)) {
+        require_once $core_file;
+    }
+}
+
+/** ↓ 追加：クラス存在チェックガード（念のため） */
+add_action('init', function () {
+    // サブプラグインがフック登録だけ先にしてしまうケースへの保険
+    if ( has_action('init', ['MCS_Ics', 'add_rewrite_rules']) && ! class_exists('MCS_Ics') ) {
+        // クラス未定義ならサブプラグイン側のクラスを試す
+        $sub_cls = WP_PLUGIN_DIR . '/minpaku-channel-sync/includes/class-mcs-ics.php';
+        if ( file_exists($sub_cls) ) {
+            require_once $sub_cls;
+        }
+    }
+}, 0);
+
+//
+
+
+
+
 // Initialize ICS handler
 add_action('init', ['MCS_Ics', 'init']);
 
