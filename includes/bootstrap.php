@@ -16,6 +16,7 @@ require_once __DIR__ . '/provider-bootstrap.php';
 require_once __DIR__ . '/ui-bootstrap.php';
 require_once __DIR__ . '/api-bootstrap.php';
 require_once __DIR__ . '/booking-bootstrap.php';
+require_once __DIR__ . '/webhook-bootstrap.php';
 
 // Log bootstrap completion
 if (class_exists('MCS_Logger')) {
@@ -26,7 +27,8 @@ if (class_exists('MCS_Logger')) {
                 'providers' => 'Channel and payment provider system',
                 'ui' => 'Frontend UI components (calendar and quote)',
                 'api' => 'REST API endpoints for availability and quotes',
-                'booking' => 'Booking state machine and ledger system'
+                'booking' => 'Booking state machine and ledger system',
+                'webhook' => 'Webhook system for booking and payment events'
             ],
             'version' => '0.1.0'
         ]);

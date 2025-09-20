@@ -15,7 +15,7 @@ class Migrations {
     /**
      * Current database version
      */
-    const DB_VERSION = '1.0.0';
+    const DB_VERSION = '1.1.0';
 
     /**
      * Database version option key
@@ -29,7 +29,15 @@ class Migrations {
         $current_version = get_option(self::DB_VERSION_OPTION, '0.0.0');
 
         if (version_compare($current_version, self::DB_VERSION, '<')) {
-            self::createBookingLedgerTable();
+            // Run migrations in order
+            if (version_compare($current_version, '1.0.0', '<')) {
+                self::createBookingLedgerTable();
+            }
+
+            if (version_compare($current_version, '1.1.0', '<')) {
+                self::createWebhookDeliveriesTable();
+            }
+
             update_option(self::DB_VERSION_OPTION, self::DB_VERSION);
 
             // Log migration completion
@@ -87,13 +95,64 @@ class Migrations {
     }
 
     /**
+     * Create webhook deliveries table
+     */
+    private static function createWebhookDeliveriesTable() {
+        global $wpdb;
+
+        $table_name = $wpdb->prefix . 'ms_webhook_deliveries';
+
+        $charset_collate = $wpdb->get_charset_collate();
+
+        $sql = "CREATE TABLE $table_name (
+            id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+            event VARCHAR(64) NOT NULL,
+            url TEXT NOT NULL,
+            payload_json LONGTEXT NOT NULL,
+            headers_json TEXT,
+            attempt INT(11) DEFAULT 1,
+            status ENUM('queued','success','failed') DEFAULT 'queued',
+            last_error TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            delivery_key CHAR(36) NOT NULL,
+            PRIMARY KEY (id),
+            UNIQUE KEY delivery_key (delivery_key),
+            KEY event (event),
+            KEY status (status),
+            KEY created_at (created_at),
+            KEY status_created (status, created_at)
+        ) $charset_collate;";
+
+        require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+        dbDelta($sql);
+
+        // Verify table was created
+        if ($wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $table_name)) === $table_name) {
+            if (class_exists('MCS_Logger')) {
+                MCS_Logger::log('INFO', 'Webhook deliveries table created successfully', [
+                    'table_name' => $table_name
+                ]);
+            }
+        } else {
+            if (class_exists('MCS_Logger')) {
+                MCS_Logger::log('ERROR', 'Failed to create webhook deliveries table', [
+                    'table_name' => $table_name,
+                    'sql' => $sql
+                ]);
+            }
+        }
+    }
+
+    /**
      * Drop all custom tables (for uninstallation)
      */
     public static function dropTables() {
         global $wpdb;
 
         $tables = [
-            $wpdb->prefix . 'ms_booking_ledger'
+            $wpdb->prefix . 'ms_booking_ledger',
+            $wpdb->prefix . 'ms_webhook_deliveries'
         ];
 
         foreach ($tables as $table) {
@@ -136,5 +195,15 @@ class Migrations {
     public static function getLedgerTableName() {
         global $wpdb;
         return $wpdb->prefix . 'ms_booking_ledger';
+    }
+
+    /**
+     * Get webhook deliveries table name
+     *
+     * @return string
+     */
+    public static function getWebhookDeliveriesTableName() {
+        global $wpdb;
+        return $wpdb->prefix . 'ms_webhook_deliveries';
     }
 }

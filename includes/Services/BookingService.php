@@ -405,7 +405,11 @@ class BookingService {
                 ]);
             }
 
-            return $booking;
+            // Apply filter to allow webhook hooks to capture the result
+            $filter_name = 'minpaku_booking_service_' . $this->getFilterNameFromLedgerEvent($ledger_event) . '_result';
+            $filtered_result = apply_filters($filter_name, $booking, $meta);
+
+            return $filtered_result;
 
         } catch (Exception $e) {
             return new WP_Error(
@@ -490,5 +494,21 @@ class BookingService {
      */
     public function getLedger() {
         return $this->ledger;
+    }
+
+    /**
+     * Get filter name from ledger event
+     *
+     * @param string $ledger_event Ledger event type
+     * @return string Filter name component
+     */
+    private function getFilterNameFromLedgerEvent($ledger_event) {
+        $mapping = [
+            BookingLedger::EVENT_CONFIRM => 'confirm',
+            BookingLedger::EVENT_CANCEL => 'cancel',
+            BookingLedger::EVENT_COMPLETE => 'complete'
+        ];
+
+        return $mapping[$ledger_event] ?? 'unknown';
     }
 }
