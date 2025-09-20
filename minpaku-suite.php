@@ -32,11 +32,29 @@ function mcs_deactivate_plugin() {
     flush_rewrite_rules();
 }
 
-// Load core functionality
-require_once __DIR__ . '/includes/class-mcs-ics.php';
-require_once __DIR__ . '/includes/class-mcs-sync.php';
-require_once __DIR__ . '/includes/class-mcs-cli.php';
-require_once __DIR__ . '/includes/cpt-property.php';
+// --- Load core functionality (guarded to avoid double-load with subplugin) ---
+require_once ABSPATH . 'wp-admin/includes/plugin.php';
+
+$ics_local_path = __DIR__ . '/includes/class-mcs-ics.php';
+$ics_subplugin  = 'minpaku-channel-sync/minpaku-channel-sync.php';
+$ics_sub_active = function_exists('is_plugin_active') && is_plugin_active($ics_subplugin);
+
+// サブプラグインが有効な場合は本体側の ICS を読み込まない（重複定義を回避）
+if ( ! $ics_sub_active && file_exists($ics_local_path) ) {
+    require_once $ics_local_path;
+}
+
+// 他コアは存在確認のうえ読み込む（存在しない場合も Fatal にしない）
+foreach ([
+    __DIR__ . '/includes/class-mcs-sync.php',
+    __DIR__ . '/includes/class-mcs-cli.php',
+    __DIR__ . '/includes/cpt-property.php',
+] as $core_file) {
+    if (file_exists($core_file)) {
+        require_once $core_file;
+    }
+}
+
 
 // Initialize ICS handler
 add_action('init', ['MCS_Ics', 'init']);
