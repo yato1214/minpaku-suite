@@ -27,7 +27,10 @@ class Bootstrap
 
     private static function init_hooks()
     {
-        // WordPress hooks initialization will be implemented in future milestones
+        // Load CPT registration
+        if (file_exists(MINPAKU_SUITE_PLUGIN_DIR . 'includes/cpt-property.php')) {
+            require_once MINPAKU_SUITE_PLUGIN_DIR . 'includes/cpt-property.php';
+        }
     }
 
     private static function init_rest_api()
@@ -37,6 +40,13 @@ class Bootstrap
 
     private static function init_acf()
     {
-        // ACF (Advanced Custom Fields) initialization will be implemented in future milestones
+        // Load ACF fields registration
+        if (file_exists(MINPAKU_SUITE_PLUGIN_DIR . 'includes/Acf/RegisterFields.php')) {
+            require_once MINPAKU_SUITE_PLUGIN_DIR . 'includes/Acf/RegisterFields.php';
+
+            if (class_exists('MinpakuSuite\Acf\RegisterFields')) {
+                add_action('acf/init', ['MinpakuSuite\Acf\RegisterFields', 'init']);
+            }
+        }
     }
 }

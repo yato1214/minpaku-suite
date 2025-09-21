@@ -31,3 +31,211 @@ msgstr ""
 #. Author of the plugin/theme
 msgid "Yato1214"
 msgstr ""
+
+#. CPT and ACF labels
+msgid "Minpaku"
+msgstr ""
+
+msgid "Properties"
+msgstr ""
+
+msgid "Property"
+msgstr ""
+
+msgid "Property Archives"
+msgstr ""
+
+msgid "Property Attributes"
+msgstr ""
+
+msgid "Parent Property:"
+msgstr ""
+
+msgid "All Properties"
+msgstr ""
+
+msgid "Add New Property"
+msgstr ""
+
+msgid "Add New"
+msgstr ""
+
+msgid "New Property"
+msgstr ""
+
+msgid "Edit Property"
+msgstr ""
+
+msgid "Update Property"
+msgstr ""
+
+msgid "View Property"
+msgstr ""
+
+msgid "View Properties"
+msgstr ""
+
+msgid "Search Properties"
+msgstr ""
+
+msgid "Not found"
+msgstr ""
+
+msgid "Not found in Trash"
+msgstr ""
+
+msgid "Featured Image"
+msgstr ""
+
+msgid "Set featured image"
+msgstr ""
+
+msgid "Remove featured image"
+msgstr ""
+
+msgid "Use as featured image"
+msgstr ""
+
+msgid "Insert into property"
+msgstr ""
+
+msgid "Uploaded to this property"
+msgstr ""
+
+msgid "Properties list"
+msgstr ""
+
+msgid "Properties list navigation"
+msgstr ""
+
+msgid "Filter properties list"
+msgstr ""
+
+msgid "Minpaku properties management"
+msgstr ""
+
+msgid "Bookings"
+msgstr ""
+
+msgid "Booking"
+msgstr ""
+
+msgid "Booking Archives"
+msgstr ""
+
+msgid "Booking Attributes"
+msgstr ""
+
+msgid "Parent Booking:"
+msgstr ""
+
+msgid "All Bookings"
+msgstr ""
+
+msgid "Add New Booking"
+msgstr ""
+
+msgid "New Booking"
+msgstr ""
+
+msgid "Edit Booking"
+msgstr ""
+
+msgid "Update Booking"
+msgstr ""
+
+msgid "View Booking"
+msgstr ""
+
+msgid "View Bookings"
+msgstr ""
+
+msgid "Search Bookings"
+msgstr ""
+
+msgid "Insert into booking"
+msgstr ""
+
+msgid "Uploaded to this booking"
+msgstr ""
+
+msgid "Bookings list"
+msgstr ""
+
+msgid "Bookings list navigation"
+msgstr ""
+
+msgid "Filter bookings list"
+msgstr ""
+
+msgid "Booking management"
+msgstr ""
+
+msgid "Property Details"
+msgstr ""
+
+msgid "Capacity"
+msgstr ""
+
+msgid "Maximum number of guests"
+msgstr ""
+
+msgid "guests"
+msgstr ""
+
+msgid "Bedrooms"
+msgstr ""
+
+msgid "Number of bedrooms"
+msgstr ""
+
+msgid "Bathrooms"
+msgstr ""
+
+msgid "Number of bathrooms"
+msgstr ""
+
+msgid "Amenities"
+msgstr ""
+
+msgid "Select available amenities"
+msgstr ""
+
+msgid "WiFi"
+msgstr ""
+
+msgid "Kitchen"
+msgstr ""
+
+msgid "TV"
+msgstr ""
+
+msgid "AC"
+msgstr ""
+
+msgid "Washer"
+msgstr ""
+
+msgid "Parking"
+msgstr ""
+
+msgid "Bath Tub"
+msgstr ""
+
+msgid "Workspace"
+msgstr ""
+
+msgid "Address"
+msgstr ""
+
+msgid "Property address"
+msgstr ""
+
+msgid "Enter full address"
+msgstr ""
+
+msgid "Gallery"
+msgstr ""
+
+msgid "Property photo gallery"
+msgstr ""
