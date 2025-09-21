@@ -185,39 +185,33 @@ class Bootstrap
             return;
         }
 
-        // Simple approach: Use the shortcode inside a mcs-wrap for styling
-        echo '<div class="mcs-wrap">';
-        echo '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">';
-        echo '<h1 style="margin: 0;">' . esc_html(__('Owner Portal', 'minpaku-suite')) . '</h1>';
-
-        // Add period selector form for Owner Portal - use 'period' to match shortcode logic
-        $selected_period = isset($_GET['period']) ? absint($_GET['period']) : 30;
-        $allowed_periods = [30, 90, 365];
-        if (!in_array($selected_period, $allowed_periods)) {
-            $selected_period = 30;
+        // Use the admin dashboard template for consistent UI
+        $service_file = MCS_PATH . 'includes/Admin/AdminDashboardService.php';
+        if (file_exists($service_file)) {
+            require_once $service_file;
         }
 
-        echo '<form method="get" style="display: flex; align-items: center; gap: 10px;">';
-        echo '<input type="hidden" name="page" value="mcs-owner-portal">';
-        echo '<label for="mcs-period-select" style="font-weight: 500; color: #1d2327;">';
-        esc_html_e('Period:', 'minpaku-suite');
-        echo '</label>';
-        echo '<select id="mcs-period-select" name="period" onchange="this.form.submit()" style="padding: 4px 8px; border: 1px solid #c3c4c7; border-radius: 4px;">';
-        echo '<option value="30"' . selected($selected_period, 30, false) . '>' . esc_html(__('Next 30 days', 'minpaku-suite')) . '</option>';
-        echo '<option value="90"' . selected($selected_period, 90, false) . '>' . esc_html(__('Next 90 days', 'minpaku-suite')) . '</option>';
-        echo '<option value="365"' . selected($selected_period, 365, false) . '>' . esc_html(__('Next 365 days', 'minpaku-suite')) . '</option>';
-        echo '</select>';
-        echo '</form>';
-        echo '</div>';
+        $template_file = MCS_PATH . 'templates/admin/dashboard.php';
+        if (file_exists($template_file) && class_exists('MinpakuSuite\Admin\AdminDashboardService')) {
+            // Override the title for Owner Portal context
+            add_filter('gettext', function($translation, $text, $domain) {
+                if ($domain === 'minpaku-suite' && $text === 'Minpaku Suite') {
+                    return __('Owner Portal', 'minpaku-suite');
+                }
+                return $translation;
+            }, 10, 3);
 
-        // Render the owner dashboard shortcode - period will be automatically picked up from $_GET
-        if (class_exists('MinpakuSuite\Portal\OwnerDashboard')) {
-            echo do_shortcode('[mcs_owner_dashboard]');
+            include $template_file;
+
+            // Remove the filter after rendering
+            remove_all_filters('gettext');
         } else {
-            echo '<p class="notice notice-error">' . esc_html(__('Owner portal is not available.', 'minpaku-suite')) . '</p>';
+            // Fallback display
+            echo '<div class="wrap">';
+            echo '<h1>' . esc_html(__('Owner Portal', 'minpaku-suite')) . '</h1>';
+            echo '<p class="notice notice-error">' . esc_html(__('Owner portal template is not available.', 'minpaku-suite')) . '</p>';
+            echo '</div>';
         }
-
-        echo '</div>';
     }
 
     public static function enqueue_admin_styles($hook_suffix)

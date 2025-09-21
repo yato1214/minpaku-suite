@@ -9,16 +9,20 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-// Get selected period from URL
-$selected_days = isset($_GET['days']) ? absint($_GET['days']) : 30;
+// Get selected period from URL (support both 'days' and 'period' for compatibility)
+$selected_days = isset($_GET['days']) ? absint($_GET['days']) : (isset($_GET['period']) ? absint($_GET['period']) : 30);
 $allowed_days = [30, 90, 365];
 if (!in_array($selected_days, $allowed_days)) {
     $selected_days = 30;
 }
 
-// Get dashboard data with period
-$counts = MinpakuSuite\Admin\AdminDashboardService::get_counts($selected_days);
-$recent_bookings = MinpakuSuite\Admin\AdminDashboardService::get_recent_bookings(5, $selected_days);
+// Determine if this is for Owner Portal (filter by current user)
+$is_owner_portal = (isset($_GET['page']) && $_GET['page'] === 'mcs-owner-portal');
+$owner_user_id = $is_owner_portal ? get_current_user_id() : null;
+
+// Get dashboard data with period and owner filtering
+$counts = MinpakuSuite\Admin\AdminDashboardService::get_counts($selected_days, $owner_user_id);
+$recent_bookings = MinpakuSuite\Admin\AdminDashboardService::get_recent_bookings(5, $selected_days, $owner_user_id);
 $my_properties = MinpakuSuite\Admin\AdminDashboardService::get_my_properties();
 
 ?>
@@ -26,18 +30,29 @@ $my_properties = MinpakuSuite\Admin\AdminDashboardService::get_my_properties();
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
         <h1 style="margin: 0;"><?php esc_html_e('Minpaku Suite', 'minpaku-suite'); ?></h1>
 
-        <!-- Period Selector -->
-        <form method="get" style="display: flex; align-items: center; gap: 10px;">
-            <input type="hidden" name="page" value="minpaku-suite">
-            <label for="mcs-days-select" style="font-weight: 500; color: #1d2327;">
+        <!-- Segmented Period Selector -->
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="font-weight: 500; color: #1d2327;">
                 <?php esc_html_e('Period:', 'minpaku-suite'); ?>
-            </label>
-            <select id="mcs-days-select" name="days" onchange="this.form.submit()" style="padding: 4px 8px; border: 1px solid #c3c4c7; border-radius: 4px;">
-                <option value="30" <?php selected($selected_days, 30); ?>><?php esc_html_e('Next 30 days', 'minpaku-suite'); ?></option>
-                <option value="90" <?php selected($selected_days, 90); ?>><?php esc_html_e('Next 90 days', 'minpaku-suite'); ?></option>
-                <option value="365" <?php selected($selected_days, 365); ?>><?php esc_html_e('Next 365 days', 'minpaku-suite'); ?></option>
-            </select>
-        </form>
+            </span>
+            <div class="mcs-segmented">
+                <?php
+                $current_page = $is_owner_portal ? 'mcs-owner-portal' : 'minpaku-suite';
+                $periods = [
+                    30 => __('Next 30 days', 'minpaku-suite'),
+                    90 => __('Next 90 days', 'minpaku-suite'),
+                    365 => __('Next 365 days', 'minpaku-suite')
+                ];
+                foreach ($periods as $days => $label) :
+                    $is_active = ($days === $selected_days) ? 'is-active' : '';
+                    $url = admin_url('admin.php?page=' . $current_page . '&days=' . $days);
+                ?>
+                    <a href="<?php echo esc_url($url); ?>" class="mcs-segmented__btn <?php echo esc_attr($is_active); ?>">
+                        <?php echo esc_html($label); ?>
+                    </a>
+                <?php endforeach; ?>
+            </div>
+        </div>
     </div>
 
     <!-- Overview Cards -->
@@ -58,27 +73,53 @@ $my_properties = MinpakuSuite\Admin\AdminDashboardService::get_my_properties();
                 <p class="mcs-card-label"><?php esc_html_e('Total properties', 'minpaku-suite'); ?></p>
             </div>
 
-            <!-- Bookings Card -->
-            <div class="mcs-card" aria-label="<?php esc_attr_e('Recent bookings count', 'minpaku-suite'); ?>">
+            <!-- Confirmed Bookings Card -->
+            <div class="mcs-card" aria-label="<?php esc_attr_e('Confirmed bookings count', 'minpaku-suite'); ?>">
                 <div class="mcs-card-header">
                     <div class="mcs-card-icon mcs-card-icon--bookings">
                         <span class="dashicons dashicons-calendar-alt"></span>
                     </div>
-                    <h3 class="mcs-card-title"><?php esc_html_e('Bookings', 'minpaku-suite'); ?></h3>
+                    <h3 class="mcs-card-title"><?php esc_html_e('Confirmed Bookings', 'minpaku-suite'); ?></h3>
                 </div>
-                <div class="mcs-card-value" aria-label="<?php echo esc_attr(sprintf(__('%d bookings in selected period', 'minpaku-suite'), $counts['bookings_period'])); ?>">
-                    <?php echo esc_html(number_format($counts['bookings_period'])); ?>
+                <div class="mcs-card-value" aria-label="<?php echo esc_attr(sprintf(__('%d confirmed bookings in selected period', 'minpaku-suite'), $counts['confirmed_count'])); ?>">
+                    <?php echo esc_html(number_format($counts['confirmed_count'])); ?>
                 </div>
                 <p class="mcs-card-label">
                     <?php
                     if ($selected_days == 30) {
-                        esc_html_e('Last 30 days', 'minpaku-suite');
+                        esc_html_e('Next 30 days', 'minpaku-suite');
                     } elseif ($selected_days == 90) {
-                        esc_html_e('Last 90 days', 'minpaku-suite');
+                        esc_html_e('Next 90 days', 'minpaku-suite');
                     } elseif ($selected_days == 365) {
-                        esc_html_e('Last 365 days', 'minpaku-suite');
+                        esc_html_e('Next 365 days', 'minpaku-suite');
                     } else {
-                        echo esc_html(sprintf(__('Last %d days', 'minpaku-suite'), $selected_days));
+                        echo esc_html(sprintf(__('Next %d days', 'minpaku-suite'), $selected_days));
+                    }
+                    ?>
+                </p>
+            </div>
+
+            <!-- Total Bookings Card -->
+            <div class="mcs-card" aria-label="<?php esc_attr_e('Total bookings count', 'minpaku-suite'); ?>">
+                <div class="mcs-card-header">
+                    <div class="mcs-card-icon mcs-card-icon--occupancy">
+                        <span class="dashicons dashicons-chart-line"></span>
+                    </div>
+                    <h3 class="mcs-card-title"><?php esc_html_e('Total Bookings', 'minpaku-suite'); ?></h3>
+                </div>
+                <div class="mcs-card-value" aria-label="<?php echo esc_attr(sprintf(__('%d total bookings in selected period', 'minpaku-suite'), $counts['total_count'])); ?>">
+                    <?php echo esc_html(number_format($counts['total_count'])); ?>
+                </div>
+                <p class="mcs-card-label">
+                    <?php
+                    if ($selected_days == 30) {
+                        esc_html_e('Next 30 days', 'minpaku-suite');
+                    } elseif ($selected_days == 90) {
+                        esc_html_e('Next 90 days', 'minpaku-suite');
+                    } elseif ($selected_days == 365) {
+                        esc_html_e('Next 365 days', 'minpaku-suite');
+                    } else {
+                        echo esc_html(sprintf(__('Next %d days', 'minpaku-suite'), $selected_days));
                     }
                     ?>
                 </p>

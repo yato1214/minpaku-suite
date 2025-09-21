@@ -14,68 +14,187 @@ if (!defined('ABSPATH')) {
 class AdminDashboardService
 {
     /**
+     * Read booking meta with fallback support
+     *
+     * @param int $post_id Booking post ID
+     * @return array Normalized booking meta data
+     */
+    public static function read_booking_meta(int $post_id): array
+    {
+        $meta = [
+            'status' => 'PENDING',
+            'property_id' => null,
+            'checkin_date' => null,
+            'checkout_date' => null,
+            'guest_name' => ''
+        ];
+
+        // Status with fallbacks (convert to uppercase)
+        $status_keys = ['_mcs_status', '_booking_status', 'status'];
+        foreach ($status_keys as $key) {
+            $value = get_post_meta($post_id, $key, true);
+            if (!empty($value)) {
+                $meta['status'] = strtoupper(trim($value));
+                break;
+            }
+        }
+
+        // Property ID with fallbacks
+        $property_keys = ['_mcs_property_id', '_property_id', 'mcs_property_id', 'property_id'];
+        foreach ($property_keys as $key) {
+            $value = get_post_meta($post_id, $key, true);
+            if (!empty($value) && is_numeric($value)) {
+                $meta['property_id'] = absint($value);
+                break;
+            }
+        }
+
+        // Check-in date with fallbacks
+        $checkin_keys = ['_mcs_checkin_date', '_checkin', 'checkin_date', 'check_in_date'];
+        foreach ($checkin_keys as $key) {
+            $value = get_post_meta($post_id, $key, true);
+            if (!empty($value)) {
+                // Try to normalize date format
+                $timestamp = is_numeric($value) ? $value : strtotime($value);
+                if ($timestamp !== false) {
+                    $meta['checkin_date'] = date('Y-m-d', $timestamp);
+                    break;
+                }
+            }
+        }
+
+        // Check-out date with fallbacks
+        $checkout_keys = ['_mcs_checkout_date', '_checkout', 'checkout_date', 'check_out_date'];
+        foreach ($checkout_keys as $key) {
+            $value = get_post_meta($post_id, $key, true);
+            if (!empty($value)) {
+                // Try to normalize date format
+                $timestamp = is_numeric($value) ? $value : strtotime($value);
+                if ($timestamp !== false) {
+                    $meta['checkout_date'] = date('Y-m-d', $timestamp);
+                    break;
+                }
+            }
+        }
+
+        // Guest name with fallbacks
+        $guest_keys = ['_mcs_guest_name', 'guest_name', '_guest_name'];
+        foreach ($guest_keys as $key) {
+            $value = get_post_meta($post_id, $key, true);
+            if (!empty($value)) {
+                $meta['guest_name'] = sanitize_text_field($value);
+                break;
+            }
+        }
+
+        return $meta;
+    }
+
+    /**
      * Get dashboard counts and statistics
      *
-     * @param int $days Number of days to look back for bookings
+     * @param int $days Number of days to look forward for future bookings
+     * @param int|null $owner_user_id If set, filter to properties owned by this user
      * @return array
      */
-    public static function get_counts(int $days = 30): array
+    public static function get_counts(int $days = 30, ?int $owner_user_id = null): array
     {
         $counts = [
             'properties' => 0,
-            'bookings_period' => 0,
+            'confirmed_count' => 0,
+            'pending_count' => 0,
+            'total_count' => 0,
+            'bookings_period' => 0, // For backward compatibility
             'occupancy_pct' => null
         ];
 
         try {
-            // Count published properties
-            $properties_count = wp_count_posts('mcs_property');
-            $counts['properties'] = isset($properties_count->publish) ? (int) $properties_count->publish : 0;
+            // Get property IDs for owner filtering
+            $property_ids = [];
+            if ($owner_user_id !== null) {
+                $properties_query = new \WP_Query([
+                    'post_type' => 'mcs_property',
+                    'post_status' => 'any',
+                    'author' => $owner_user_id,
+                    'posts_per_page' => -1,
+                    'fields' => 'ids',
+                    'no_found_rows' => true,
+                    'update_post_meta_cache' => false,
+                    'update_post_term_cache' => false
+                ]);
+                $property_ids = $properties_query->posts;
+                $counts['properties'] = count($property_ids);
+            } else {
+                // Count all published properties
+                $properties_count = wp_count_posts('mcs_property');
+                $counts['properties'] = isset($properties_count->publish) ? (int) $properties_count->publish : 0;
+            }
 
-            // Count bookings in specified period
-            $start_date = date('Y-m-d', strtotime("-{$days} days"));
-            $end_date = date('Y-m-d');
+            // Future date range: today to today + days - 1
+            $start_date = date('Y-m-d');
+            $end_date = date('Y-m-d', strtotime("+{$days} days"));
 
+            // Get all bookings in the future period
             $bookings_query = new \WP_Query([
                 'post_type' => 'mcs_booking',
                 'post_status' => 'publish',
                 'posts_per_page' => -1,
-                'meta_query' => [
-                    'relation' => 'OR',
-                    [
-                        'key' => 'check_in_date',
-                        'value' => [$start_date, $end_date],
-                        'compare' => 'BETWEEN',
-                        'type' => 'DATE'
-                    ],
-                    [
-                        'key' => 'check_out_date',
-                        'value' => [$start_date, $end_date],
-                        'compare' => 'BETWEEN',
-                        'type' => 'DATE'
-                    ]
-                ],
                 'no_found_rows' => true,
-                'update_post_meta_cache' => false,
+                'update_post_meta_cache' => true,
                 'update_post_term_cache' => false
             ]);
 
-            $counts['bookings_period'] = $bookings_query->found_posts;
-            wp_reset_postdata();
+            if ($bookings_query->have_posts()) {
+                while ($bookings_query->have_posts()) {
+                    $bookings_query->the_post();
+                    $booking_id = get_the_ID();
+                    $booking_meta = self::read_booking_meta($booking_id);
 
-            // Calculate simple occupancy percentage (if possible)
-            if ($counts['properties'] > 0 && $counts['bookings_period'] > 0) {
-                // Simple calculation: bookings / (properties * days) * 100
-                // This is a rough estimate, not precise occupancy
-                $max_possible_days = $counts['properties'] * $days;
-                $total_booking_days = self::count_total_booking_days($start_date, $end_date);
+                    // Skip if no property ID or dates
+                    if (!$booking_meta['property_id'] || !$booking_meta['checkin_date']) {
+                        continue;
+                    }
 
-                if ($total_booking_days > 0 && $max_possible_days > 0) {
-                    $counts['occupancy_pct'] = min(100, round(($total_booking_days / $max_possible_days) * 100, 1));
+                    // Filter by owner's properties if specified
+                    if (!empty($property_ids) && !in_array($booking_meta['property_id'], $property_ids)) {
+                        continue;
+                    }
+
+                    // Check if booking falls within our future period
+                    $checkin = $booking_meta['checkin_date'];
+                    $checkout = $booking_meta['checkout_date'] ?: $checkin;
+
+                    if (($checkin >= $start_date && $checkin < $end_date) ||
+                        ($checkout >= $start_date && $checkout < $end_date) ||
+                        ($checkin <= $start_date && $checkout >= $end_date)) {
+
+                        $counts['total_count']++;
+
+                        if ($booking_meta['status'] === 'CONFIRMED') {
+                            $counts['confirmed_count']++;
+                        } elseif ($booking_meta['status'] === 'PENDING') {
+                            $counts['pending_count']++;
+                        }
+                    }
                 }
             }
 
-        } catch (Exception $e) {
+            wp_reset_postdata();
+
+            // Set backward compatibility field
+            $counts['bookings_period'] = $counts['total_count'];
+
+            // Calculate simple occupancy percentage (rough estimate)
+            if ($counts['properties'] > 0 && $counts['confirmed_count'] > 0) {
+                $max_possible_days = $counts['properties'] * $days;
+                $confirmed_booking_days = self::count_confirmed_booking_days($start_date, $end_date, $property_ids);
+
+                if ($confirmed_booking_days > 0 && $max_possible_days > 0) {
+                    $counts['occupancy_pct'] = min(100, round(($confirmed_booking_days / $max_possible_days) * 100, 1));
+                }
+            }
+
+        } catch (\Exception $e) {
             error_log('Minpaku Suite Dashboard Service Error: ' . $e->getMessage());
         }
 
@@ -86,93 +205,118 @@ class AdminDashboardService
      * Get recent bookings
      *
      * @param int $limit Number of bookings to retrieve
-     * @param int|null $days Number of days to look back, null for all bookings
+     * @param int|null $days Number of days to look forward for future bookings, null for all bookings
+     * @param int|null $owner_user_id If set, filter to properties owned by this user
      * @return array
      */
-    public static function get_recent_bookings(int $limit = 5, ?int $days = null): array
+    public static function get_recent_bookings(int $limit = 5, ?int $days = null, ?int $owner_user_id = null): array
     {
         $bookings = [];
 
         try {
+            // Get property IDs for owner filtering
+            $property_ids = [];
+            if ($owner_user_id !== null) {
+                $properties_query = new \WP_Query([
+                    'post_type' => 'mcs_property',
+                    'post_status' => 'any',
+                    'author' => $owner_user_id,
+                    'posts_per_page' => -1,
+                    'fields' => 'ids',
+                    'no_found_rows' => true,
+                    'update_post_meta_cache' => false,
+                    'update_post_term_cache' => false
+                ]);
+                $property_ids = $properties_query->posts;
+            }
+
             $query_args = [
                 'post_type' => 'mcs_booking',
                 'post_status' => 'publish',
-                'posts_per_page' => $limit,
+                'posts_per_page' => -1, // Get all first, then filter and limit
                 'orderby' => 'date',
                 'order' => 'DESC',
                 'no_found_rows' => true,
-                'update_post_term_cache' => false
+                'update_post_term_cache' => false,
+                'update_post_meta_cache' => true
             ];
 
-            // Add date filter if days specified
-            if ($days !== null) {
-                $start_date = date('Y-m-d', strtotime("-{$days} days"));
-                $query_args['meta_query'] = [
-                    'relation' => 'OR',
-                    [
-                        'key' => 'check_in_date',
-                        'value' => $start_date,
-                        'compare' => '>=',
-                        'type' => 'DATE'
-                    ],
-                    [
-                        'key' => 'check_out_date',
-                        'value' => $start_date,
-                        'compare' => '>=',
-                        'type' => 'DATE'
-                    ]
-                ];
-            }
-
             $query = new \WP_Query($query_args);
+            $matched_bookings = [];
 
             if ($query->have_posts()) {
                 while ($query->have_posts()) {
                     $query->the_post();
                     $booking_id = get_the_ID();
+                    $booking_meta = self::read_booking_meta($booking_id);
 
-                    // Try multiple meta keys for property ID
-                    $property_id = get_post_meta($booking_id, 'property_id', true);
-                    if (!$property_id) {
-                        $property_id = get_post_meta($booking_id, '_mcs_property_id', true);
+                    // Skip if no property ID
+                    if (!$booking_meta['property_id']) {
+                        continue;
                     }
 
+                    // Filter by owner's properties if specified
+                    if (!empty($property_ids) && !in_array($booking_meta['property_id'], $property_ids)) {
+                        continue;
+                    }
+
+                    // Date filtering for future bookings if days specified
+                    if ($days !== null && $booking_meta['checkin_date']) {
+                        $today = date('Y-m-d');
+                        $future_limit = date('Y-m-d', strtotime("+{$days} days"));
+                        $checkin = $booking_meta['checkin_date'];
+                        $checkout = $booking_meta['checkout_date'] ?: $checkin;
+
+                        // Only include if booking falls within future period
+                        if (!($checkin >= $today && $checkin < $future_limit) &&
+                            !($checkout >= $today && $checkout < $future_limit) &&
+                            !($checkin <= $today && $checkout >= $future_limit)) {
+                            continue;
+                        }
+                    }
+
+                    // Get property title with fallback
                     $property_title = __('Unknown Property', 'minpaku-suite');
-                    if ($property_id && get_post_status($property_id)) {
-                        $property_title = get_the_title($property_id);
+                    if ($booking_meta['property_id'] && get_post_status($booking_meta['property_id'])) {
+                        $property_title = get_the_title($booking_meta['property_id']);
                     }
-
-                    $check_in = get_post_meta($booking_id, 'check_in_date', true);
-                    $check_out = get_post_meta($booking_id, 'check_out_date', true);
-                    $status = get_post_meta($booking_id, 'status', true);
-                    $guest_name = get_post_meta($booking_id, 'guest_name', true);
 
                     // Calculate nights
                     $nights = 0;
-                    if ($check_in && $check_out) {
-                        $check_in_date = new \DateTime($check_in);
-                        $check_out_date = new \DateTime($check_out);
-                        $interval = $check_in_date->diff($check_out_date);
-                        $nights = $interval->days;
+                    if ($booking_meta['checkin_date'] && $booking_meta['checkout_date']) {
+                        try {
+                            $check_in_date = new \DateTime($booking_meta['checkin_date']);
+                            $check_out_date = new \DateTime($booking_meta['checkout_date']);
+                            $interval = $check_in_date->diff($check_out_date);
+                            $nights = $interval->days;
+                        } catch (\Exception $e) {
+                            // Date parsing error, nights stays 0
+                        }
                     }
 
-                    $bookings[] = [
+                    $matched_bookings[] = [
                         'id' => $booking_id,
+                        'property_id' => $booking_meta['property_id'],
                         'property_title' => $property_title,
-                        'property_id' => $property_id,
-                        'guest_name' => $guest_name ?: __('Guest', 'minpaku-suite'),
-                        'check_in' => $check_in,
-                        'check_out' => $check_out,
+                        'guest_name' => $booking_meta['guest_name'] ?: __('Guest', 'minpaku-suite'),
+                        'check_in' => $booking_meta['checkin_date'],
+                        'check_out' => $booking_meta['checkout_date'],
                         'nights' => $nights,
-                        'status' => $status ?: 'pending',
+                        'status' => strtolower($booking_meta['status']), // Convert back to lowercase for display
                         'edit_link' => get_edit_post_link($booking_id)
                     ];
+
+                    // Stop when we have enough
+                    if (count($matched_bookings) >= $limit) {
+                        break;
+                    }
                 }
             }
 
             wp_reset_postdata();
+            $bookings = $matched_bookings;
 
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             error_log('Minpaku Suite Dashboard Service Error: ' . $e->getMessage());
         }
 
@@ -238,13 +382,14 @@ class AdminDashboardService
     }
 
     /**
-     * Count total booking days in a date range
+     * Count confirmed booking days in a date range
      *
      * @param string $start_date Start date (Y-m-d)
      * @param string $end_date End date (Y-m-d)
-     * @return int Total booking days
+     * @param array $property_ids Optional array of property IDs to filter by
+     * @return int Total confirmed booking days
      */
-    private static function count_total_booking_days(string $start_date, string $end_date): int
+    private static function count_confirmed_booking_days(string $start_date, string $end_date, array $property_ids = []): int
     {
         $total_days = 0;
 
@@ -253,15 +398,8 @@ class AdminDashboardService
                 'post_type' => 'mcs_booking',
                 'post_status' => 'publish',
                 'posts_per_page' => -1,
-                'meta_query' => [
-                    [
-                        'key' => 'status',
-                        'value' => 'confirmed',
-                        'compare' => '='
-                    ]
-                ],
                 'no_found_rows' => true,
-                'update_post_meta_cache' => false,
+                'update_post_meta_cache' => true,
                 'update_post_term_cache' => false
             ]);
 
@@ -269,24 +407,37 @@ class AdminDashboardService
                 while ($query->have_posts()) {
                     $query->the_post();
                     $booking_id = get_the_ID();
+                    $booking_meta = self::read_booking_meta($booking_id);
 
-                    $check_in = get_post_meta($booking_id, 'check_in_date', true);
-                    $check_out = get_post_meta($booking_id, 'check_out_date', true);
+                    // Only count confirmed bookings
+                    if ($booking_meta['status'] !== 'CONFIRMED') {
+                        continue;
+                    }
 
-                    if ($check_in && $check_out) {
-                        $check_in_date = new \DateTime($check_in);
-                        $check_out_date = new \DateTime($check_out);
+                    // Filter by property IDs if specified
+                    if (!empty($property_ids) && !in_array($booking_meta['property_id'], $property_ids)) {
+                        continue;
+                    }
 
-                        // Only count days that overlap with our date range
-                        $range_start = new \DateTime($start_date);
-                        $range_end = new \DateTime($end_date);
+                    if ($booking_meta['checkin_date'] && $booking_meta['checkout_date']) {
+                        try {
+                            $check_in_date = new \DateTime($booking_meta['checkin_date']);
+                            $check_out_date = new \DateTime($booking_meta['checkout_date']);
 
-                        $overlap_start = max($check_in_date, $range_start);
-                        $overlap_end = min($check_out_date, $range_end);
+                            // Only count days that overlap with our date range
+                            $range_start = new \DateTime($start_date);
+                            $range_end = new \DateTime($end_date);
 
-                        if ($overlap_start <= $overlap_end) {
-                            $interval = $overlap_start->diff($overlap_end);
-                            $total_days += $interval->days;
+                            $overlap_start = max($check_in_date, $range_start);
+                            $overlap_end = min($check_out_date, $range_end);
+
+                            if ($overlap_start <= $overlap_end) {
+                                $interval = $overlap_start->diff($overlap_end);
+                                $total_days += $interval->days;
+                            }
+                        } catch (\Exception $e) {
+                            // Date parsing error, skip this booking
+                            continue;
                         }
                     }
                 }
@@ -294,7 +445,7 @@ class AdminDashboardService
 
             wp_reset_postdata();
 
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             error_log('Minpaku Suite Dashboard Service Error: ' . $e->getMessage());
         }
 
