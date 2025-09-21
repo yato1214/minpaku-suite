@@ -216,15 +216,36 @@ class Bootstrap
 
     public static function enqueue_admin_styles($hook_suffix)
     {
-        // Only enqueue on our plugin pages - include both 'minpaku-suite' and 'mcs-owner-portal' slugs
+        // Debug: Log the current hook suffix to understand the pattern
+        error_log("MCS Debug: Hook suffix = {$hook_suffix}");
+
+        // More comprehensive list of our plugin pages - include possible variations
         $our_pages = [
             'toplevel_page_minpaku-suite',
-            'minpaku_page_mcs-owner-portal'
+            'minpaku_page_mcs-owner-portal',
+            'minpaku-suite_page_mcs-owner-portal', // Alternative format
+            'admin_page_mcs-owner-portal' // Another possible format
         ];
 
-        if (in_array($hook_suffix, $our_pages)) {
+        // Also check if we're on any page with our slug using more flexible matching
+        $is_our_page = in_array($hook_suffix, $our_pages) ||
+                       strpos($hook_suffix, 'minpaku-suite') !== false ||
+                       strpos($hook_suffix, 'mcs-owner-portal') !== false;
+
+        // Additional check via GET parameter for more reliable detection
+        if (!$is_our_page && isset($_GET['page'])) {
+            $page_param = sanitize_text_field($_GET['page']);
+            $is_our_page = in_array($page_param, ['minpaku-suite', 'mcs-owner-portal']);
+            error_log("MCS Debug: Checking page param = {$page_param}, match = " . ($is_our_page ? 'YES' : 'NO'));
+        }
+
+        error_log("MCS Debug: Is our page = " . ($is_our_page ? 'YES' : 'NO'));
+
+        if ($is_our_page) {
             $css_file = MCS_URL . 'assets/admin.css';
             $css_path = MCS_PATH . 'assets/admin.css';
+
+            error_log("MCS Debug: CSS path = {$css_path}, exists = " . (file_exists($css_path) ? 'YES' : 'NO'));
 
             if (file_exists($css_path)) {
                 wp_enqueue_style(
@@ -233,6 +254,7 @@ class Bootstrap
                     [],
                     filemtime($css_path)
                 );
+                error_log("MCS Debug: CSS enqueued successfully");
             }
         }
     }

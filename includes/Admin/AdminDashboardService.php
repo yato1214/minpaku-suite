@@ -75,8 +75,8 @@ class AdminDashboardService
             }
         }
 
-        // Check-in date with fallbacks
-        $checkin_keys = ['_mcs_checkin_date', '_checkin', 'checkin_date', 'check_in_date'];
+        // Check-in date with fallbacks - _mcs_checkin is the primary field used by AdminMetabox
+        $checkin_keys = ['_mcs_checkin', '_mcs_checkin_date', '_checkin', 'checkin_date', 'check_in_date'];
         foreach ($checkin_keys as $key) {
             $value = get_post_meta($post_id, $key, true);
             if (!empty($value)) {
@@ -89,8 +89,8 @@ class AdminDashboardService
             }
         }
 
-        // Check-out date with fallbacks
-        $checkout_keys = ['_mcs_checkout_date', '_checkout', 'checkout_date', 'check_out_date'];
+        // Check-out date with fallbacks - _mcs_checkout is the primary field used by AdminMetabox
+        $checkout_keys = ['_mcs_checkout', '_mcs_checkout_date', '_checkout', 'checkout_date', 'check_out_date'];
         foreach ($checkout_keys as $key) {
             $value = get_post_meta($post_id, $key, true);
             if (!empty($value)) {
@@ -185,13 +185,20 @@ class AdminDashboardService
             ]);
 
             if ($bookings_query->have_posts()) {
+                $debug_total_bookings = $bookings_query->found_posts ?: count($bookings_query->posts);
+                error_log("MCS Debug: Found {$debug_total_bookings} total bookings for period {$start_date} to {$end_date}");
+
                 while ($bookings_query->have_posts()) {
                     $bookings_query->the_post();
                     $booking_id = get_the_ID();
                     $booking_meta = self::read_booking_meta($booking_id);
 
+                    // Debug booking metadata
+                    error_log("MCS Debug: Booking ID {$booking_id} - Property: {$booking_meta['property_id']}, Checkin: {$booking_meta['checkin_date']}, Checkout: {$booking_meta['checkout_date']}, Status: {$booking_meta['status']}");
+
                     // Skip if no property ID or checkin date
                     if (!$booking_meta['property_id'] || !$booking_meta['checkin_date']) {
+                        error_log("MCS Debug: Skipping booking {$booking_id} - Missing property_id or checkin_date");
                         continue;
                     }
 
@@ -205,7 +212,10 @@ class AdminDashboardService
                     $checkin = $booking_meta['checkin_date'];
                     $checkout = $booking_meta['checkout_date'] ?: $checkin;
 
-                    if ($checkout > $start_date && $checkin < $end_date) {
+                    $overlap_condition = ($checkout > $start_date && $checkin < $end_date);
+                    error_log("MCS Debug: Booking {$booking_id} overlap check - checkin: {$checkin}, checkout: {$checkout}, period: {$start_date} to {$end_date}, overlaps: " . ($overlap_condition ? 'YES' : 'NO'));
+
+                    if ($overlap_condition) {
                         $counts['total']++;
 
                         if ($booking_meta['status'] === 'CONFIRMED') {
@@ -213,6 +223,8 @@ class AdminDashboardService
                         } elseif ($booking_meta['status'] === 'PENDING') {
                             $counts['pending']++;
                         }
+
+                        error_log("MCS Debug: Booking {$booking_id} counted - Status: {$booking_meta['status']}, Total: {$counts['total']}, Confirmed: {$counts['confirmed']}, Pending: {$counts['pending']}");
                     }
                 }
             }
@@ -274,7 +286,7 @@ class AdminDashboardService
 
             $query_args = [
                 'post_type' => 'mcs_booking',
-                'post_status' => 'publish',
+                'post_status' => 'any', // Use 'any' to match get_counts() behavior
                 'posts_per_page' => -1, // Get all first, then filter and limit
                 'orderby' => 'date',
                 'order' => 'DESC',
