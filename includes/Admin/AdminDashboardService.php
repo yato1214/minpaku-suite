@@ -14,6 +14,32 @@ if (!defined('ABSPATH')) {
 class AdminDashboardService
 {
     /**
+     * Get property CPT name with fallback detection
+     *
+     * @return string Property CPT name
+     */
+    private static function get_property_cpt_name(): string
+    {
+        $possible_cpts = ['mcs_property', 'property'];
+
+        foreach ($possible_cpts as $cpt) {
+            if (post_type_exists($cpt)) {
+                return $cpt;
+            }
+        }
+
+        // Fallback: search for registered property CPTs
+        $post_types = get_post_types(['public' => true], 'names');
+        foreach ($post_types as $post_type) {
+            if (strpos($post_type, 'property') !== false || strpos($post_type, 'minpaku') !== false) {
+                return $post_type;
+            }
+        }
+
+        return 'mcs_property'; // Default fallback
+    }
+
+    /**
      * Read booking meta with fallback support
      *
      * @param int $post_id Booking post ID
@@ -99,21 +125,30 @@ class AdminDashboardService
      */
     public static function get_counts(int $days = 30, ?int $owner_user_id = null): array
     {
+        // Validate days parameter
+        $days = in_array($days, [30, 90, 365], true) ? $days : 30;
+
         $counts = [
             'properties' => 0,
-            'confirmed_count' => 0,
-            'pending_count' => 0,
-            'total_count' => 0,
+            'confirmed' => 0,
+            'pending' => 0,
+            'total' => 0,
+            'confirmed_count' => 0, // For backward compatibility
+            'pending_count' => 0,   // For backward compatibility
+            'total_count' => 0,     // For backward compatibility
             'bookings_period' => 0, // For backward compatibility
             'occupancy_pct' => null
         ];
 
         try {
+            // Get property CPT name with fallback
+            $property_cpt = self::get_property_cpt_name();
+
             // Get property IDs for owner filtering
             $property_ids = [];
             if ($owner_user_id !== null) {
                 $properties_query = new \WP_Query([
-                    'post_type' => 'mcs_property',
+                    'post_type' => $property_cpt,
                     'post_status' => 'any',
                     'author' => $owner_user_id,
                     'posts_per_page' => -1,
@@ -125,19 +160,24 @@ class AdminDashboardService
                 $property_ids = $properties_query->posts;
                 $counts['properties'] = count($property_ids);
             } else {
-                // Count all published properties
-                $properties_count = wp_count_posts('mcs_property');
+                // Count all properties
+                $properties_count = wp_count_posts($property_cpt);
                 $counts['properties'] = isset($properties_count->publish) ? (int) $properties_count->publish : 0;
             }
 
-            // Period range: today (00:00) to today + days (00:00) - bookings that overlap this period
-            $period_start = date('Y-m-d'); // today 00:00
-            $period_end = date('Y-m-d', strtotime("+{$days} days")); // today + days 00:00
+            // Period range: today (00:00) to today + days - 1 (23:59:59)
+            $tz = wp_timezone();
+            $period_start = new \DateTime('today', $tz);
+            $period_end = new \DateTime('today', $tz);
+            $period_end->modify("+{$days} days");
 
-            // Get all bookings
+            $start_date = $period_start->format('Y-m-d');
+            $end_date = $period_end->format('Y-m-d');
+
+            // Get all bookings (use post_status 'any' per spec)
             $bookings_query = new \WP_Query([
                 'post_type' => 'mcs_booking',
-                'post_status' => 'publish',
+                'post_status' => 'any',
                 'posts_per_page' => -1,
                 'no_found_rows' => true,
                 'update_post_meta_cache' => true,
@@ -150,7 +190,7 @@ class AdminDashboardService
                     $booking_id = get_the_ID();
                     $booking_meta = self::read_booking_meta($booking_id);
 
-                    // Skip if no property ID or dates
+                    // Skip if no property ID or checkin date
                     if (!$booking_meta['property_id'] || !$booking_meta['checkin_date']) {
                         continue;
                     }
@@ -161,17 +201,17 @@ class AdminDashboardService
                     }
 
                     // Check if booking overlaps with our period
-                    // Condition: checkout > period_start && checkin < period_end
+                    // Condition: checkout > start && checkin < end (overlap detection)
                     $checkin = $booking_meta['checkin_date'];
                     $checkout = $booking_meta['checkout_date'] ?: $checkin;
 
-                    if ($checkout > $period_start && $checkin < $period_end) {
-                        $counts['total_count']++;
+                    if ($checkout > $start_date && $checkin < $end_date) {
+                        $counts['total']++;
 
                         if ($booking_meta['status'] === 'CONFIRMED') {
-                            $counts['confirmed_count']++;
+                            $counts['confirmed']++;
                         } elseif ($booking_meta['status'] === 'PENDING') {
-                            $counts['pending_count']++;
+                            $counts['pending']++;
                         }
                     }
                 }
@@ -179,11 +219,14 @@ class AdminDashboardService
 
             wp_reset_postdata();
 
-            // Set backward compatibility field
-            $counts['bookings_period'] = $counts['total_count'];
+            // Set backward compatibility fields
+            $counts['confirmed_count'] = $counts['confirmed'];
+            $counts['pending_count'] = $counts['pending'];
+            $counts['total_count'] = $counts['total'];
+            $counts['bookings_period'] = $counts['total'];
 
             // Calculate simple occupancy percentage (rough estimate)
-            if ($counts['properties'] > 0 && $counts['confirmed_count'] > 0) {
+            if ($counts['properties'] > 0 && $counts['confirmed'] > 0) {
                 $max_possible_days = $counts['properties'] * $days;
                 $confirmed_booking_days = self::count_confirmed_booking_days($start_date, $end_date, $property_ids);
 
@@ -215,8 +258,9 @@ class AdminDashboardService
             // Get property IDs for owner filtering
             $property_ids = [];
             if ($owner_user_id !== null) {
+                $property_cpt = self::get_property_cpt_name();
                 $properties_query = new \WP_Query([
-                    'post_type' => 'mcs_property',
+                    'post_type' => $property_cpt,
                     'post_status' => 'any',
                     'author' => $owner_user_id,
                     'posts_per_page' => -1,
@@ -331,8 +375,9 @@ class AdminDashboardService
 
         try {
             $user_id = get_current_user_id();
+            $property_cpt = self::get_property_cpt_name();
             $query_args = [
-                'post_type' => 'mcs_property',
+                'post_type' => $property_cpt,
                 'post_status' => ['publish', 'draft', 'private'],
                 'posts_per_page' => $limit,
                 'orderby' => 'date',
@@ -392,7 +437,7 @@ class AdminDashboardService
         try {
             $query = new \WP_Query([
                 'post_type' => 'mcs_booking',
-                'post_status' => 'publish',
+                'post_status' => 'any',
                 'posts_per_page' => -1,
                 'no_found_rows' => true,
                 'update_post_meta_cache' => true,
