@@ -62,3 +62,12 @@ logs/
 /uploads/
 /cache/
 /backups/
+/.claude/settings.local.json
+# IDE / local tools
+.idea/
+.claude/
+*.local.json
+
+# OS/Editor noise
+.DS_Store
+Thumbs.db
