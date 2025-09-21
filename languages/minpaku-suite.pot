@@ -401,3 +401,119 @@ msgstr ""
 
 msgid "Property has been pre-selected and cannot be changed."
 msgstr ""
+
+#. Owner Portal strings
+msgid "Property Owner"
+msgstr ""
+
+msgid "Please log in to access the owner dashboard."
+msgstr ""
+
+msgid "Log In"
+msgstr ""
+
+msgid "You do not have permission to access the owner dashboard."
+msgstr ""
+
+msgid "Unable to load dashboard."
+msgstr ""
+
+msgid "My Properties Dashboard"
+msgstr ""
+
+msgid "Period:"
+msgstr ""
+
+msgid "Next 30 days"
+msgstr ""
+
+msgid "Next 90 days"
+msgstr ""
+
+msgid "Next year"
+msgstr ""
+
+msgid "Properties"
+msgstr ""
+
+msgid "Confirmed Bookings"
+msgstr ""
+
+msgid "Pending Bookings"
+msgstr ""
+
+msgid "Total Bookings"
+msgstr ""
+
+msgid "My Properties"
+msgstr ""
+
+msgid "No properties found."
+msgstr ""
+
+msgid "Add Your First Property"
+msgstr ""
+
+msgid "Previous"
+msgstr ""
+
+msgid "Next"
+msgstr ""
+
+msgid "Published"
+msgstr ""
+
+msgid "Draft"
+msgstr ""
+
+msgid "Private"
+msgstr ""
+
+msgid "Pending Review"
+msgstr ""
+
+msgid "%d guests"
+msgstr ""
+
+msgid "Confirmed"
+msgstr ""
+
+msgid "Pending"
+msgstr ""
+
+msgid "Cancelled"
+msgstr ""
+
+msgid "Edit"
+msgstr ""
+
+msgid "View"
+msgstr ""
+
+msgid "Calendar"
+msgstr ""
+
+msgid "Copied!"
+msgstr ""
+
+msgid "Shortcode copied to clipboard:"
+msgstr ""
+
+msgid "Owner Portal"
+msgstr ""
+
+msgid "Owner portal is not available."
+msgstr ""
+
+#. API strings
+msgid "Unable to fetch summary data."
+msgstr ""
+
+msgid "Unable to fetch properties data."
+msgstr ""
+
+msgid "Property not found."
+msgstr ""
+
+msgid "Unable to fetch property data."
+msgstr ""
