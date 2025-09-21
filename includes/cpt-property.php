@@ -52,7 +52,7 @@ function mcs_register_property_cpt(): void {
         'hierarchical'          => false,
         'public'                => true,
         'show_ui'               => true,
-        'show_in_menu'          => 'minpaku-suite',
+        'show_in_menu'          => false,
         'menu_position'         => 20,
         'menu_icon'             => 'dashicons-admin-home',
         'show_in_admin_bar'     => true,
@@ -110,7 +110,7 @@ function mcs_register_booking_cpt(): void {
         'hierarchical'          => false,
         'public'                => false,
         'show_ui'               => true,
-        'show_in_menu'          => 'edit.php?post_type=mcs_property',
+        'show_in_menu'          => false,
         'menu_position'         => null,
         'show_in_admin_bar'     => false,
         'show_in_nav_menus'     => false,
@@ -127,22 +127,6 @@ function mcs_register_booking_cpt(): void {
     register_post_type('mcs_booking', $args);
 }
 
-/**
- * Add Minpaku admin menu
- */
-function mcs_add_admin_menu(): void {
-    add_menu_page(
-        __('Minpaku', 'minpaku-suite'),
-        __('Minpaku', 'minpaku-suite'),
-        'manage_options',
-        'minpaku-suite',
-        '',
-        'dashicons-admin-home',
-        20
-    );
-}
-
-// Register the custom post types and admin menu on init
-add_action('init', 'mcs_register_property_cpt');
-add_action('init', 'mcs_register_booking_cpt');
-add_action('admin_menu', 'mcs_add_admin_menu');
+// Register the custom post types (called by bootstrap)
+mcs_register_property_cpt();
+mcs_register_booking_cpt();

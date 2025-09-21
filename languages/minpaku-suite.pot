@@ -239,3 +239,18 @@ msgstr ""
 
 msgid "Property photo gallery"
 msgstr ""
+
+msgid "Minpaku Suite"
+msgstr ""
+
+msgid "Welcome to Minpaku Suite dashboard."
+msgstr ""
+
+msgid "Quick Links"
+msgstr ""
+
+msgid "Manage Properties"
+msgstr ""
+
+msgid "Manage Bookings"
+msgstr ""

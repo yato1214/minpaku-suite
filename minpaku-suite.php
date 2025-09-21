@@ -18,8 +18,10 @@ if (!defined('ABSPATH')) {
 
 define('MINPAKU_SUITE_VERSION', '0.4.1');
 define('MINPAKU_SUITE_PLUGIN_FILE', __FILE__);
-define('MINPAKU_SUITE_PLUGIN_DIR', plugin_dir_path(__FILE__));
-define('MINPAKU_SUITE_PLUGIN_URL', plugin_dir_url(__FILE__));
+define('MCS_PATH', plugin_dir_path(__FILE__));
+define('MCS_URL', plugin_dir_url(__FILE__));
+define('MINPAKU_SUITE_PLUGIN_DIR', MCS_PATH);
+define('MINPAKU_SUITE_PLUGIN_URL', MCS_URL);
 
 function minpaku_suite_load_textdomain() {
     load_plugin_textdomain(
@@ -33,30 +35,41 @@ add_action('plugins_loaded', 'minpaku_suite_load_textdomain');
 function minpaku_suite_load_ics() {
     $mcs_ics_path = WP_PLUGIN_DIR . '/minpaku-channel-sync/includes/class-mcs-ics.php';
 
-    if (is_plugin_active('minpaku-channel-sync/minpaku-channel-sync.php')) {
+    if (function_exists('is_plugin_active') && is_plugin_active('minpaku-channel-sync/minpaku-channel-sync.php')) {
         if (file_exists($mcs_ics_path)) {
             require_once $mcs_ics_path;
         }
     }
 
-    $builtin_ics_path = MINPAKU_SUITE_PLUGIN_DIR . 'includes/class-ics.php';
+    $builtin_ics_path = MCS_PATH . 'includes/class-ics.php';
     if (file_exists($builtin_ics_path) && !class_exists('MCS_Ics')) {
         require_once $builtin_ics_path;
     }
 }
 
 function minpaku_suite_init() {
-    minpaku_suite_load_ics();
+    try {
+        minpaku_suite_load_ics();
 
-    if (file_exists(MINPAKU_SUITE_PLUGIN_DIR . 'includes/Bootstrap.php')) {
-        require_once MINPAKU_SUITE_PLUGIN_DIR . 'includes/Bootstrap.php';
+        $bootstrap_path = MCS_PATH . 'includes/bootstrap.php';
+        if (file_exists($bootstrap_path)) {
+            require_once $bootstrap_path;
 
-        if (class_exists('MinpakuSuite\Bootstrap')) {
-            MinpakuSuite\Bootstrap::init();
+            if (class_exists('MinpakuSuite\Bootstrap')) {
+                MinpakuSuite\Bootstrap::init();
+            } else {
+                throw new Exception('Bootstrap class not found');
+            }
+        } else {
+            throw new Exception('Bootstrap file not found: ' . $bootstrap_path);
         }
+    } catch (Exception $e) {
+        add_action('admin_notices', function() use ($e) {
+            echo '<div class="notice notice-error"><p><strong>Minpaku Suite Error:</strong> ' . esc_html($e->getMessage()) . '</p></div>';
+        });
     }
 }
-add_action('init', 'minpaku_suite_init');
+add_action('plugins_loaded', 'minpaku_suite_init', 20);
 
 function minpaku_suite_activate() {
     flush_rewrite_rules();
