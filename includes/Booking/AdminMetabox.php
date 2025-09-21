@@ -194,6 +194,12 @@ class AdminMetabox
 
         // Validate required fields
         $property_id = intval($_POST['mcs_property_id'] ?? 0);
+
+        // Check for preset property_id from hidden field
+        if (!$property_id && !empty($_POST['_mcs_property_id'])) {
+            $property_id = intval($_POST['_mcs_property_id']);
+        }
+
         $checkin = sanitize_text_field($_POST['mcs_checkin'] ?? '');
         $checkout = sanitize_text_field($_POST['mcs_checkout'] ?? '');
 
@@ -205,8 +211,8 @@ class AdminMetabox
         }
 
         // Validate dates
-        $checkin_date = DateTime::createFromFormat('Y-m-d', $checkin);
-        $checkout_date = DateTime::createFromFormat('Y-m-d', $checkout);
+        $checkin_date = \DateTime::createFromFormat('Y-m-d', $checkin);
+        $checkout_date = \DateTime::createFromFormat('Y-m-d', $checkout);
 
         if (!$checkin_date || !$checkout_date || $checkin_date >= $checkout_date) {
             add_action('admin_notices', function() {

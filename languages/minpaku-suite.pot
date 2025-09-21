@@ -364,3 +364,34 @@ msgstr ""
 
 msgid "Legend"
 msgstr ""
+
+#. Quick Links strings
+msgid "Quick Actions"
+msgstr ""
+
+msgid "Add Booking for this Property"
+msgstr ""
+
+msgid "View All Bookings"
+msgstr ""
+
+msgid "View Availability Calendar"
+msgstr ""
+
+msgid "Booking Stats"
+msgstr ""
+
+msgid "Total"
+msgstr ""
+
+msgid "Add Booking"
+msgstr ""
+
+msgid "Booking"
+msgstr ""
+
+msgid "Creating booking for property:"
+msgstr ""
+
+msgid "Property has been pre-selected and cannot be changed."
+msgstr ""

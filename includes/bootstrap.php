@@ -130,6 +130,22 @@ class Bootstrap
                     \MinpakuSuite\Booking\ListColumns::init();
                 }
             }
+
+            $quicklinks_file = MCS_PATH . 'includes/Booking/AdminQuickLinks.php';
+            if (file_exists($quicklinks_file)) {
+                require_once $quicklinks_file;
+                if (class_exists('MinpakuSuite\Booking\AdminQuickLinks')) {
+                    \MinpakuSuite\Booking\AdminQuickLinks::init();
+                }
+            }
+
+            $preset_file = MCS_PATH . 'includes/Booking/AdminNewPreset.php';
+            if (file_exists($preset_file)) {
+                require_once $preset_file;
+                if (class_exists('MinpakuSuite\Booking\AdminNewPreset')) {
+                    \MinpakuSuite\Booking\AdminNewPreset::init();
+                }
+            }
         } catch (Exception $e) {
             error_log('Minpaku Suite Booking Components Error: ' . $e->getMessage());
         }

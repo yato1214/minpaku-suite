@@ -78,8 +78,8 @@ class ListColumns
                 $checkin = get_post_meta($post_id, '_mcs_checkin', true);
                 $checkout = get_post_meta($post_id, '_mcs_checkout', true);
                 if ($checkin && $checkout) {
-                    $checkin_date = DateTime::createFromFormat('Y-m-d', $checkin);
-                    $checkout_date = DateTime::createFromFormat('Y-m-d', $checkout);
+                    $checkin_date = \DateTime::createFromFormat('Y-m-d', $checkin);
+                    $checkout_date = \DateTime::createFromFormat('Y-m-d', $checkout);
                     if ($checkin_date && $checkout_date) {
                         $nights = $checkout_date->diff($checkin_date)->days;
                         echo esc_html($nights);
