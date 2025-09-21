@@ -254,3 +254,113 @@ msgstr ""
 
 msgid "Manage Bookings"
 msgstr ""
+
+#. Booking strings
+msgid "Reservation Details"
+msgstr ""
+
+msgid "Select Property"
+msgstr ""
+
+msgid "Guest Name"
+msgstr ""
+
+msgid "Guest Email"
+msgstr ""
+
+msgid "Guest Phone"
+msgstr ""
+
+msgid "Check-in Date"
+msgstr ""
+
+msgid "Check-out Date"
+msgstr ""
+
+msgid "Number of Guests"
+msgstr ""
+
+msgid "Status"
+msgstr ""
+
+msgid "Confirmed"
+msgstr ""
+
+msgid "Pending"
+msgstr ""
+
+msgid "Cancelled"
+msgstr ""
+
+msgid "Notes"
+msgstr ""
+
+msgid "Check-out date must be after check-in date."
+msgstr ""
+
+msgid "Property, check-in and check-out dates are required."
+msgstr ""
+
+msgid "Check-in/out"
+msgstr ""
+
+msgid "Nights"
+msgstr ""
+
+msgid "Guests"
+msgstr ""
+
+msgid "Property not found"
+msgstr ""
+
+msgid "All Properties"
+msgstr ""
+
+msgid "Add Booking for this Property"
+msgstr ""
+
+#. Calendar strings
+msgid "Property ID is required."
+msgstr ""
+
+msgid "Property not found."
+msgstr ""
+
+msgid "Unable to load calendar."
+msgstr ""
+
+msgid "Availability service not available."
+msgstr ""
+
+msgid "Sun"
+msgstr ""
+
+msgid "Mon"
+msgstr ""
+
+msgid "Tue"
+msgstr ""
+
+msgid "Wed"
+msgstr ""
+
+msgid "Thu"
+msgstr ""
+
+msgid "Fri"
+msgstr ""
+
+msgid "Sat"
+msgstr ""
+
+msgid "Fully Booked"
+msgstr ""
+
+msgid "Partially Available"
+msgstr ""
+
+msgid "Available"
+msgstr ""
+
+msgid "Legend"
+msgstr ""

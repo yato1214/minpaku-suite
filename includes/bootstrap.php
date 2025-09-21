@@ -12,6 +12,8 @@ class Bootstrap
     {
         add_action('plugins_loaded', [__CLASS__, 'i18n'], 5);
         add_action('init', [__CLASS__, 'register_cpts'], 10);
+        add_action('init', [__CLASS__, 'register_booking_components'], 15);
+        add_action('init', [__CLASS__, 'register_ui_components'], 15);
         add_action('acf/init', [__CLASS__, 'register_acf'], 10);
         add_action('admin_menu', [__CLASS__, 'register_menu'], 9);
         add_action('rest_api_init', [__CLASS__, 'register_rest'], 10);
@@ -107,6 +109,52 @@ class Bootstrap
         echo '<li><a href="' . admin_url('edit.php?post_type=mcs_booking') . '">' . esc_html(__('Manage Bookings', 'minpaku-suite')) . '</a></li>';
         echo '</ul>';
         echo '</div>';
+    }
+
+    public static function register_booking_components()
+    {
+        try {
+            // Register booking admin components
+            $metabox_file = MCS_PATH . 'includes/Booking/AdminMetabox.php';
+            if (file_exists($metabox_file)) {
+                require_once $metabox_file;
+                if (class_exists('MinpakuSuite\Booking\AdminMetabox')) {
+                    \MinpakuSuite\Booking\AdminMetabox::init();
+                }
+            }
+
+            $columns_file = MCS_PATH . 'includes/Booking/ListColumns.php';
+            if (file_exists($columns_file)) {
+                require_once $columns_file;
+                if (class_exists('MinpakuSuite\Booking\ListColumns')) {
+                    \MinpakuSuite\Booking\ListColumns::init();
+                }
+            }
+        } catch (Exception $e) {
+            error_log('Minpaku Suite Booking Components Error: ' . $e->getMessage());
+        }
+    }
+
+    public static function register_ui_components()
+    {
+        try {
+            // Register UI components
+            $calendar_file = MCS_PATH . 'includes/UI/AvailabilityCalendar.php';
+            if (file_exists($calendar_file)) {
+                require_once $calendar_file;
+                if (class_exists('MinpakuSuite\UI\AvailabilityCalendar')) {
+                    \MinpakuSuite\UI\AvailabilityCalendar::init();
+                }
+            }
+
+            // Register availability service
+            $service_file = MCS_PATH . 'includes/Availability/AvailabilityService.php';
+            if (file_exists($service_file)) {
+                require_once $service_file;
+            }
+        } catch (Exception $e) {
+            error_log('Minpaku Suite UI Components Error: ' . $e->getMessage());
+        }
     }
 
     public static function register_rest()
