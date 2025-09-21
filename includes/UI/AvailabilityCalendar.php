@@ -25,15 +25,18 @@ class AvailabilityCalendar
     public static function render_shortcode($atts): string
     {
         $atts = shortcode_atts([
-            'id' => 0,
+            'id' => '',
+            'slug' => '',
+            'title' => '',
             'months' => 2
         ], $atts);
 
-        $property_id = intval($atts['id']);
         $months = max(1, min(12, intval($atts['months'])));
+        $property_id = self::resolvePropertyId($atts);
+        $resolution_method = '';
 
         if (!$property_id) {
-            return '<p class="mcs-error">' . __('Property ID is required.', 'minpaku-suite') . '</p>';
+            return '<p class="mcs-error">' . __('Property is not specified. Please set id, slug or title.', 'minpaku-suite') . '</p>';
         }
 
         $property = get_post($property_id);
@@ -42,11 +45,133 @@ class AvailabilityCalendar
         }
 
         try {
-            return self::renderCalendar($property_id, $months);
+            $diagnostic_comment = self::getDiagnosticComment($atts, $property_id);
+            return $diagnostic_comment . self::renderCalendar($property_id, $months);
         } catch (Exception $e) {
             error_log('Minpaku Suite Calendar Error: ' . $e->getMessage());
-            return '<p class="mcs-error">' . __('Unable to load calendar.', 'minpaku-suite') . '</p>';
+            $notice = '<div class="mcs-calendar-notice">' . __('Unable to load availability data.', 'minpaku-suite') . '</div>';
+            return $notice . self::renderCalendarSkeleton($months);
         }
+    }
+
+    /**
+     * Resolve property ID from shortcode attributes
+     */
+    private static function resolvePropertyId($atts): int
+    {
+        // A. id が数値なら採用
+        if (!empty($atts['id']) && is_numeric($atts['id'])) {
+            $id = absint($atts['id']);
+            if ($id > 0) {
+                return $id;
+            }
+        }
+
+        // B. slug があれば get_page_by_path($slug, OBJECT, 'mcs_property')
+        if (!empty($atts['slug'])) {
+            $slug = sanitize_text_field($atts['slug']);
+            $property = get_page_by_path($slug, OBJECT, 'mcs_property');
+            if ($property && $property->post_type === 'mcs_property') {
+                return $property->ID;
+            }
+        }
+
+        // C. title があれば WP_Query で post_type=mcs_property & title完全一致（1件）
+        if (!empty($atts['title'])) {
+            $title = sanitize_text_field($atts['title']);
+            $query = new \WP_Query([
+                'post_type' => 'mcs_property',
+                'title' => $title,
+                'posts_per_page' => 1,
+                'post_status' => 'publish',
+                'no_found_rows' => true,
+                'update_post_meta_cache' => false,
+                'update_post_term_cache' => false
+            ]);
+
+            if ($query->have_posts()) {
+                $property = $query->posts[0];
+                wp_reset_postdata();
+                return $property->ID;
+            }
+            wp_reset_postdata();
+        }
+
+        // D. is_singular('mcs_property') の時は get_the_ID()
+        if (is_singular('mcs_property')) {
+            $current_id = get_the_ID();
+            if ($current_id) {
+                return $current_id;
+            }
+        }
+
+        return 0;
+    }
+
+    /**
+     * Get diagnostic comment for development
+     */
+    private static function getDiagnosticComment($atts, int $property_id): string
+    {
+        if (!current_user_can('manage_options')) {
+            return '';
+        }
+
+        $method = '';
+        if (!empty($atts['id']) && is_numeric($atts['id']) && absint($atts['id']) === $property_id) {
+            $method = 'id=' . $atts['id'];
+        } elseif (!empty($atts['slug'])) {
+            $method = 'slug=' . $atts['slug'];
+        } elseif (!empty($atts['title'])) {
+            $method = 'title=' . $atts['title'];
+        } elseif (is_singular('mcs_property')) {
+            $method = 'singular page';
+        }
+
+        return "<!-- mcs_availability: resolved by {$method} to ID={$property_id} -->\n";
+    }
+
+    /**
+     * Render calendar skeleton when service fails
+     */
+    private static function renderCalendarSkeleton(int $months): string
+    {
+        $output = '<div class="mcs-availability-calendar mcs-calendar-skeleton">';
+
+        $current_date = new \DateTime();
+        $current_date->modify('first day of this month');
+
+        for ($i = 0; $i < $months; $i++) {
+            $output .= '<div class="mcs-calendar-month">';
+            $output .= '<h3 class="mcs-month-title">' . $current_date->format('F Y') . '</h3>';
+            $output .= '<div class="mcs-calendar-grid">';
+
+            // Day headers
+            $day_names = [
+                __('Sun', 'minpaku-suite'),
+                __('Mon', 'minpaku-suite'),
+                __('Tue', 'minpaku-suite'),
+                __('Wed', 'minpaku-suite'),
+                __('Thu', 'minpaku-suite'),
+                __('Fri', 'minpaku-suite'),
+                __('Sat', 'minpaku-suite')
+            ];
+
+            foreach ($day_names as $day_name) {
+                $output .= '<div class="mcs-day-header">' . esc_html($day_name) . '</div>';
+            }
+
+            // Empty calendar grid
+            for ($j = 0; $j < 42; $j++) {
+                $output .= '<div class="mcs-day mcs-day--skeleton"></div>';
+            }
+
+            $output .= '</div></div>';
+            $current_date->modify('+1 month');
+        }
+
+        $output .= '</div>';
+        return $output;
     }
 
     /**
@@ -381,6 +506,26 @@ class AvailabilityCalendar
                 padding: 10px;
                 border-radius: 4px;
                 border: 1px solid #f5c6cb;
+            }
+
+            .mcs-calendar-notice {
+                color: #856404;
+                background: #fff3cd;
+                padding: 10px;
+                border-radius: 4px;
+                border: 1px solid #ffeaa7;
+                margin-bottom: 15px;
+            }
+
+            .mcs-calendar-skeleton .mcs-day--skeleton {
+                background: #f8f9fa;
+                opacity: 0.7;
+                cursor: default;
+            }
+
+            .mcs-calendar-skeleton .mcs-day--skeleton:hover {
+                transform: none;
+                box-shadow: none;
             }
 
             @media (max-width: 600px) {

@@ -365,6 +365,12 @@ msgstr ""
 msgid "Legend"
 msgstr ""
 
+msgid "Property is not specified. Please set id, slug or title."
+msgstr ""
+
+msgid "Unable to load availability data."
+msgstr ""
+
 #. Quick Links strings
 msgid "Quick Actions"
 msgstr ""
