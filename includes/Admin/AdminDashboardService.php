@@ -130,11 +130,11 @@ class AdminDashboardService
                 $counts['properties'] = isset($properties_count->publish) ? (int) $properties_count->publish : 0;
             }
 
-            // Future date range: today to today + days - 1
-            $start_date = date('Y-m-d');
-            $end_date = date('Y-m-d', strtotime("+{$days} days"));
+            // Period range: today (00:00) to today + days (00:00) - bookings that overlap this period
+            $period_start = date('Y-m-d'); // today 00:00
+            $period_end = date('Y-m-d', strtotime("+{$days} days")); // today + days 00:00
 
-            // Get all bookings in the future period
+            // Get all bookings
             $bookings_query = new \WP_Query([
                 'post_type' => 'mcs_booking',
                 'post_status' => 'publish',
@@ -160,14 +160,12 @@ class AdminDashboardService
                         continue;
                     }
 
-                    // Check if booking falls within our future period
+                    // Check if booking overlaps with our period
+                    // Condition: checkout > period_start && checkin < period_end
                     $checkin = $booking_meta['checkin_date'];
                     $checkout = $booking_meta['checkout_date'] ?: $checkin;
 
-                    if (($checkin >= $start_date && $checkin < $end_date) ||
-                        ($checkout >= $start_date && $checkout < $end_date) ||
-                        ($checkin <= $start_date && $checkout >= $end_date)) {
-
+                    if ($checkout > $period_start && $checkin < $period_end) {
                         $counts['total_count']++;
 
                         if ($booking_meta['status'] === 'CONFIRMED') {
@@ -260,17 +258,15 @@ class AdminDashboardService
                         continue;
                     }
 
-                    // Date filtering for future bookings if days specified
+                    // Date filtering if days specified - use same overlap logic as get_counts
                     if ($days !== null && $booking_meta['checkin_date']) {
-                        $today = date('Y-m-d');
-                        $future_limit = date('Y-m-d', strtotime("+{$days} days"));
+                        $period_start = date('Y-m-d'); // today 00:00
+                        $period_end = date('Y-m-d', strtotime("+{$days} days")); // today + days 00:00
                         $checkin = $booking_meta['checkin_date'];
                         $checkout = $booking_meta['checkout_date'] ?: $checkin;
 
-                        // Only include if booking falls within future period
-                        if (!($checkin >= $today && $checkin < $future_limit) &&
-                            !($checkout >= $today && $checkout < $future_limit) &&
-                            !($checkin <= $today && $checkout >= $future_limit)) {
+                        // Only include if booking overlaps with period: checkout > period_start && checkin < period_end
+                        if (!($checkout > $period_start && $checkin < $period_end)) {
                             continue;
                         }
                     }

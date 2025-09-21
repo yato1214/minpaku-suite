@@ -513,3 +513,6 @@ msgstr "選択期間の予約%d件"
 
 msgid "Overview"
 msgstr "概要"
+
+msgid "今後%d日"
+msgstr "今後%d日"

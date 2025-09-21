@@ -539,3 +539,6 @@ msgstr ""
 
 msgid "Overview"
 msgstr ""
+
+msgid "今後%d日"
+msgstr ""

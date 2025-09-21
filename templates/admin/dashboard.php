@@ -37,20 +37,15 @@ $my_properties = MinpakuSuite\Admin\AdminDashboardService::get_my_properties();
             </span>
             <div class="mcs-segmented">
                 <?php
-                $current_page = $is_owner_portal ? 'mcs-owner-portal' : 'minpaku-suite';
-                $periods = [
-                    30 => __('Next 30 days', 'minpaku-suite'),
-                    90 => __('Next 90 days', 'minpaku-suite'),
-                    365 => __('Next 365 days', 'minpaku-suite')
-                ];
-                foreach ($periods as $days => $label) :
-                    $is_active = ($days === $selected_days) ? 'is-active' : '';
-                    $url = admin_url('admin.php?page=' . $current_page . '&days=' . $days);
+                $current_page = isset($_GET['page']) ? sanitize_text_field($_GET['page']) : 'minpaku-suite';
+                $base = admin_url('admin.php?page=' . $current_page);
+                foreach ([30, 90, 365] as $d) {
+                    $active = ($selected_days === $d) ? ' is-active' : '';
+                    $url = add_query_arg('days', $d, $base);
+                    $label = sprintf(__('今後%d日', 'minpaku-suite'), $d);
+                    echo '<a class="mcs-segmented__btn' . $active . '" href="' . esc_url($url) . '">' . esc_html($label) . '</a>';
+                }
                 ?>
-                    <a href="<?php echo esc_url($url); ?>" class="mcs-segmented__btn <?php echo esc_attr($is_active); ?>">
-                        <?php echo esc_html($label); ?>
-                    </a>
-                <?php endforeach; ?>
             </div>
         </div>
     </div>
