@@ -124,20 +124,52 @@ class OwnerDashboard
             'paged' => get_query_var('paged') ?: 1
         ]);
 
-        $output = '<div class="mcs-owner-dashboard">';
+        $output = '';
 
-        // Dashboard header
-        $output .= '<div class="mcs-dashboard-header">';
-        $output .= '<h2>' . esc_html(__('My Properties Dashboard', 'minpaku-suite')) . '</h2>';
-        $output .= self::render_period_filter($period);
+        // Overview Cards (using admin card UI style)
+        $output .= '<div class="mcs-overview">';
+        $output .= '<h2>' . esc_html(__('Overview', 'minpaku-suite')) . '</h2>';
+        $output .= '<div class="mcs-cards">';
+
+        // Properties Card
+        $output .= '<div class="mcs-card">';
+        $output .= '<div class="mcs-card-header">';
+        $output .= '<div class="mcs-card-icon mcs-card-icon--properties"><span class="dashicons dashicons-admin-multisite"></span></div>';
+        $output .= '<h3 class="mcs-card-title">' . esc_html(__('Properties', 'minpaku-suite')) . '</h3>';
+        $output .= '</div>';
+        $output .= '<div class="mcs-card-value">' . esc_html(number_format($summary['properties_count'] ?? 0)) . '</div>';
+        $output .= '<p class="mcs-card-label">' . esc_html(__('Total properties', 'minpaku-suite')) . '</p>';
         $output .= '</div>';
 
-        // Summary stats
-        $output .= self::render_summary_stats($summary, $period);
+        // Confirmed Bookings Card
+        $output .= '<div class="mcs-card">';
+        $output .= '<div class="mcs-card-header">';
+        $output .= '<div class="mcs-card-icon mcs-card-icon--bookings"><span class="dashicons dashicons-calendar-alt"></span></div>';
+        $output .= '<h3 class="mcs-card-title">' . esc_html(__('Confirmed Bookings', 'minpaku-suite')) . '</h3>';
+        $output .= '</div>';
+        $output .= '<div class="mcs-card-value">' . esc_html(number_format($summary['confirmed_bookings'] ?? 0)) . '</div>';
+        $output .= '<p class="mcs-card-label">' . esc_html(sprintf(__('Last %d days', 'minpaku-suite'), $period)) . '</p>';
+        $output .= '</div>';
 
-        // Properties list
-        $output .= '<div class="mcs-properties-section">';
-        $output .= '<h3>' . esc_html(__('My Properties', 'minpaku-suite')) . '</h3>';
+        // Total Bookings Card
+        $output .= '<div class="mcs-card">';
+        $output .= '<div class="mcs-card-header">';
+        $output .= '<div class="mcs-card-icon mcs-card-icon--occupancy"><span class="dashicons dashicons-chart-line"></span></div>';
+        $output .= '<h3 class="mcs-card-title">' . esc_html(__('Total Bookings', 'minpaku-suite')) . '</h3>';
+        $output .= '</div>';
+        $output .= '<div class="mcs-card-value">' . esc_html(number_format($summary['total_bookings'] ?? 0)) . '</div>';
+        $output .= '<p class="mcs-card-label">' . esc_html(sprintf(__('Last %d days', 'minpaku-suite'), $period)) . '</p>';
+        $output .= '</div>';
+
+        $output .= '</div>';
+        $output .= '</div>';
+
+        // Properties Section (using admin section style)
+        $output .= '<div class="mcs-section">';
+        $output .= '<div class="mcs-section-header">';
+        $output .= '<h2 class="mcs-section-title">' . esc_html(__('My Properties', 'minpaku-suite')) . '</h2>';
+        $output .= '</div>';
+        $output .= '<div class="mcs-section-content">';
 
         if ($properties_query->have_posts()) {
             $output .= '<div class="mcs-properties-grid">';
@@ -150,7 +182,12 @@ class OwnerDashboard
             // Pagination
             $output .= self::render_pagination($properties_query);
         } else {
-            $output .= '<p class="mcs-no-properties">' . esc_html(__('No properties found.', 'minpaku-suite')) . '</p>';
+            $output .= '<div class="mcs-empty">';
+            $output .= '<div class="mcs-empty-icon"><span class="dashicons dashicons-admin-multisite"></span></div>';
+            $output .= '<h3 class="mcs-empty-title">' . esc_html(__('No properties found.', 'minpaku-suite')) . '</h3>';
+            $output .= '<p class="mcs-empty-text">' . esc_html(__('Start by adding your first property to get started.', 'minpaku-suite')) . '</p>';
+            $output .= '<a href="' . esc_url(admin_url('post-new.php?post_type=mcs_property')) . '" class="mcs-empty-action">' . esc_html(__('Add Your First Property', 'minpaku-suite')) . '</a>';
+            $output .= '</div>';
         }
 
         $output .= '</div>';
@@ -236,47 +273,50 @@ class OwnerDashboard
             return ob_get_clean();
         }
 
-        // Fallback card rendering
+        // Fallback card rendering using admin card classes
         $property = get_post($property_id);
         $booking_counts = OwnerHelpers::get_property_booking_counts($property_id, $period);
-        $thumbnail = get_the_post_thumbnail($property_id, 'medium', ['class' => 'mcs-property-thumbnail']);
+        $thumbnail = get_the_post_thumbnail_url($property_id, 'medium');
 
         $output = '<div class="mcs-property-card">';
 
         if ($thumbnail) {
-            $output .= '<div class="mcs-property-image">' . $thumbnail . '</div>';
+            $output .= '<img src="' . esc_url($thumbnail) . '" alt="' . esc_attr($property->post_title) . '" class="mcs-property-thumbnail" loading="lazy">';
+        } else {
+            $output .= '<div class="mcs-property-thumbnail">';
+            $output .= '<span class="dashicons dashicons-camera"></span>';
+            $output .= esc_html(__('No image', 'minpaku-suite'));
+            $output .= '</div>';
         }
 
         $output .= '<div class="mcs-property-content">';
-        $output .= '<h4 class="mcs-property-title">' . esc_html($property->post_title) . '</h4>';
-        $output .= '<div class="mcs-property-status">Status: ' . esc_html(ucfirst($property->post_status)) . '</div>';
+        $output .= '<h3 class="mcs-property-title">' . esc_html($property->post_title) . '</h3>';
 
-        // Booking stats
-        $output .= '<div class="mcs-booking-stats">';
-        $output .= sprintf(
-            '<span class="mcs-booking-stat">%s: %d</span>',
-            esc_html(__('Confirmed', 'minpaku-suite')),
-            $booking_counts['confirmed']
-        );
-        $output .= sprintf(
-            '<span class="mcs-booking-stat">%s: %d</span>',
-            esc_html(__('Pending', 'minpaku-suite')),
-            $booking_counts['pending']
-        );
+        $output .= '<div class="mcs-property-meta">';
+        $output .= '<span class="mcs-status mcs-status--' . esc_attr($property->post_status) . '">' . esc_html(ucfirst($property->post_status)) . '</span>';
+
+        // Add capacity if available
+        $capacity = get_post_meta($property_id, 'capacity', true);
+        if ($capacity > 0) {
+            $output .= '<span><span class="dashicons dashicons-groups"></span>' . esc_html(sprintf(__('%d guests', 'minpaku-suite'), $capacity)) . '</span>';
+        }
         $output .= '</div>';
 
-        // Action links
+        // Action links using admin action classes
         $output .= '<div class="mcs-property-actions">';
-        $output .= sprintf(
-            '<a href="%s" class="mcs-action-link">%s</a>',
-            esc_url(get_edit_post_link($property_id)),
-            esc_html(__('Edit', 'minpaku-suite'))
-        );
-        $output .= sprintf(
-            '<a href="%s" class="mcs-action-link" target="_blank">%s</a>',
-            esc_url(get_permalink($property_id)),
-            esc_html(__('View', 'minpaku-suite'))
-        );
+        $edit_link = get_edit_post_link($property_id);
+        if ($edit_link) {
+            $output .= '<a href="' . esc_url($edit_link) . '" class="mcs-action--edit">';
+            $output .= '<span class="dashicons dashicons-edit"></span>' . esc_html(__('Edit', 'minpaku-suite'));
+            $output .= '</a>';
+        }
+
+        $view_link = get_permalink($property_id);
+        if ($view_link) {
+            $output .= '<a href="' . esc_url($view_link) . '" class="mcs-action--view" target="_blank">';
+            $output .= '<span class="dashicons dashicons-visibility"></span>' . esc_html(__('View', 'minpaku-suite'));
+            $output .= '</a>';
+        }
         $output .= '</div>';
 
         $output .= '</div>';
