@@ -1,0 +1,33 @@
+# Minpaku Suite
+# Copyright (C) 2024 Yato1214
+# This file is distributed under the same license as the Minpaku Suite package.
+msgid ""
+msgstr ""
+"Project-Id-Version: Minpaku Suite 0.4.1\n"
+"Report-Msgid-Bugs-To: https://github.com/yato1214/minpaku-suite\n"
+"POT-Creation-Date: 2024-09-21 14:00+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: WP-CLI 2.4.0\n"
+"X-Domain: minpaku-suite\n"
+
+#. Plugin Name of the plugin/theme
+msgid "Minpaku Suite"
+msgstr ""
+
+#. Plugin URI of the plugin/theme
+msgid "https://github.com/yato1214/minpaku-suite"
+msgstr ""
+
+#. Description of the plugin/theme
+msgid "Comprehensive suite for managing minpaku (vacation rental) properties with channel sync capabilities."
+msgstr ""
+
+#. Author of the plugin/theme
+msgid "Yato1214"
+msgstr ""
