@@ -502,6 +502,172 @@ msgstr ""
 msgid "Owner Portal"
 msgstr ""
 
+#. Connector strings
+msgid "Connector"
+msgstr ""
+
+msgid "Connector Settings"
+msgstr ""
+
+msgid "Configure external WordPress connector for embedding property listings and availability calendars."
+msgstr ""
+
+msgid "Enable Connector"
+msgstr ""
+
+msgid "Enable external WordPress connector API"
+msgstr ""
+
+msgid "When enabled, external WordPress sites can connect to display your properties."
+msgstr ""
+
+msgid "Allowed Domains"
+msgstr ""
+
+msgid "Enter one domain per line (e.g., example.com). Only these domains can access the connector API."
+msgstr ""
+
+msgid "API Keys"
+msgstr ""
+
+msgid "Generate API keys for external WordPress sites. Each site needs its own API key and secret."
+msgstr ""
+
+msgid "No API keys generated yet."
+msgstr ""
+
+msgid "Site Name"
+msgstr ""
+
+msgid "Site ID"
+msgstr ""
+
+msgid "API Key"
+msgstr ""
+
+msgid "Created"
+msgstr ""
+
+msgid "Last Used"
+msgstr ""
+
+msgid "Actions"
+msgstr ""
+
+msgid "Never"
+msgstr ""
+
+msgid "Show Details"
+msgstr ""
+
+msgid "Rotate"
+msgstr ""
+
+msgid "Delete"
+msgstr ""
+
+msgid "Are you sure you want to delete these API keys?"
+msgstr ""
+
+msgid "Connection Details for:"
+msgstr ""
+
+msgid "Portal Base URL:"
+msgstr ""
+
+msgid "Note:"
+msgstr ""
+
+msgid "Copy these values to your external WordPress connector plugin settings."
+msgstr ""
+
+msgid "API Endpoints"
+msgstr ""
+
+msgid "The following endpoints are available for external WordPress connectors:"
+msgstr ""
+
+msgid "Endpoint"
+msgstr ""
+
+msgid "Method"
+msgstr ""
+
+msgid "Description"
+msgstr ""
+
+msgid "Verify connection and test authentication"
+msgstr ""
+
+msgid "Get list of properties"
+msgstr ""
+
+msgid "Get availability calendar for a property"
+msgstr ""
+
+msgid "Generate price quote for a booking"
+msgstr ""
+
+msgid "Generating..."
+msgstr ""
+
+msgid "Generate New API Keys"
+msgstr ""
+
+msgid "Are you sure you want to rotate these API keys? The old keys will stop working immediately."
+msgstr ""
+
+msgid "Settings saved successfully."
+msgstr ""
+
+msgid "API keys generated successfully."
+msgstr ""
+
+msgid "API keys rotated successfully."
+msgstr ""
+
+msgid "API keys deleted successfully."
+msgstr ""
+
+msgid "Site ID is required."
+msgstr ""
+
+msgid "Site not found."
+msgstr ""
+
+msgid "Error generating keys."
+msgstr ""
+
+msgid "Error rotating keys."
+msgstr ""
+
+msgid "You do not have permission to perform this action."
+msgstr ""
+
+msgid "Unnamed Site"
+msgstr ""
+
+msgid "Connection verified successfully."
+msgstr ""
+
+msgid "Unable to fetch properties."
+msgstr ""
+
+msgid "Property not found."
+msgstr ""
+
+msgid "Unable to fetch availability."
+msgstr ""
+
+msgid "Check-out date must be after check-in date."
+msgstr ""
+
+msgid "Unable to generate quote."
+msgstr ""
+
+msgid "This is a preliminary quote. Final pricing may vary."
+msgstr ""
+
 msgid "Owner portal is not available."
 msgstr ""
 

@@ -15,6 +15,7 @@ class Bootstrap
         add_action('init', [__CLASS__, 'register_booking_components'], 15);
         add_action('init', [__CLASS__, 'register_ui_components'], 15);
         add_action('init', [__CLASS__, 'register_portal_components'], 15);
+        add_action('init', [__CLASS__, 'register_connector_components'], 15);
         add_action('acf/init', [__CLASS__, 'register_acf'], 10);
         add_action('admin_menu', [__CLASS__, 'register_menu'], 9);
         add_action('admin_enqueue_scripts', [__CLASS__, 'enqueue_admin_styles'], 10);
@@ -117,6 +118,18 @@ class Bootstrap
                     'read',
                     'mcs-owner-portal',
                     [__CLASS__, 'render_owner_portal']
+                );
+            }
+
+            // Add Connector Settings submenu for admins only
+            if (current_user_can('manage_options')) {
+                add_submenu_page(
+                    'minpaku-suite',
+                    __('Connector', 'minpaku-suite'),
+                    __('Connector', 'minpaku-suite'),
+                    'manage_options',
+                    'mcs-connector-settings',
+                    [__CLASS__, 'render_connector_settings']
                 );
             }
         } catch (Exception $e) {
@@ -350,6 +363,36 @@ class Bootstrap
             }
         } catch (Exception $e) {
             error_log('Minpaku Suite Portal Components Error: ' . $e->getMessage());
+        }
+    }
+
+    public static function register_connector_components()
+    {
+        try {
+            // Register Connector components
+            $connector_bootstrap = MCS_PATH . 'includes/connector-bootstrap.php';
+            if (file_exists($connector_bootstrap)) {
+                require_once $connector_bootstrap;
+            }
+        } catch (Exception $e) {
+            error_log('Minpaku Suite Connector Components Error: ' . $e->getMessage());
+        }
+    }
+
+    public static function render_connector_settings()
+    {
+        // Load ConnectorSettings class
+        $settings_file = MCS_PATH . 'includes/Connector/ConnectorSettings.php';
+        if (file_exists($settings_file)) {
+            require_once $settings_file;
+            if (class_exists('MinpakuSuite\Connector\ConnectorSettings')) {
+                \MinpakuSuite\Connector\ConnectorSettings::render_settings_page();
+            }
+        } else {
+            echo '<div class="wrap">';
+            echo '<h1>' . esc_html(__('Connector Settings', 'minpaku-suite')) . '</h1>';
+            echo '<p class="notice notice-error">' . esc_html(__('Connector settings are not available.', 'minpaku-suite')) . '</p>';
+            echo '</div>';
         }
     }
 

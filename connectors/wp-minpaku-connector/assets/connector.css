@@ -1,0 +1,423 @@
+/**
+ * Minpaku Connector Frontend Styles
+ */
+
+/* Error and status messages */
+.wmc-error {
+    background: #fff2f2;
+    border: 1px solid #ff6b6b;
+    color: #c92a2a;
+    padding: 15px;
+    border-radius: 4px;
+    margin: 15px 0;
+}
+
+.wmc-no-content {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    color: #6c757d;
+    padding: 15px;
+    border-radius: 4px;
+    margin: 15px 0;
+    text-align: center;
+}
+
+/* Properties Grid */
+.wmc-properties {
+    margin: 20px 0;
+}
+
+.wmc-grid {
+    display: grid;
+    gap: 20px;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
+.wmc-columns-1 { grid-template-columns: 1fr; }
+.wmc-columns-2 { grid-template-columns: repeat(2, 1fr); }
+.wmc-columns-3 { grid-template-columns: repeat(3, 1fr); }
+.wmc-columns-4 { grid-template-columns: repeat(4, 1fr); }
+
+/* Responsive grid */
+@media (max-width: 768px) {
+    .wmc-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 1024px) {
+    .wmc-columns-3,
+    .wmc-columns-4 {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* Property Card */
+.wmc-property-card {
+    background: #fff;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.wmc-property-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.wmc-property-image {
+    position: relative;
+    overflow: hidden;
+    aspect-ratio: 16/10;
+}
+
+.wmc-property-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.wmc-property-card:hover .wmc-property-image img {
+    transform: scale(1.05);
+}
+
+.wmc-property-content {
+    padding: 20px;
+}
+
+.wmc-property-title {
+    font-size: 1.2em;
+    font-weight: 600;
+    margin: 0 0 10px 0;
+    color: #2c3e50;
+    line-height: 1.3;
+}
+
+.wmc-property-excerpt {
+    color: #6c757d;
+    font-size: 0.9em;
+    line-height: 1.5;
+    margin: 0 0 15px 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.wmc-property-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    font-size: 0.85em;
+}
+
+.wmc-meta-item {
+    display: flex;
+    align-items: center;
+    color: #495057;
+}
+
+.wmc-meta-label {
+    font-weight: 500;
+    color: #6c757d;
+}
+
+.wmc-meta-value {
+    font-weight: 600;
+}
+
+.wmc-meta-item.wmc-price .wmc-meta-value {
+    color: #28a745;
+    font-size: 1.1em;
+}
+
+/* Property Details (Full View) */
+.wmc-property-details {
+    margin: 20px 0;
+}
+
+.wmc-property-full {
+    background: #fff;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.wmc-property-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 10px;
+    padding: 20px;
+    background: #f8f9fa;
+}
+
+.wmc-property-gallery img {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    border-radius: 4px;
+}
+
+.wmc-property-full .wmc-property-title {
+    font-size: 1.8em;
+    font-weight: 700;
+    margin: 20px 20px 15px 20px;
+    color: #2c3e50;
+}
+
+.wmc-property-description {
+    padding: 0 20px;
+    line-height: 1.6;
+    color: #495057;
+    margin-bottom: 20px;
+}
+
+.wmc-property-details-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    padding: 20px;
+    background: #f8f9fa;
+    border-top: 1px solid #e9ecef;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.wmc-detail-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+}
+
+.wmc-detail-label {
+    font-weight: 500;
+    color: #6c757d;
+}
+
+.wmc-detail-value {
+    font-weight: 600;
+    color: #495057;
+}
+
+.wmc-price-item .wmc-detail-value {
+    color: #28a745;
+    font-size: 1.1em;
+}
+
+.wmc-property-location,
+.wmc-property-amenities {
+    padding: 20px;
+}
+
+.wmc-property-location h4,
+.wmc-property-amenities h4 {
+    margin: 0 0 10px 0;
+    color: #2c3e50;
+    font-size: 1.1em;
+}
+
+.wmc-amenities-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.wmc-amenities-list li {
+    padding: 5px 0;
+    color: #495057;
+    position: relative;
+    padding-left: 20px;
+}
+
+.wmc-amenities-list li:before {
+    content: "✓";
+    position: absolute;
+    left: 0;
+    color: #28a745;
+    font-weight: bold;
+}
+
+/* Availability Calendar */
+.wmc-availability {
+    margin: 20px 0;
+}
+
+.wmc-availability-title {
+    font-size: 1.4em;
+    font-weight: 600;
+    margin: 0 0 10px 0;
+    color: #2c3e50;
+}
+
+.wmc-availability-period {
+    color: #6c757d;
+    margin-bottom: 20px;
+    font-size: 0.9em;
+}
+
+.wmc-calendar {
+    background: #fff;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.wmc-calendar-month {
+    border-bottom: 1px solid #e9ecef;
+}
+
+.wmc-calendar-month:last-child {
+    border-bottom: none;
+}
+
+.wmc-month-title {
+    background: #f8f9fa;
+    padding: 15px 20px;
+    margin: 0;
+    font-size: 1.1em;
+    font-weight: 600;
+    color: #2c3e50;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.wmc-calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+}
+
+.wmc-day-header {
+    background: #f8f9fa;
+    padding: 10px 5px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 0.8em;
+    color: #6c757d;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.wmc-calendar-day {
+    aspect-ratio: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-right: 1px solid #e9ecef;
+    border-bottom: 1px solid #e9ecef;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    min-height: 60px;
+    position: relative;
+}
+
+.wmc-calendar-day:nth-child(7n) {
+    border-right: none;
+}
+
+.wmc-day-available {
+    background: #fff;
+    color: #2c3e50;
+}
+
+.wmc-day-available:hover {
+    background: #e3f2fd;
+}
+
+.wmc-day-unavailable {
+    background: #f8d7da;
+    color: #721c24;
+    cursor: not-allowed;
+}
+
+.wmc-day-number {
+    font-weight: 600;
+    font-size: 0.9em;
+}
+
+.wmc-day-price {
+    font-size: 0.7em;
+    color: #28a745;
+    font-weight: 500;
+    margin-top: 2px;
+}
+
+.wmc-calendar-legend {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-top: 1px solid #e9ecef;
+}
+
+.wmc-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9em;
+}
+
+.wmc-legend-color {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+    border: 1px solid #e9ecef;
+}
+
+.wmc-legend-color.wmc-available {
+    background: #fff;
+}
+
+.wmc-legend-color.wmc-unavailable {
+    background: #f8d7da;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .wmc-property-content {
+        padding: 15px;
+    }
+
+    .wmc-property-meta {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .wmc-property-details-grid {
+        grid-template-columns: 1fr;
+        padding: 15px;
+    }
+
+    .wmc-calendar-day {
+        min-height: 50px;
+        font-size: 0.9em;
+    }
+
+    .wmc-day-price {
+        font-size: 0.6em;
+    }
+
+    .wmc-calendar-legend {
+        flex-direction: column;
+        gap: 10px;
+        align-items: center;
+    }
+}
+
+/* Accessibility */
+.wmc-calendar-day:focus {
+    outline: 2px solid #007cba;
+    outline-offset: -2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .wmc-property-card,
+    .wmc-property-image img,
+    .wmc-calendar-day {
+        transition: none;
+    }
+}
