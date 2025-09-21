@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Minpaku Suite 0.4.1\n"
 "Report-Msgid-Bugs-To: https://github.com/yato1214/minpaku-suite\n"
-"POT-Creation-Date: 2024-09-21 14:00+0000\n"
+"POT-Creation-Date: 2024-12-20 12:00+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -516,4 +516,26 @@ msgid "Property not found."
 msgstr ""
 
 msgid "Unable to fetch property data."
+msgstr ""
+
+#. Period selector strings
+msgid "Period:"
+msgstr ""
+
+msgid "Next 365 days"
+msgstr ""
+
+msgid "Last 90 days"
+msgstr ""
+
+msgid "Last 365 days"
+msgstr ""
+
+msgid "Last %d days"
+msgstr ""
+
+msgid "%d bookings in selected period"
+msgstr ""
+
+msgid "Overview"
 msgstr ""

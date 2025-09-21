@@ -1,197 +1,504 @@
 /**
- * Minpaku Suite Admin CSS
+ * Minpaku Suite Admin Dashboard Styles
  *
- * @package MinpakuSuite
+ * Polished card layout for admin dashboard with accessibility compliance
+ * Compatible with WordPress standard color schemes and dark mode
  */
 
-/* Mappings table styling */
-.mcs-mappings-table {
-    margin-top: 20px;
-}
-
-.mcs-mappings-table th {
-    font-weight: 600;
-}
-
-.mcs-mappings-table .mcs-url-display {
-    background: #f5f5f5;
-    padding: 4px 8px;
-    border-radius: 3px;
-    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
-    font-size: 12px;
-    color: #333;
-    word-break: break-all;
-    display: inline-block;
-    max-width: 100%;
-}
-
-.mcs-mappings-table td {
-    vertical-align: middle;
-}
-
-.mcs-mappings-table .mcs-copy-btn {
-    font-size: 11px;
-    height: 26px;
-    line-height: 24px;
-    padding: 0 8px;
-    min-height: auto;
-}
-
-.mcs-mappings-table .mcs-copy-btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-}
-
-.mcs-mappings-table .mcs-copy-btn.button-danger {
-    background: #dc3232;
-    border-color: #dc3232;
-    color: #fff;
-}
-
-/* Action buttons */
-.mcs-action-buttons {
+/* Main wrapper */
+.mcs-wrap {
+    max-width: 1200px;
     margin: 20px 0;
-    padding: 15px 0;
-    border-top: 1px solid #ddd;
-    border-bottom: 1px solid #ddd;
+    padding: 0;
 }
 
-.mcs-action-buttons .button {
-    margin-right: 10px;
+.mcs-wrap h1 {
+    margin-bottom: 30px;
+    color: #1d2327;
+    font-size: 23px;
+    font-weight: 400;
+    line-height: 1.3;
 }
 
-.mcs-action-buttons .button:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
+/* Overview cards grid */
+.mcs-overview {
+    margin-bottom: 40px;
 }
 
-/* Settings form styling */
-.form-table th {
-    width: 200px;
+.mcs-overview h2 {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    color: #1d2327;
 }
 
-.form-table .description {
-    font-style: italic;
-    color: #666;
+.mcs-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
+    margin-bottom: 40px;
 }
 
-/* Notice styling */
-.mcs-notice {
-    margin: 20px 0 15px;
-}
-
-.mcs-notice p {
-    margin: 0.5em 0;
-}
-
-/* Legacy forms (hidden by default) */
-.mcs-legacy-forms {
-    opacity: 0.7;
-    border: 1px dashed #ccc;
-    padding: 15px;
-    margin-top: 20px;
-}
-
-.mcs-legacy-forms h3 {
-    margin-top: 0;
-    color: #666;
-}
-
-/* Responsive adjustments */
-@media screen and (max-width: 782px) {
-    .mcs-mappings-table .mcs-url-display {
-        font-size: 11px;
-        padding: 3px 6px;
-    }
-
-    .mcs-action-buttons .button {
-        margin-bottom: 10px;
-        display: block;
-        width: 100%;
-        text-align: center;
-    }
-
-    .mcs-mappings-table td {
-        padding: 8px 4px;
-    }
-}
-
-/* WordPress admin color scheme compatibility */
-.wp-core-ui .button-danger:hover,
-.wp-core-ui .button-danger:focus {
-    background: #b32d2e;
-    border-color: #b32d2e;
-}
-
-/* Loading state animations */
-.mcs-copy-btn:disabled,
-#mcs-regen-btn:disabled,
-#mcs-sync-btn:disabled {
+.mcs-card {
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-radius: 10px;
+    padding: 24px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: box-shadow 0.2s ease;
     position: relative;
 }
 
-.mcs-copy-btn:disabled::after,
-#mcs-regen-btn:disabled::after,
-#mcs-sync-btn:disabled::after {
-    content: '';
-    position: absolute;
-    width: 16px;
-    height: 16px;
-    margin: auto;
-    border: 2px solid transparent;
-    border-top-color: #fff;
-    border-radius: 50%;
-    animation: mcs-spin 1s linear infinite;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    right: 0;
+.mcs-card:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
-@keyframes mcs-spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+.mcs-card-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 16px;
 }
 
-/* Table column widths */
-.mcs-mappings-table th:nth-child(1),
-.mcs-mappings-table td:nth-child(1) {
-    width: 80px;
+.mcs-card-icon {
+    width: 32px;
+    height: 32px;
+    margin-right: 12px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 16px;
 }
 
-.mcs-mappings-table th:nth-child(2),
-.mcs-mappings-table td:nth-child(2) {
-    width: 200px;
+.mcs-card-icon--properties {
+    background: #2271b1;
 }
 
-.mcs-mappings-table th:nth-child(3),
-.mcs-mappings-table td:nth-child(3) {
-    width: auto;
-}
-
-.mcs-mappings-table th:nth-child(4),
-.mcs-mappings-table td:nth-child(4) {
-    width: 120px;
-    text-align: center;
-}
-
-/* Settings sections */
-.form-table {
-    margin-top: 10px;
-}
-
-.form-table th {
-    padding-left: 0;
-}
-
-/* Success and error states for copy buttons */
-.mcs-copy-btn.button-primary {
+.mcs-card-icon--bookings {
     background: #00a32a;
-    border-color: #00a32a;
+}
+
+.mcs-card-icon--occupancy {
+    background: #dba617;
+}
+
+.mcs-card-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: #50575e;
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.mcs-card-value {
+    font-size: 36px;
+    font-weight: 700;
+    color: #1d2327;
+    line-height: 1;
+    margin: 8px 0 4px 0;
+}
+
+.mcs-card-label {
+    font-size: 13px;
+    color: #646970;
+    margin: 0;
+}
+
+/* Sections */
+.mcs-section {
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-radius: 10px;
+    margin-bottom: 30px;
+    overflow: hidden;
+}
+
+.mcs-section-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid #f0f0f1;
+    background: #f9f9f9;
+}
+
+.mcs-section-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0;
+    color: #1d2327;
+}
+
+.mcs-section-content {
+    padding: 0;
+}
+
+/* Tables */
+.mcs-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.mcs-table th {
+    text-align: left;
+    padding: 16px 24px;
+    font-weight: 600;
+    color: #1d2327;
+    background: #f9f9f9;
+    border-bottom: 1px solid #f0f0f1;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.mcs-table td {
+    padding: 16px 24px;
+    border-bottom: 1px solid #f0f0f1;
+    color: #3c434a;
+    vertical-align: middle;
+}
+
+.mcs-table tr:last-child td {
+    border-bottom: none;
+}
+
+.mcs-table tbody tr:hover {
+    background: #f6f7f7;
+}
+
+.mcs-table a {
+    color: #2271b1;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.mcs-table a:hover {
+    color: #135e96;
+    text-decoration: underline;
+}
+
+/* Status badges */
+.mcs-status {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 15px;
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.mcs-status--confirmed {
+    background: #d1e7dd;
+    color: #0a3622;
+}
+
+.mcs-status--pending {
+    background: #fff3cd;
+    color: #664d03;
+}
+
+.mcs-status--cancelled {
+    background: #f8d7da;
+    color: #58151c;
+}
+
+.mcs-status--publish {
+    background: #d1e7dd;
+    color: #0a3622;
+}
+
+.mcs-status--draft {
+    background: #e2e3e5;
+    color: #41464b;
+}
+
+.mcs-status--private {
+    background: #cff4fc;
+    color: #055160;
+}
+
+/* Property cards grid */
+.mcs-properties-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+    padding: 24px;
+}
+
+.mcs-property-card {
+    border: 1px solid #f0f0f1;
+    border-radius: 8px;
+    overflow: hidden;
+    transition: all 0.2s ease;
+    background: #fff;
+}
+
+.mcs-property-card:hover {
+    border-color: #c3c4c7;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.mcs-property-thumbnail {
+    width: 100%;
+    height: 120px;
+    object-fit: cover;
+    background: #f6f7f7;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #8c8f94;
+    font-size: 14px;
+}
+
+.mcs-property-content {
+    padding: 16px;
+}
+
+.mcs-property-title {
+    font-size: 15px;
+    font-weight: 600;
+    margin: 0 0 8px 0;
+    color: #1d2327;
+    line-height: 1.3;
+}
+
+.mcs-property-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+    font-size: 13px;
+    color: #646970;
+}
+
+.mcs-property-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.mcs-property-actions a {
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.mcs-property-actions .mcs-action--edit {
+    background: #2271b1;
     color: #fff;
 }
 
-.mcs-copy-btn.button-primary:hover {
-    background: #008a20;
-    border-color: #008a20;
+.mcs-property-actions .mcs-action--edit:hover {
+    background: #135e96;
+    color: #fff;
+}
+
+.mcs-property-actions .mcs-action--view {
+    background: #f0f0f1;
+    color: #3c434a;
+}
+
+.mcs-property-actions .mcs-action--view:hover {
+    background: #dcdcde;
+    color: #1d2327;
+}
+
+/* Empty states */
+.mcs-empty {
+    text-align: center;
+    padding: 60px 24px;
+    color: #646970;
+}
+
+.mcs-empty-icon {
+    font-size: 48px;
+    color: #c3c4c7;
+    margin-bottom: 16px;
+}
+
+.mcs-empty-title {
+    font-size: 16px;
+    font-weight: 500;
+    margin: 0 0 8px 0;
+    color: #50575e;
+}
+
+.mcs-empty-text {
+    font-size: 14px;
+    margin: 0 0 20px 0;
+    color: #646970;
+}
+
+.mcs-empty-action {
+    display: inline-block;
+    padding: 8px 16px;
+    background: #2271b1;
+    color: #fff;
+    text-decoration: none;
+    border-radius: 4px;
+    font-weight: 500;
+    transition: background 0.2s ease;
+}
+
+.mcs-empty-action:hover {
+    background: #135e96;
+    color: #fff;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .mcs-cards {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    .mcs-card {
+        padding: 20px;
+    }
+
+    .mcs-card-value {
+        font-size: 28px;
+    }
+
+    .mcs-table {
+        font-size: 13px;
+    }
+
+    .mcs-table th,
+    .mcs-table td {
+        padding: 12px 16px;
+    }
+
+    .mcs-section-header {
+        padding: 16px 20px;
+    }
+
+    .mcs-properties-grid {
+        grid-template-columns: 1fr;
+        padding: 20px;
+        gap: 16px;
+    }
+}
+
+@media (max-width: 480px) {
+    .mcs-wrap {
+        margin: 10px 0;
+    }
+
+    .mcs-card {
+        padding: 16px;
+    }
+
+    .mcs-card-value {
+        font-size: 24px;
+    }
+
+    .mcs-property-actions {
+        flex-direction: column;
+    }
+
+    .mcs-property-actions a {
+        text-align: center;
+    }
+}
+
+/* Dark mode compatibility */
+@media (prefers-color-scheme: dark) {
+    .mcs-wrap h1 {
+        color: #f0f0f1;
+    }
+
+    .mcs-overview h2 {
+        color: #f0f0f1;
+    }
+
+    .mcs-card {
+        background: #1d2327;
+        border-color: #3c434a;
+    }
+
+    .mcs-card-value {
+        color: #f0f0f1;
+    }
+
+    .mcs-section {
+        background: #1d2327;
+        border-color: #3c434a;
+    }
+
+    .mcs-section-header {
+        background: #23282d;
+        border-color: #3c434a;
+    }
+
+    .mcs-section-title {
+        color: #f0f0f1;
+    }
+
+    .mcs-table th {
+        background: #23282d;
+        color: #f0f0f1;
+        border-color: #3c434a;
+    }
+
+    .mcs-table td {
+        color: #c3c4c7;
+        border-color: #3c434a;
+    }
+
+    .mcs-table tbody tr:hover {
+        background: #23282d;
+    }
+
+    .mcs-property-card {
+        background: #1d2327;
+        border-color: #3c434a;
+    }
+
+    .mcs-property-title {
+        color: #f0f0f1;
+    }
+
+    .mcs-property-thumbnail {
+        background: #23282d;
+        color: #8c8f94;
+    }
+}
+
+/* WordPress admin compatibility */
+.wp-admin .mcs-wrap {
+    background: transparent;
+}
+
+/* Accessibility improvements */
+.mcs-card:focus-within {
+    outline: 2px solid #2271b1;
+    outline-offset: 2px;
+}
+
+.mcs-table a:focus {
+    outline: 2px solid #2271b1;
+    outline-offset: 1px;
+    border-radius: 2px;
+}
+
+.mcs-property-actions a:focus {
+    outline: 2px solid #2271b1;
+    outline-offset: 2px;
+}
+
+/* Screen reader only content */
+.mcs-sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
 }

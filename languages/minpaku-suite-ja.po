@@ -1,0 +1,515 @@
+# Japanese translation for Minpaku Suite
+# Copyright (C) 2024 Yato1214
+# This file is distributed under the same license as the Minpaku Suite package.
+msgid ""
+msgstr ""
+"Project-Id-Version: Minpaku Suite 0.4.1\n"
+"Report-Msgid-Bugs-To: https://github.com/yato1214/minpaku-suite\n"
+"POT-Creation-Date: 2024-12-20 12:00+0000\n"
+"PO-Revision-Date: 2024-12-20 12:00+0900\n"
+"Last-Translator: Yato1214\n"
+"Language-Team: Japanese\n"
+"Language: ja\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: Manual\n"
+"X-Domain: minpaku-suite\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#. Plugin Name of the plugin/theme
+msgid "Minpaku Suite"
+msgstr "民泊スイート"
+
+#. Plugin URI of the plugin/theme
+msgid "https://github.com/yato1214/minpaku-suite"
+msgstr "https://github.com/yato1214/minpaku-suite"
+
+#. Description of the plugin/theme
+msgid "Comprehensive suite for managing minpaku (vacation rental) properties with channel sync capabilities."
+msgstr "チャンネル同期機能を備えた民泊（バケーションレンタル）施設管理の総合スイート。"
+
+#. Author of the plugin/theme
+msgid "Yato1214"
+msgstr "Yato1214"
+
+#. CPT and ACF labels
+msgid "Minpaku"
+msgstr "民泊"
+
+msgid "Properties"
+msgstr "施設"
+
+msgid "Property"
+msgstr "施設"
+
+msgid "Property Archives"
+msgstr "施設アーカイブ"
+
+msgid "Property Attributes"
+msgstr "施設属性"
+
+msgid "Parent Property:"
+msgstr "親施設："
+
+msgid "All Properties"
+msgstr "全ての施設"
+
+msgid "Add New Property"
+msgstr "新しい施設を追加"
+
+msgid "Add New"
+msgstr "新規追加"
+
+msgid "New Property"
+msgstr "新しい施設"
+
+msgid "Edit Property"
+msgstr "施設を編集"
+
+msgid "Update Property"
+msgstr "施設を更新"
+
+msgid "View Property"
+msgstr "施設を表示"
+
+msgid "View Properties"
+msgstr "施設を表示"
+
+msgid "Search Properties"
+msgstr "施設を検索"
+
+msgid "Not found"
+msgstr "見つかりません"
+
+msgid "Not found in Trash"
+msgstr "ゴミ箱にありません"
+
+msgid "Featured Image"
+msgstr "アイキャッチ画像"
+
+msgid "Set featured image"
+msgstr "アイキャッチ画像を設定"
+
+msgid "Remove featured image"
+msgstr "アイキャッチ画像を削除"
+
+msgid "Use as featured image"
+msgstr "アイキャッチ画像として使用"
+
+msgid "Insert into property"
+msgstr "施設に挿入"
+
+msgid "Uploaded to this property"
+msgstr "この施設にアップロード済み"
+
+msgid "Properties list"
+msgstr "施設一覧"
+
+msgid "Properties list navigation"
+msgstr "施設一覧ナビゲーション"
+
+msgid "Filter properties list"
+msgstr "施設一覧をフィルター"
+
+msgid "Minpaku properties management"
+msgstr "民泊施設管理"
+
+msgid "Bookings"
+msgstr "予約"
+
+msgid "Booking"
+msgstr "予約"
+
+msgid "Booking Archives"
+msgstr "予約アーカイブ"
+
+msgid "Booking Attributes"
+msgstr "予約属性"
+
+msgid "Parent Booking:"
+msgstr "親予約："
+
+msgid "All Bookings"
+msgstr "全ての予約"
+
+msgid "Add New Booking"
+msgstr "新しい予約を追加"
+
+msgid "New Booking"
+msgstr "新しい予約"
+
+msgid "Edit Booking"
+msgstr "予約を編集"
+
+msgid "Update Booking"
+msgstr "予約を更新"
+
+msgid "View Booking"
+msgstr "予約を表示"
+
+msgid "View Bookings"
+msgstr "予約を表示"
+
+msgid "Search Bookings"
+msgstr "予約を検索"
+
+msgid "Insert into booking"
+msgstr "予約に挿入"
+
+msgid "Uploaded to this booking"
+msgstr "この予約にアップロード済み"
+
+msgid "Bookings list"
+msgstr "予約一覧"
+
+msgid "Bookings list navigation"
+msgstr "予約一覧ナビゲーション"
+
+msgid "Filter bookings list"
+msgstr "予約一覧をフィルター"
+
+msgid "Booking management"
+msgstr "予約管理"
+
+msgid "Property Details"
+msgstr "施設詳細"
+
+msgid "Capacity"
+msgstr "定員"
+
+msgid "Maximum number of guests"
+msgstr "最大宿泊人数"
+
+msgid "guests"
+msgstr "名"
+
+msgid "Bedrooms"
+msgstr "寝室"
+
+msgid "Number of bedrooms"
+msgstr "寝室数"
+
+msgid "Bathrooms"
+msgstr "バスルーム"
+
+msgid "Number of bathrooms"
+msgstr "バスルーム数"
+
+msgid "Amenities"
+msgstr "アメニティ"
+
+msgid "Select available amenities"
+msgstr "利用可能なアメニティを選択"
+
+msgid "WiFi"
+msgstr "WiFi"
+
+msgid "Kitchen"
+msgstr "キッチン"
+
+msgid "TV"
+msgstr "テレビ"
+
+msgid "AC"
+msgstr "エアコン"
+
+msgid "Washer"
+msgstr "洗濯機"
+
+msgid "Parking"
+msgstr "駐車場"
+
+msgid "Bath Tub"
+msgstr "バスタブ"
+
+msgid "Workspace"
+msgstr "ワークスペース"
+
+msgid "Address"
+msgstr "住所"
+
+msgid "Property address"
+msgstr "施設住所"
+
+msgid "Enter full address"
+msgstr "住所を入力してください"
+
+msgid "Gallery"
+msgstr "ギャラリー"
+
+msgid "Property photo gallery"
+msgstr "施設写真ギャラリー"
+
+msgid "Welcome to Minpaku Suite dashboard."
+msgstr "民泊スイート ダッシュボードへようこそ。"
+
+msgid "Quick Links"
+msgstr "クイックリンク"
+
+msgid "Manage Properties"
+msgstr "施設管理"
+
+msgid "Manage Bookings"
+msgstr "予約管理"
+
+#. Booking strings
+msgid "Reservation Details"
+msgstr "予約詳細"
+
+msgid "Select Property"
+msgstr "施設を選択"
+
+msgid "Guest Name"
+msgstr "ゲスト名"
+
+msgid "Guest Email"
+msgstr "ゲストメール"
+
+msgid "Guest Phone"
+msgstr "ゲスト電話番号"
+
+msgid "Check-in Date"
+msgstr "チェックイン日"
+
+msgid "Check-out Date"
+msgstr "チェックアウト日"
+
+msgid "Number of Guests"
+msgstr "ゲスト数"
+
+msgid "Status"
+msgstr "ステータス"
+
+msgid "Confirmed"
+msgstr "確定"
+
+msgid "Pending"
+msgstr "保留"
+
+msgid "Cancelled"
+msgstr "キャンセル"
+
+msgid "Notes"
+msgstr "備考"
+
+msgid "Check-out date must be after check-in date."
+msgstr "チェックアウト日はチェックイン日より後である必要があります。"
+
+msgid "Property, check-in and check-out dates are required."
+msgstr "施設、チェックイン日、チェックアウト日は必須です。"
+
+msgid "Check-in/out"
+msgstr "チェックイン/アウト"
+
+msgid "Nights"
+msgstr "泊"
+
+msgid "Guests"
+msgstr "人数"
+
+msgid "Property not found"
+msgstr "施設が見つかりません"
+
+msgid "Add Booking for this Property"
+msgstr "この施設に予約を追加"
+
+#. Calendar strings
+msgid "Property ID is required."
+msgstr "施設IDが必要です。"
+
+msgid "Property not found."
+msgstr "施設が見つかりません。"
+
+msgid "Unable to load calendar."
+msgstr "カレンダーを読み込めません。"
+
+msgid "Availability service not available."
+msgstr "空室情報サービスが利用できません。"
+
+msgid "Sun"
+msgstr "日"
+
+msgid "Mon"
+msgstr "月"
+
+msgid "Tue"
+msgstr "火"
+
+msgid "Wed"
+msgstr "水"
+
+msgid "Thu"
+msgstr "木"
+
+msgid "Fri"
+msgstr "金"
+
+msgid "Sat"
+msgstr "土"
+
+msgid "Fully Booked"
+msgstr "満室"
+
+msgid "Partially Available"
+msgstr "一部空室"
+
+msgid "Available"
+msgstr "空室"
+
+msgid "Legend"
+msgstr "凡例"
+
+msgid "Property is not specified. Please set id, slug or title."
+msgstr "施設が指定されていません。id、slug、またはtitleを指定してください。"
+
+msgid "Unable to load availability data."
+msgstr "空室情報を読み込めません。"
+
+#. Quick Links strings
+msgid "Quick Actions"
+msgstr "クイック操作"
+
+msgid "View All Bookings"
+msgstr "全ての予約を表示"
+
+msgid "View Availability Calendar"
+msgstr "空室カレンダーを表示"
+
+msgid "Booking Stats"
+msgstr "予約統計"
+
+msgid "Total"
+msgstr "合計"
+
+msgid "Add Booking"
+msgstr "予約を追加"
+
+msgid "Creating booking for property:"
+msgstr "施設の予約を作成中："
+
+msgid "Property has been pre-selected and cannot be changed."
+msgstr "施設は事前選択されており、変更できません。"
+
+#. Owner Portal strings
+msgid "Property Owner"
+msgstr "施設オーナー"
+
+msgid "Please log in to access the owner dashboard."
+msgstr "オーナーダッシュボードにアクセスするにはログインしてください。"
+
+msgid "Log In"
+msgstr "ログイン"
+
+msgid "You do not have permission to access the owner dashboard."
+msgstr "オーナーダッシュボードにアクセスする権限がありません。"
+
+msgid "Unable to load dashboard."
+msgstr "ダッシュボードを読み込めません。"
+
+msgid "My Properties Dashboard"
+msgstr "マイ施設ダッシュボード"
+
+msgid "Period:"
+msgstr "期間："
+
+msgid "Next 30 days"
+msgstr "今後30日"
+
+msgid "Next 90 days"
+msgstr "今後90日"
+
+msgid "Next year"
+msgstr "今後1年"
+
+msgid "Confirmed Bookings"
+msgstr "確定予約"
+
+msgid "Pending Bookings"
+msgstr "保留予約"
+
+msgid "Total Bookings"
+msgstr "合計予約"
+
+msgid "My Properties"
+msgstr "マイ施設"
+
+msgid "No properties found."
+msgstr "施設が見つかりません。"
+
+msgid "Add Your First Property"
+msgstr "最初の施設を追加"
+
+msgid "Previous"
+msgstr "前へ"
+
+msgid "Next"
+msgstr "次へ"
+
+msgid "Published"
+msgstr "公開済み"
+
+msgid "Draft"
+msgstr "下書き"
+
+msgid "Private"
+msgstr "非公開"
+
+msgid "Pending Review"
+msgstr "承認待ち"
+
+msgid "%d guests"
+msgstr "%d名"
+
+msgid "Edit"
+msgstr "編集"
+
+msgid "View"
+msgstr "表示"
+
+msgid "Calendar"
+msgstr "カレンダー"
+
+msgid "Copied!"
+msgstr "コピーしました！"
+
+msgid "Shortcode copied to clipboard:"
+msgstr "ショートコードをクリップボードにコピーしました："
+
+msgid "Owner Portal"
+msgstr "オーナーポータル"
+
+msgid "Owner portal is not available."
+msgstr "オーナーポータルは利用できません。"
+
+#. API strings
+msgid "Unable to fetch summary data."
+msgstr "サマリーデータを取得できません。"
+
+msgid "Unable to fetch properties data."
+msgstr "施設データを取得できません。"
+
+msgid "Unable to fetch property data."
+msgstr "施設データを取得できません。"
+
+#. Period selector strings
+msgid "Period:"
+msgstr "期間："
+
+msgid "Next 365 days"
+msgstr "今後365日"
+
+msgid "Last 90 days"
+msgstr "過去90日"
+
+msgid "Last 365 days"
+msgstr "過去365日"
+
+msgid "Last %d days"
+msgstr "過去%d日"
+
+msgid "%d bookings in selected period"
+msgstr "選択期間の予約%d件"
+
+msgid "Overview"
+msgstr "概要"

@@ -17,6 +17,7 @@ class Bootstrap
         add_action('init', [__CLASS__, 'register_portal_components'], 15);
         add_action('acf/init', [__CLASS__, 'register_acf'], 10);
         add_action('admin_menu', [__CLASS__, 'register_menu'], 9);
+        add_action('admin_enqueue_scripts', [__CLASS__, 'enqueue_admin_styles'], 10);
         add_action('rest_api_init', [__CLASS__, 'register_rest'], 10);
     }
 
@@ -114,31 +115,89 @@ class Bootstrap
 
     public static function render_dashboard()
     {
-        echo '<div class="wrap">';
-        echo '<h1>' . esc_html(__('Minpaku Suite', 'minpaku-suite')) . '</h1>';
-        echo '<p>' . esc_html(__('Welcome to Minpaku Suite dashboard.', 'minpaku-suite')) . '</p>';
-        echo '<h2>' . esc_html(__('Quick Links', 'minpaku-suite')) . '</h2>';
-        echo '<ul>';
-        echo '<li><a href="' . admin_url('edit.php?post_type=mcs_property') . '">' . esc_html(__('Manage Properties', 'minpaku-suite')) . '</a></li>';
-        echo '<li><a href="' . admin_url('edit.php?post_type=mcs_booking') . '">' . esc_html(__('Manage Bookings', 'minpaku-suite')) . '</a></li>';
-        echo '</ul>';
-        echo '</div>';
+        // Load AdminDashboardService
+        $service_file = MCS_PATH . 'includes/Admin/AdminDashboardService.php';
+        if (file_exists($service_file)) {
+            require_once $service_file;
+        }
+
+        // Use template if available, otherwise fallback
+        $template_file = MCS_PATH . 'templates/admin/dashboard.php';
+        if (file_exists($template_file) && class_exists('MinpakuSuite\Admin\AdminDashboardService')) {
+            include $template_file;
+        } else {
+            // Fallback to simple dashboard
+            echo '<div class="wrap">';
+            echo '<h1>' . esc_html(__('Minpaku Suite', 'minpaku-suite')) . '</h1>';
+            echo '<p>' . esc_html(__('Welcome to Minpaku Suite dashboard.', 'minpaku-suite')) . '</p>';
+            echo '<h2>' . esc_html(__('Quick Links', 'minpaku-suite')) . '</h2>';
+            echo '<ul>';
+            echo '<li><a href="' . admin_url('edit.php?post_type=mcs_property') . '">' . esc_html(__('Manage Properties', 'minpaku-suite')) . '</a></li>';
+            echo '<li><a href="' . admin_url('edit.php?post_type=mcs_booking') . '">' . esc_html(__('Manage Bookings', 'minpaku-suite')) . '</a></li>';
+            echo '</ul>';
+            echo '</div>';
+        }
     }
 
     public static function render_owner_portal()
     {
-        // Render the owner portal using the shortcode
-        echo '<div class="wrap">';
-        echo '<h1>' . esc_html(__('Owner Portal', 'minpaku-suite')) . '</h1>';
-
-        if (class_exists('MinpakuSuite\Portal\OwnerDashboard')) {
-            // Use the shortcode to render the dashboard
-            echo do_shortcode('[mcs_owner_dashboard]');
-        } else {
-            echo '<p class="notice notice-error">' . esc_html(__('Owner portal is not available.', 'minpaku-suite')) . '</p>';
+        // Load AdminDashboardService for consistent UI
+        $service_file = MCS_PATH . 'includes/Admin/AdminDashboardService.php';
+        if (file_exists($service_file)) {
+            require_once $service_file;
         }
 
-        echo '</div>';
+        // Use the same template as main dashboard for consistency
+        $template_file = MCS_PATH . 'templates/admin/dashboard.php';
+        if (file_exists($template_file) && class_exists('MinpakuSuite\Admin\AdminDashboardService')) {
+            // Override the title for Owner Portal context
+            add_filter('gettext', function($translation, $text, $domain) {
+                if ($domain === 'minpaku-suite' && $text === 'Minpaku Suite') {
+                    return __('Owner Portal', 'minpaku-suite');
+                }
+                return $translation;
+            }, 10, 3);
+
+            include $template_file;
+
+            // Remove the filter after rendering
+            remove_all_filters('gettext');
+        } else {
+            // Fallback to shortcode if template not available
+            echo '<div class="wrap">';
+            echo '<h1>' . esc_html(__('Owner Portal', 'minpaku-suite')) . '</h1>';
+
+            if (class_exists('MinpakuSuite\Portal\OwnerDashboard')) {
+                echo do_shortcode('[mcs_owner_dashboard]');
+            } else {
+                echo '<p class="notice notice-error">' . esc_html(__('Owner portal is not available.', 'minpaku-suite')) . '</p>';
+            }
+
+            echo '</div>';
+        }
+    }
+
+    public static function enqueue_admin_styles($hook_suffix)
+    {
+        // Only enqueue on our plugin pages
+        $our_pages = [
+            'toplevel_page_minpaku-suite',
+            'minpaku_page_mcs-owner-portal'
+        ];
+
+        if (in_array($hook_suffix, $our_pages)) {
+            $css_file = MCS_URL . 'assets/admin.css';
+            $css_path = MCS_PATH . 'assets/admin.css';
+
+            if (file_exists($css_path)) {
+                wp_enqueue_style(
+                    'minpaku-suite-admin',
+                    $css_file,
+                    [],
+                    filemtime($css_path)
+                );
+            }
+        }
     }
 
     public static function register_booking_components()
