@@ -97,8 +97,19 @@ class Bootstrap
             );
 
             // Add Owner Portal submenu for users with portal access
-            if (class_exists('MinpakuSuite\Portal\OwnerRoles') &&
-                \MinpakuSuite\Portal\OwnerRoles::user_can_access_portal()) {
+            $show_owner_portal = false;
+            if (class_exists('MinpakuSuite\Portal\OwnerRoles')) {
+                try {
+                    $show_owner_portal = \MinpakuSuite\Portal\OwnerRoles::user_can_access_portal();
+                } catch (Exception $e) {
+                    error_log('Owner Portal Menu Check Error: ' . $e->getMessage());
+                    $show_owner_portal = current_user_can('manage_options'); // Fallback to admin check
+                }
+            } else {
+                $show_owner_portal = current_user_can('manage_options'); // Fallback to admin check
+            }
+
+            if ($show_owner_portal) {
                 add_submenu_page(
                     'minpaku-suite',
                     __('Owner Portal', 'minpaku-suite'),
@@ -141,6 +152,9 @@ class Bootstrap
 
     public static function render_owner_portal()
     {
+        // Load Portal components first
+        self::register_portal_components();
+
         // Check if user has portal access first
         if (!is_user_logged_in()) {
             echo '<div class="wrap">';
@@ -150,8 +164,20 @@ class Bootstrap
             return;
         }
 
-        if (class_exists('MinpakuSuite\Portal\OwnerRoles') &&
-            !MinpakuSuite\Portal\OwnerRoles::user_can_access_portal()) {
+        // Check access with safer method
+        $has_access = false;
+        if (class_exists('MinpakuSuite\Portal\OwnerRoles')) {
+            try {
+                $has_access = \MinpakuSuite\Portal\OwnerRoles::user_can_access_portal();
+            } catch (Exception $e) {
+                error_log('Owner Portal Access Check Error: ' . $e->getMessage());
+                $has_access = current_user_can('manage_options'); // Fallback to admin check
+            }
+        } else {
+            $has_access = current_user_can('manage_options'); // Fallback to admin check
+        }
+
+        if (!$has_access) {
             echo '<div class="wrap">';
             echo '<h1>' . esc_html(__('Owner Portal', 'minpaku-suite')) . '</h1>';
             echo '<p class="notice notice-error">' . esc_html(__('You do not have permission to access the owner dashboard.', 'minpaku-suite')) . '</p>';
