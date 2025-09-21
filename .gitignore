@@ -1,15 +1,64 @@
-﻿# WordPress local dev
-.wp-env/
-dist/
-_testdata/
+# WordPress Core
+/wp-admin/
+/wp-content/
+/wp-includes/
+wp-config.php
+wp-config-sample.php
+wp-*.php
+xmlrpc.php
+.htaccess
 
-# IDE
+# Debug files
+debug.log
+debug*.log
+debug*.php
+wp-debug.log
+error_log
+
+# IDEs and editors
 .idea/
 .vscode/
+*.swp
+*.swo
+*~
 
-# OS
+# OS generated files
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
 
-# Node
+# Temporary files
+*.tmp
+*.temp
+*~
+
+# Dependencies
 node_modules/
+vendor/
+composer.lock
+
+# Build artifacts
+/build/
+/dist/
+*.min.js
+*.min.css
+
+# Logs
+*.log
+logs/
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Plugin specific
+/uploads/
+/cache/
+/backups/
