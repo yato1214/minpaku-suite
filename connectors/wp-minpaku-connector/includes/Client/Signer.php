@@ -5,11 +5,13 @@
  * @package WP_Minpaku_Connector
  */
 
+namespace MinpakuConnector\Client;
+
 if (!defined('ABSPATH')) {
     exit;
 }
 
-class WMC_Client_Signer {
+class MPC_Client_Signer {
 
     private $api_key;
     private $secret;

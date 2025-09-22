@@ -5,11 +5,13 @@
  * @package WP_Minpaku_Connector
  */
 
+namespace MinpakuConnector\Shortcodes;
+
 if (!defined('ABSPATH')) {
     exit;
 }
 
-class WMC_Shortcodes_Embed {
+class MPC_Shortcodes_Embed {
 
     public static function init() {
         add_shortcode('minpaku_connector', array(__CLASS__, 'render_shortcode'));
@@ -36,7 +38,7 @@ class WMC_Shortcodes_Embed {
 
         // Check if API is configured
         try {
-            $api = new WMC_Client_Api();
+            $api = new \MinpakuConnector\Client\MPC_Client_Api();
             if (!$api->is_configured()) {
                 self::log_error('API not configured', 'shortcode');
                 return self::render_error_notice(

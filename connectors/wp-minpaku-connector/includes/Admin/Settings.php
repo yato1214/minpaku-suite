@@ -5,15 +5,17 @@
  * @package WP_Minpaku_Connector
  */
 
+namespace MinpakuConnector\Admin;
+
 if (!defined('ABSPATH')) {
     exit;
 }
 
-class WMC_Admin_Settings {
+class MPC_Admin_Settings {
 
     public static function init() {
         add_action('admin_init', array(__CLASS__, 'register_settings'));
-        add_action('wp_ajax_wmc_test_connection', array(__CLASS__, 'ajax_test_connection'));
+        add_action('wp_ajax_mpc_test_connection', array(__CLASS__, 'ajax_test_connection'));
     }
 
     /**
@@ -27,7 +29,7 @@ class WMC_Admin_Settings {
         );
 
         add_settings_section(
-            'wmc_connection_section',
+            'mpc_connection_section',
             __('Portal Connection', 'wp-minpaku-connector'),
             array(__CLASS__, 'connection_section_callback'),
             'wp-minpaku-connector'
@@ -38,7 +40,7 @@ class WMC_Admin_Settings {
             __('Portal Base URL', 'wp-minpaku-connector'),
             array(__CLASS__, 'portal_url_callback'),
             'wp-minpaku-connector',
-            'wmc_connection_section'
+            'mpc_connection_section'
         );
 
         add_settings_field(
@@ -46,7 +48,7 @@ class WMC_Admin_Settings {
             __('Site ID', 'wp-minpaku-connector'),
             array(__CLASS__, 'site_id_callback'),
             'wp-minpaku-connector',
-            'wmc_connection_section'
+            'mpc_connection_section'
         );
 
         add_settings_field(
@@ -54,7 +56,7 @@ class WMC_Admin_Settings {
             __('API Key', 'wp-minpaku-connector'),
             array(__CLASS__, 'api_key_callback'),
             'wp-minpaku-connector',
-            'wmc_connection_section'
+            'mpc_connection_section'
         );
 
         add_settings_field(
@@ -62,7 +64,7 @@ class WMC_Admin_Settings {
             __('Secret', 'wp-minpaku-connector'),
             array(__CLASS__, 'secret_callback'),
             'wp-minpaku-connector',
-            'wmc_connection_section'
+            'mpc_connection_section'
         );
     }
 
@@ -95,7 +97,7 @@ class WMC_Admin_Settings {
      * AJAX handler for connection test
      */
     public static function ajax_test_connection() {
-        check_ajax_referer('wmc_test_connection', 'nonce');
+        check_ajax_referer('mpc_test_connection', 'nonce');
 
         if (!current_user_can('manage_options')) {
             wp_die(__('You do not have permission to perform this action.', 'wp-minpaku-connector'));
@@ -106,7 +108,7 @@ class WMC_Admin_Settings {
             error_log('[minpaku-connector] Connection test initiated by user: ' . get_current_user_id());
         }
 
-        $api = new WMC_Client_Api();
+        $api = new \MinpakuConnector\Client\MPC_Client_Api();
         $result = $api->test_connection();
 
         // Enhanced error handling for specific cases
@@ -185,7 +187,7 @@ class WMC_Admin_Settings {
      * Portal URL field callback
      */
     public static function portal_url_callback() {
-        $settings = WP_Minpaku_Connector::get_settings();
+        $settings = \MinpakuConnector\MPC_Minpaku_Connector::get_settings();
         echo '<input type="url" id="portal_url" name="wp_minpaku_connector_settings[portal_url]" value="' . esc_attr($settings['portal_url']) . '" class="regular-text" placeholder="https://your-portal.com" required />';
         echo '<p class="description">' . esc_html__('The base URL of your Minpaku Suite portal (e.g., https://yoursite.com)', 'wp-minpaku-connector') . '</p>';
     }
@@ -194,7 +196,7 @@ class WMC_Admin_Settings {
      * Site ID field callback
      */
     public static function site_id_callback() {
-        $settings = WP_Minpaku_Connector::get_settings();
+        $settings = \MinpakuConnector\MPC_Minpaku_Connector::get_settings();
         echo '<input type="text" id="site_id" name="wp_minpaku_connector_settings[site_id]" value="' . esc_attr($settings['site_id']) . '" class="regular-text" required />';
         echo '<p class="description">' . esc_html__('The Site ID generated in your portal connector settings.', 'wp-minpaku-connector') . '</p>';
     }
@@ -203,7 +205,7 @@ class WMC_Admin_Settings {
      * API Key field callback
      */
     public static function api_key_callback() {
-        $settings = WP_Minpaku_Connector::get_settings();
+        $settings = \MinpakuConnector\MPC_Minpaku_Connector::get_settings();
         echo '<input type="text" id="api_key" name="wp_minpaku_connector_settings[api_key]" value="' . esc_attr($settings['api_key']) . '" class="regular-text" required />';
         echo '<p class="description">' . esc_html__('The API Key generated in your portal connector settings.', 'wp-minpaku-connector') . '</p>';
     }
@@ -212,7 +214,7 @@ class WMC_Admin_Settings {
      * Secret field callback
      */
     public static function secret_callback() {
-        $settings = WP_Minpaku_Connector::get_settings();
+        $settings = \MinpakuConnector\MPC_Minpaku_Connector::get_settings();
         echo '<input type="password" id="secret" name="wp_minpaku_connector_settings[secret]" value="' . esc_attr($settings['secret']) . '" class="regular-text" required />';
         echo '<p class="description">' . esc_html__('The Secret key generated in your portal connector settings.', 'wp-minpaku-connector') . '</p>';
     }
@@ -225,7 +227,7 @@ class WMC_Admin_Settings {
             wp_die(__('You do not have permission to access this page.', 'wp-minpaku-connector'));
         }
 
-        $settings = WP_Minpaku_Connector::get_settings();
+        $settings = \MinpakuConnector\MPC_Minpaku_Connector::get_settings();
         $is_configured = !empty($settings['portal_url']) && !empty($settings['api_key']) && !empty($settings['secret']) && !empty($settings['site_id']);
         ?>
         <div class="wrap">
@@ -299,8 +301,8 @@ class WMC_Admin_Settings {
                 result.removeClass('success error warning').html('<span class="spinner is-active" style="float:none;margin:0 5px 0 0;"></span><?php echo esc_js(__('Testing connection...', 'wp-minpaku-connector')); ?>');
 
                 $.post(ajaxurl, {
-                    action: 'wmc_test_connection',
-                    nonce: '<?php echo wp_create_nonce('wmc_test_connection'); ?>'
+                    action: 'mpc_test_connection',
+                    nonce: '<?php echo wp_create_nonce('mpc_test_connection'); ?>'
                 })
                 .done(function(response) {
                     if (response.success) {

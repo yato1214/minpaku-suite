@@ -20,28 +20,28 @@
             var $result = $('#test-result');
 
             // Disable button and show loading state
-            $button.prop('disabled', true).text(wmcAdmin.strings.testing);
+            $button.prop('disabled', true).text(mpcAdmin.strings.testing);
             $result.removeClass('success error').text('');
 
             // Make AJAX request
-            $.post(wmcAdmin.ajaxUrl, {
-                action: 'wmc_test_connection',
-                nonce: wmcAdmin.nonce
+            $.post(mpcAdmin.ajaxUrl, {
+                action: 'mpc_test_connection',
+                nonce: mpcAdmin.nonce
             })
             .done(function(response) {
                 if (response.success) {
-                    $result.addClass('success').html('✓ ' + wmcAdmin.strings.success);
+                    $result.addClass('success').html('✓ ' + mpcAdmin.strings.success);
                     if (response.data && response.data.message) {
                         $result.append('<br><small>' + escapeHtml(response.data.message) + '</small>');
                     }
                 } else {
-                    var message = response.data && response.data.message ? response.data.message : wmcAdmin.strings.error;
+                    var message = response.data && response.data.message ? response.data.message : mpcAdmin.strings.error;
                     $result.addClass('error').html('✗ ' + escapeHtml(message));
                 }
             })
             .fail(function(xhr, status, error) {
                 console.error('Connection test failed:', error);
-                $result.addClass('error').html('✗ ' + wmcAdmin.strings.error);
+                $result.addClass('error').html('✗ ' + mpcAdmin.strings.error);
             })
             .always(function() {
                 // Re-enable button

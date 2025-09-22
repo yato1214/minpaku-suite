@@ -5,23 +5,25 @@
  * @package WP_Minpaku_Connector
  */
 
+namespace MinpakuConnector\Client;
+
 if (!defined('ABSPATH')) {
     exit;
 }
 
-class WMC_Client_Api {
+class MPC_Client_Api {
 
     private $portal_url;
     private $signer;
     private $cache_duration = 300; // 5 minutes
 
     public function __construct() {
-        $settings = WP_Minpaku_Connector::get_settings();
+        $settings = \MinpakuConnector\MPC_Minpaku_Connector::get_settings();
 
         $this->portal_url = trailingslashit($settings['portal_url']);
 
         if (!empty($settings['api_key']) && !empty($settings['secret'])) {
-            $this->signer = new WMC_Client_Signer($settings['api_key'], $settings['secret']);
+            $this->signer = new MPC_Client_Signer($settings['api_key'], $settings['secret']);
         }
     }
 
@@ -29,7 +31,7 @@ class WMC_Client_Api {
      * Check if API is properly configured
      */
     public function is_configured() {
-        $settings = WP_Minpaku_Connector::get_settings();
+        $settings = \MinpakuConnector\MPC_Minpaku_Connector::get_settings();
 
         return !empty($settings['portal_url']) &&
                !empty($settings['api_key']) &&
@@ -89,7 +91,7 @@ class WMC_Client_Api {
         );
 
         $args = wp_parse_args($args, $defaults);
-        $cache_key = 'wmc_properties_' . md5(serialize($args));
+        $cache_key = 'mpc_properties_' . md5(serialize($args));
 
         // Try to get from cache first
         $cached = get_transient($cache_key);
@@ -135,7 +137,7 @@ class WMC_Client_Api {
             $args['start_date'] = sanitize_text_field($start_date);
         }
 
-        $cache_key = 'wmc_availability_' . md5(serialize($args));
+        $cache_key = 'mpc_availability_' . md5(serialize($args));
 
         // Try to get from cache first
         $cached = get_transient($cache_key);
@@ -268,26 +270,16 @@ class WMC_Client_Api {
         $wpdb->query(
             $wpdb->prepare(
                 "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s",
-                '_transient_wmc_%'
+                '_transient_mpc_%'
             )
         );
 
         $wpdb->query(
             $wpdb->prepare(
                 "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s",
-                '_transient_timeout_wmc_%'
+                '_transient_timeout_mpc_%'
             )
         );
     }
 
-    /**
-     * Check if API is properly configured
-     */
-    public function is_configured() {
-        $settings = WP_Minpaku_Connector::get_settings();
-        return !empty($settings['portal_url']) &&
-               !empty($settings['api_key']) &&
-               !empty($settings['secret']) &&
-               !empty($settings['site_id']);
-    }
 }
