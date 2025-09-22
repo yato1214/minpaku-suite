@@ -193,6 +193,22 @@ msgstr "ページや投稿でショートコードを使用してコンテンツ
 msgid "Portal URL is invalid. Only http(s) development domains (.local/.test/localhost/with ports) are allowed."
 msgstr "ポータルURLが無効です。http(s) の開発ドメイン（.local/.test/localhost/ポート）を許可しています。"
 
+#: includes/Admin/Settings.php
+msgid "Portal URL is empty."
+msgstr "ポータルURLが空です。"
+
+#: includes/Admin/Settings.php
+msgid "Portal URL is invalid. Please specify an http(s) URL."
+msgstr "ポータルURLが無効です。http(s)のURLを指定してください。"
+
+#: includes/Admin/Settings.php
+msgid "Portal URL scheme must be http or https."
+msgstr "ポータルURLのスキームは http/https にしてください。"
+
+#: includes/Admin/Settings.php
+msgid "Portal URL domain is not allowed (supports .local/.test/localhost)."
+msgstr "ポータルURLのドメインが許可されていません（.local/.test/localhost対応）。"
+
 #: includes/Client/Api.php
 msgid "API credentials not configured."
 msgstr "API認証情報が設定されていません。"

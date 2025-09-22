@@ -75,16 +75,16 @@ class MPC_Admin_Settings {
         $sanitized = array();
 
         if (isset($input['portal_url'])) {
-            $normalized_url = self::normalize_portal_url($input['portal_url']);
-            if ($normalized_url !== false) {
-                $sanitized['portal_url'] = $normalized_url;
+            list($ok, $normalized, $msg) = self::normalize_and_validate_portal_url($input['portal_url']);
+            if ($ok) {
+                $sanitized['portal_url'] = $normalized;
             } else {
-                // Keep the original value and let validation show error
+                // Keep the original value and show error
                 $sanitized['portal_url'] = esc_url_raw(trim($input['portal_url']));
                 \add_settings_error(
                     'wp_minpaku_connector_settings',
                     'invalid_portal_url',
-                    \__('Portal URL is invalid. Only http(s) development domains (.local/.test/localhost/with ports) are allowed.', 'wp-minpaku-connector'),
+                    esc_html($msg),
                     'error'
                 );
             }
@@ -106,63 +106,65 @@ class MPC_Admin_Settings {
     }
 
     /**
-     * Normalize and validate portal URL
+     * Normalize and validate portal URL - improved version
      */
-    public static function normalize_portal_url($url) {
-        if (empty($url)) {
-            return '';
+    private static function normalize_and_validate_portal_url($raw): array {
+        // 1) 正規化：trim / 全角スペース除去 / esc_url_raw / スラ削除
+        $s = preg_replace('/\x{3000}/u', ' ', trim((string)$raw)); // 全角→半角
+        $s = esc_url_raw($s);
+        if ($s === '') {
+            return [false, '', \__('Portal URL is empty.', 'wp-minpaku-connector')];
+        }
+        $s = untrailingslashit($s);
+
+        // 2) WordPress 標準のURL検証
+        if (!\wp_http_validate_url($s)) {
+            return [false, $s, \__('Portal URL is invalid. Please specify an http(s) URL.', 'wp-minpaku-connector')];
         }
 
-        // Normalize input: trim, replace full-width spaces, escape, remove trailing slash
-        $url = trim($url ?? '');
-        $url = preg_replace('/\x{3000}/u', ' ', $url); // Full-width space to half-width
-        $url = esc_url_raw($url);
-        $url = untrailingslashit($url);
+        // 3) 解析
+        $parts = \wp_parse_url($s);
+        $scheme = $parts['scheme'] ?? '';
+        $host   = $parts['host'] ?? '';
+        $port   = isset($parts['port']) ? (int)$parts['port'] : null;
 
-        // Validate with WordPress function
-        if (!\wp_http_validate_url($url)) {
-            return false;
+        // 4) スキームは http/https のみ
+        if (!in_array($scheme, ['http','https'], true)) {
+            return [false, $s, \__('Portal URL scheme must be http or https.', 'wp-minpaku-connector')];
         }
 
-        // Parse URL components
-        $parts = \wp_parse_url($url);
-        if (!$parts) {
-            return false;
-        }
+        // 5) 開発環境ホストを許容（.local / .test / localhost / ポートあり）
+        $env_is_local = function_exists('wp_get_environment_type') && (\wp_get_environment_type() === 'local');
+        $allow_any_dev = $env_is_local || \apply_filters('wpmc_allow_dev_hosts', true);
 
-        // Check scheme
-        $allowed_schemes = ['http', 'https'];
-        if (!in_array($parts['scheme'] ?? '', $allowed_schemes, true)) {
-            return false;
-        }
-
-        // Check host
-        $host = $parts['host'] ?? '';
-        if (empty($host)) {
-            return false;
-        }
-
-        $allowed_dev_tlds = ['local', 'test', 'localhost', 'localdomain'];
         $ok_host = false;
-
-        if (preg_match('/^[^\.]+$/', $host)) {
-            // Host without dots (localhost-style)
-            $ok_host = in_array($host, ['localhost'], true);
-        } else {
-            // Host with dots - check TLD
-            $tld = substr(strrchr($host, '.'), 1);
-            if ($tld) {
-                // Allow development TLDs or standard domain TLDs
-                $ok_host = in_array($tld, $allowed_dev_tlds, true) ||
-                          preg_match('/^[a-z]{2,63}$/i', $tld);
+        if ($allow_any_dev) {
+            // ドット無し→ localhost 系許容
+            if (!str_contains($host, '.')) {
+                $ok_host = in_array($host, ['localhost'], true);
+            } else {
+                $tld = substr(strrchr($host, '.'), 1);
+                $ok_host = in_array($tld, ['local','test','localdomain'], true) || preg_match('/^[a-z]{2,63}$/i', (string)$tld);
             }
+        } else {
+            // 本番厳格（任意：必要ならホワイトリストへ）
+            $ok_host = (bool) preg_match('/^[a-z0-9\-\.]+$/i', (string)$host);
         }
 
         if (!$ok_host) {
-            return false;
+            return [false, $s, \__('Portal URL domain is not allowed (supports .local/.test/localhost).', 'wp-minpaku-connector')];
         }
 
-        return $url;
+        // 6) ここまで通ればOK
+        return [true, $s, ''];
+    }
+
+    /**
+     * Legacy function for backward compatibility - calls the new validation
+     */
+    public static function normalize_portal_url($url) {
+        list($ok, $normalized, $msg) = self::normalize_and_validate_portal_url($url);
+        return $ok ? $normalized : false;
     }
 
     /**
