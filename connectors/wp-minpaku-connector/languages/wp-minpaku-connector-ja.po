@@ -189,6 +189,10 @@ msgstr "設定を保存して接続をテストします。"
 msgid "Use the shortcodes on your pages and posts to display content."
 msgstr "ページや投稿でショートコードを使用してコンテンツを表示します。"
 
+#: includes/Admin/Settings.php
+msgid "Portal URL is invalid. Only http(s) development domains (.local/.test/localhost/with ports) are allowed."
+msgstr "ポータルURLが無効です。http(s) の開発ドメイン（.local/.test/localhost/ポート）を許可しています。"
+
 #: includes/Client/Api.php
 msgid "API credentials not configured."
 msgstr "API認証情報が設定されていません。"

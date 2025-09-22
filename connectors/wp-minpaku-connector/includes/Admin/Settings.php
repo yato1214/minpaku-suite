@@ -75,7 +75,19 @@ class MPC_Admin_Settings {
         $sanitized = array();
 
         if (isset($input['portal_url'])) {
-            $sanitized['portal_url'] = esc_url_raw(trim($input['portal_url']));
+            $normalized_url = self::normalize_portal_url($input['portal_url']);
+            if ($normalized_url !== false) {
+                $sanitized['portal_url'] = $normalized_url;
+            } else {
+                // Keep the original value and let validation show error
+                $sanitized['portal_url'] = esc_url_raw(trim($input['portal_url']));
+                \add_settings_error(
+                    'wp_minpaku_connector_settings',
+                    'invalid_portal_url',
+                    \__('Portal URL is invalid. Only http(s) development domains (.local/.test/localhost/with ports) are allowed.', 'wp-minpaku-connector'),
+                    'error'
+                );
+            }
         }
 
         if (isset($input['site_id'])) {
@@ -91,6 +103,66 @@ class MPC_Admin_Settings {
         }
 
         return $sanitized;
+    }
+
+    /**
+     * Normalize and validate portal URL
+     */
+    public static function normalize_portal_url($url) {
+        if (empty($url)) {
+            return '';
+        }
+
+        // Normalize input: trim, replace full-width spaces, escape, remove trailing slash
+        $url = trim($url ?? '');
+        $url = preg_replace('/\x{3000}/u', ' ', $url); // Full-width space to half-width
+        $url = esc_url_raw($url);
+        $url = untrailingslashit($url);
+
+        // Validate with WordPress function
+        if (!\wp_http_validate_url($url)) {
+            return false;
+        }
+
+        // Parse URL components
+        $parts = \wp_parse_url($url);
+        if (!$parts) {
+            return false;
+        }
+
+        // Check scheme
+        $allowed_schemes = ['http', 'https'];
+        if (!in_array($parts['scheme'] ?? '', $allowed_schemes, true)) {
+            return false;
+        }
+
+        // Check host
+        $host = $parts['host'] ?? '';
+        if (empty($host)) {
+            return false;
+        }
+
+        $allowed_dev_tlds = ['local', 'test', 'localhost', 'localdomain'];
+        $ok_host = false;
+
+        if (preg_match('/^[^\.]+$/', $host)) {
+            // Host without dots (localhost-style)
+            $ok_host = in_array($host, ['localhost'], true);
+        } else {
+            // Host with dots - check TLD
+            $tld = substr(strrchr($host, '.'), 1);
+            if ($tld) {
+                // Allow development TLDs or standard domain TLDs
+                $ok_host = in_array($tld, $allowed_dev_tlds, true) ||
+                          preg_match('/^[a-z]{2,63}$/i', $tld);
+            }
+        }
+
+        if (!$ok_host) {
+            return false;
+        }
+
+        return $url;
     }
 
     /**

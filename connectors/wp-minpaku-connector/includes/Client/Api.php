@@ -20,7 +20,17 @@ class MPC_Client_Api {
     public function __construct() {
         $settings = \WP_Minpaku_Connector::get_settings();
 
-        $this->portal_url = trailingslashit($settings['portal_url']);
+        // Normalize the portal URL using the same logic as settings validation
+        $normalized_url = '';
+        if (!empty($settings['portal_url'])) {
+            if (\class_exists('MinpakuConnector\Admin\MPC_Admin_Settings')) {
+                $normalized_url = \MinpakuConnector\Admin\MPC_Admin_Settings::normalize_portal_url($settings['portal_url']);
+            }
+            if ($normalized_url === false) {
+                $normalized_url = $settings['portal_url']; // Fallback to original
+            }
+        }
+        $this->portal_url = trailingslashit($normalized_url);
 
         if (!empty($settings['api_key']) && !empty($settings['secret'])) {
             $this->signer = new MPC_Client_Signer($settings['api_key'], $settings['secret']);
