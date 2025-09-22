@@ -187,7 +187,7 @@ class MPC_Admin_Settings {
      * Portal URL field callback
      */
     public static function portal_url_callback() {
-        $settings = \MinpakuConnector\MPC_Minpaku_Connector::get_settings();
+        $settings = \WP_Minpaku_Connector::get_settings();
         echo '<input type="url" id="portal_url" name="wp_minpaku_connector_settings[portal_url]" value="' . esc_attr($settings['portal_url']) . '" class="regular-text" placeholder="https://your-portal.com" required />';
         echo '<p class="description">' . esc_html__('The base URL of your Minpaku Suite portal (e.g., https://yoursite.com)', 'wp-minpaku-connector') . '</p>';
     }
@@ -196,7 +196,7 @@ class MPC_Admin_Settings {
      * Site ID field callback
      */
     public static function site_id_callback() {
-        $settings = \MinpakuConnector\MPC_Minpaku_Connector::get_settings();
+        $settings = \WP_Minpaku_Connector::get_settings();
         echo '<input type="text" id="site_id" name="wp_minpaku_connector_settings[site_id]" value="' . esc_attr($settings['site_id']) . '" class="regular-text" required />';
         echo '<p class="description">' . esc_html__('The Site ID generated in your portal connector settings.', 'wp-minpaku-connector') . '</p>';
     }
@@ -205,7 +205,7 @@ class MPC_Admin_Settings {
      * API Key field callback
      */
     public static function api_key_callback() {
-        $settings = \MinpakuConnector\MPC_Minpaku_Connector::get_settings();
+        $settings = \WP_Minpaku_Connector::get_settings();
         echo '<input type="text" id="api_key" name="wp_minpaku_connector_settings[api_key]" value="' . esc_attr($settings['api_key']) . '" class="regular-text" required />';
         echo '<p class="description">' . esc_html__('The API Key generated in your portal connector settings.', 'wp-minpaku-connector') . '</p>';
     }
@@ -214,7 +214,7 @@ class MPC_Admin_Settings {
      * Secret field callback
      */
     public static function secret_callback() {
-        $settings = \MinpakuConnector\MPC_Minpaku_Connector::get_settings();
+        $settings = \WP_Minpaku_Connector::get_settings();
         echo '<input type="password" id="secret" name="wp_minpaku_connector_settings[secret]" value="' . esc_attr($settings['secret']) . '" class="regular-text" required />';
         echo '<p class="description">' . esc_html__('The Secret key generated in your portal connector settings.', 'wp-minpaku-connector') . '</p>';
     }
@@ -227,7 +227,7 @@ class MPC_Admin_Settings {
             wp_die(__('You do not have permission to access this page.', 'wp-minpaku-connector'));
         }
 
-        $settings = \MinpakuConnector\MPC_Minpaku_Connector::get_settings();
+        $settings = \WP_Minpaku_Connector::get_settings();
         $is_configured = !empty($settings['portal_url']) && !empty($settings['api_key']) && !empty($settings['secret']) && !empty($settings['site_id']);
         ?>
         <div class="wrap">

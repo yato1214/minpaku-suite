@@ -18,7 +18,7 @@ class MPC_Client_Api {
     private $cache_duration = 300; // 5 minutes
 
     public function __construct() {
-        $settings = \MinpakuConnector\MPC_Minpaku_Connector::get_settings();
+        $settings = \WP_Minpaku_Connector::get_settings();
 
         $this->portal_url = trailingslashit($settings['portal_url']);
 
@@ -31,7 +31,7 @@ class MPC_Client_Api {
      * Check if API is properly configured
      */
     public function is_configured() {
-        $settings = \MinpakuConnector\MPC_Minpaku_Connector::get_settings();
+        $settings = \WP_Minpaku_Connector::get_settings();
 
         return !empty($settings['portal_url']) &&
                !empty($settings['api_key']) &&
