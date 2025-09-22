@@ -113,49 +113,38 @@ class MPC_Admin_Settings {
         $s = preg_replace('/\x{3000}/u', ' ', trim((string)$raw)); // 全角→半角
         $s = esc_url_raw($s);
         if ($s === '') {
-            return [false, '', \__('Portal URL is empty.', 'wp-minpaku-connector')];
+            return [false, '', \__('ポータルURLが空です。', 'wp-minpaku-connector')];
         }
         $s = untrailingslashit($s);
 
         // 2) WordPress 標準のURL検証
         if (!\wp_http_validate_url($s)) {
-            return [false, $s, \__('Portal URL is invalid. Please specify an http(s) URL.', 'wp-minpaku-connector')];
+            return [false, $s, \__('ポータルURLが無効です。http(s)のURLを指定してください。', 'wp-minpaku-connector')];
         }
 
-        // 3) 解析
         $parts = \wp_parse_url($s);
         $scheme = $parts['scheme'] ?? '';
-        $host   = $parts['host'] ?? '';
-        $port   = isset($parts['port']) ? (int)$parts['port'] : null;
+        $host = $parts['host'] ?? '';
 
-        // 4) スキームは http/https のみ
+        // 3) スキームは http/https のみ
         if (!in_array($scheme, ['http','https'], true)) {
-            return [false, $s, \__('Portal URL scheme must be http or https.', 'wp-minpaku-connector')];
+            return [false, $s, \__('ポータルURLのスキームは http/https にしてください。', 'wp-minpaku-connector')];
         }
 
-        // 5) 開発環境ホストを許容（.local / .test / localhost / ポートあり）
-        $env_is_local = function_exists('wp_get_environment_type') && (\wp_get_environment_type() === 'local');
-        $allow_any_dev = $env_is_local || \apply_filters('wpmc_allow_dev_hosts', true);
-
+        // 4) 開発用ドメインを許容
         $ok_host = false;
-        if ($allow_any_dev) {
-            // ドット無し→ localhost 系許容
-            if (!str_contains($host, '.')) {
-                $ok_host = in_array($host, ['localhost'], true);
-            } else {
-                $tld = substr(strrchr($host, '.'), 1);
-                $ok_host = in_array($tld, ['local','test','localdomain'], true) || preg_match('/^[a-z]{2,63}$/i', (string)$tld);
-            }
+        if ($host && !str_contains($host, '.')) {
+            // ドット無し→ localhost を許容
+            $ok_host = ($host === 'localhost');
         } else {
-            // 本番厳格（任意：必要ならホワイトリストへ）
-            $ok_host = (bool) preg_match('/^[a-z0-9\-\.]+$/i', (string)$host);
+            $tld = $host ? substr(strrchr($host, '.'), 1) : '';
+            $ok_host = ($tld && (in_array($tld, ['local','test','localdomain'], true) || preg_match('/^[a-z]{2,63}$/i', (string)$tld)));
         }
 
         if (!$ok_host) {
-            return [false, $s, \__('Portal URL domain is not allowed (supports .local/.test/localhost).', 'wp-minpaku-connector')];
+            return [false, $s, \__('ポータルURLのドメインが許可されていません（.local/.test/localhost対応）。', 'wp-minpaku-connector')];
         }
 
-        // 6) ここまで通ればOK
         return [true, $s, ''];
     }
 
