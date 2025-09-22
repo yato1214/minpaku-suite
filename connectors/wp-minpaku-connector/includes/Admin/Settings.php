@@ -117,21 +117,51 @@ class MPC_Admin_Settings {
         }
         $s = untrailingslashit($s);
 
-        // 2) WordPress 標準のURL検証
-        if (!\wp_http_validate_url($s)) {
-            return [false, $s, \__('ポータルURLが無効です。http(s)のURLを指定してください。', 'wp-minpaku-connector')];
+        // 2) WordPress 標準のURL検証 + 開発環境フォールバック
+        $wp_valid = \wp_http_validate_url($s);
+        if (!$wp_valid) {
+            // WordPressの標準検証が失敗した場合、開発用ドメインかチェック
+            $parts = \wp_parse_url($s);
+            if (!$parts || !isset($parts['scheme']) || !isset($parts['host'])) {
+                return [false, $s, \__('ポータルURLが無効です。http(s)のURLを指定してください。', 'wp-minpaku-connector')];
+            }
+
+            $scheme = $parts['scheme'];
+            $host = $parts['host'];
+
+            // http/httpsスキームかつ開発用ドメインなら許可
+            $is_dev_scheme = in_array($scheme, ['http', 'https'], true);
+            $is_dev_host = false;
+
+            if (!str_contains($host, '.')) {
+                // ドット無し→ localhost を許容
+                $is_dev_host = ($host === 'localhost');
+            } else {
+                $tld = substr(strrchr($host, '.'), 1);
+                $is_dev_host = in_array($tld, ['local','test','localdomain'], true);
+            }
+
+            if (!($is_dev_scheme && $is_dev_host)) {
+                return [false, $s, \__('ポータルURLが無効です。http(s)のURLを指定してください。', 'wp-minpaku-connector')];
+            }
         }
 
+        // 3) 最終チェック：スキームとホストの再確認（既に上でチェック済みだが念のため）
         $parts = \wp_parse_url($s);
         $scheme = $parts['scheme'] ?? '';
         $host = $parts['host'] ?? '';
 
-        // 3) スキームは http/https のみ
+        // デバッグログ
+        if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+            error_log('[minpaku-connector] URL validation: ' . $s . ' | wp_valid: ' . ($wp_valid ? 'true' : 'false') . ' | scheme: ' . $scheme . ' | host: ' . $host);
+        }
+
+        // スキーム再確認
         if (!in_array($scheme, ['http','https'], true)) {
             return [false, $s, \__('ポータルURLのスキームは http/https にしてください。', 'wp-minpaku-connector')];
         }
 
-        // 4) 開発用ドメインを許容
+        // ホスト再確認（開発用ドメインまたは通常ドメイン）
         $ok_host = false;
         if ($host && !str_contains($host, '.')) {
             // ドット無し→ localhost を許容
@@ -166,9 +196,13 @@ class MPC_Admin_Settings {
             wp_die(__('You do not have permission to perform this action.', 'wp-minpaku-connector'));
         }
 
-        // Log connection test attempt
+        // Log connection test attempt with URL validation
         if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
             error_log('[minpaku-connector] Connection test initiated by user: ' . get_current_user_id());
+            $settings = \WP_Minpaku_Connector::get_settings();
+            $portal_url = $settings['portal_url'] ?? '';
+            list($url_ok, $normalized_url, $url_msg) = self::normalize_and_validate_portal_url($portal_url);
+            error_log('[minpaku-connector] Portal URL validation - Original: ' . $portal_url . ' | Valid: ' . ($url_ok ? 'true' : 'false') . ' | Message: ' . $url_msg);
         }
 
         $api = new \MinpakuConnector\Client\MPC_Client_Api();
