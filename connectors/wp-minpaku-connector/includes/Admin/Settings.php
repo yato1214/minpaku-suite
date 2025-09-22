@@ -433,40 +433,56 @@ class MPC_Admin_Settings {
         }
 
         $api = new \MinpakuConnector\Client\MPC_Client_Api();
-
-        $verify_url = trailingslashit($normalized_url) . 'wp-json/minpaku/v1/connector/verify';
-        $start_time = microtime(true);
-        $result_data = $api->test_connection();
-        $request_time = round((microtime(true) - $start_time) * 1000);
+        $detailed_result = $api->test_connection_detailed();
 
         $result = array(
-            'url' => $verify_url,
-            'request_time_ms' => $request_time,
-            'success' => $result_data['success'],
-            'message' => $result_data['message']
+            'url' => $detailed_result['request_url'],
+            'request_time_ms' => $detailed_result['request_time_ms'],
+            'http_status' => $detailed_result['http_status'],
+            'response_body_preview' => $detailed_result['response_body_preview'],
+            'request_headers_sent' => $detailed_result['request_headers_sent'],
+            'success' => $detailed_result['success']
         );
 
-        if (isset($result_data['data'])) {
-            $result['response_data'] = $result_data['data'];
+        // Handle WP_Error cases
+        if ($detailed_result['wp_error']) {
+            $result['wp_error'] = $detailed_result['wp_error'];
+            $result['guidance'] = __('Network error occurred. Please try again.', 'wp-minpaku-connector');
+
+            // Specific guidance for common WP errors
+            $error_code = $detailed_result['wp_error']['code'];
+            if ($error_code === 'http_request_failed') {
+                $result['guidance'] = __('Check: Network connectivity and portal server status', 'wp-minpaku-connector');
+            } elseif (strpos($error_code, 'timeout') !== false) {
+                $result['guidance'] = __('Check: Network connectivity and portal server status', 'wp-minpaku-connector');
+            }
+
+            wp_send_json_error($result);
+            return;
         }
 
-        // Add guidance based on common error patterns
-        if (!$result_data['success']) {
-            $message = $result_data['message'];
-            if (strpos($message, '401') !== false) {
+        // Handle HTTP status-based guidance
+        if (!$detailed_result['success']) {
+            $status = $detailed_result['http_status'];
+            if ($status === 401) {
                 $result['guidance'] = __('Check: API Key format, Secret key, Site ID', 'wp-minpaku-connector');
-            } elseif (strpos($message, '403') !== false) {
+            } elseif ($status === 403) {
                 $result['guidance'] = __('Check: Allowed domains list in portal settings', 'wp-minpaku-connector');
-            } elseif (strpos($message, '404') !== false) {
+            } elseif ($status === 404) {
                 $result['guidance'] = __('Check: Portal Base URL spelling and accessibility', 'wp-minpaku-connector');
-            } elseif (strpos($message, '408') !== false || strpos($message, 'timeout') !== false) {
+            } elseif ($status === 408 || $status >= 500) {
                 $result['guidance'] = __('Check: Network connectivity and portal server status', 'wp-minpaku-connector');
             } else {
-                $result['guidance'] = __('Network error occurred. Please try again.', 'wp-minpaku-connector');
+                $result['guidance'] = sprintf(__('HTTP %d error occurred. Check portal server status.', 'wp-minpaku-connector'), $status);
             }
         }
 
-        if ($result_data['success']) {
+        // Include parsed response data if available
+        if ($detailed_result['parsed_data']) {
+            $result['parsed_data'] = $detailed_result['parsed_data'];
+        }
+
+        if ($detailed_result['success']) {
             wp_send_json_success($result);
         } else {
             wp_send_json_error($result);
@@ -757,9 +773,13 @@ class MPC_Admin_Settings {
                                 html += '<br><small>Site: ' + response.data.parsed_data.site + '</small>';
                             }
                         } else if (step === 'c') {
-                            html += '<br><small>Time: ' + response.data.request_time_ms + 'ms</small>';
-                            if (response.data.response_data && response.data.response_data.version) {
-                                html += '<br><small>Version: ' + response.data.response_data.version + '</small>';
+                            html += '<br><small>HTTP ' + (response.data.http_status || 'N/A') + ' (' + response.data.request_time_ms + 'ms)</small>';
+                            if (response.data.parsed_data && response.data.parsed_data.version) {
+                                html += '<br><small>Version: ' + response.data.parsed_data.version + '</small>';
+                            }
+                            if (response.data.request_headers_sent) {
+                                var headerCount = Object.keys(response.data.request_headers_sent).length;
+                                html += '<br><small>Headers sent: ' + headerCount + '</small>';
                             }
                         }
 
@@ -782,8 +802,31 @@ class MPC_Admin_Settings {
                             if (response.data.error) {
                                 html += '<br><small>' + response.data.error + '</small>';
                             }
-                        } else if (step === 'c' && response.data && response.data.guidance) {
-                            html += '<br><small style="color: #666;">' + response.data.guidance + '</small>';
+                        } else if (step === 'c' && response.data) {
+                            // Show detailed HTTP information
+                            if (response.data.http_status) {
+                                html += '<br><small>HTTP ' + response.data.http_status + ' (' + response.data.request_time_ms + 'ms)</small>';
+                            }
+
+                            // Show WP_Error details
+                            if (response.data.wp_error) {
+                                html += '<br><small>Error: ' + response.data.wp_error.code + '</small>';
+                                html += '<br><small>' + response.data.wp_error.message + '</small>';
+                            }
+
+                            // Show response body preview
+                            if (response.data.response_body_preview) {
+                                var preview = response.data.response_body_preview;
+                                if (preview.length > 100) {
+                                    preview = preview.substring(0, 100) + '...';
+                                }
+                                html += '<br><small>Response: ' + preview + '</small>';
+                            }
+
+                            // Show guidance
+                            if (response.data.guidance) {
+                                html += '<br><small style="color: #666;">' + response.data.guidance + '</small>';
+                            }
                         }
 
                         statusSpan.html(html);

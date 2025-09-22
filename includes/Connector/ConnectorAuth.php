@@ -211,6 +211,148 @@ class ConnectorAuth
     }
 
     /**
+     * Verify HMAC signature with detailed error responses for diagnostics
+     */
+    public static function verify_request_detailed(\WP_REST_Request $request)
+    {
+        // Check if connector is enabled
+        if (!ConnectorSettings::is_enabled()) {
+            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                error_log('[minpaku-suite] Connector authentication failed: connector disabled');
+            }
+            return new \WP_Error('connector_disabled', 'Connector is disabled', ['status' => 503]);
+        }
+
+        // Get required headers
+        $api_key = $request->get_header('X-MCS-Key');
+        $nonce = $request->get_header('X-MCS-Nonce');
+        $timestamp = $request->get_header('X-MCS-Timestamp');
+        $signature = $request->get_header('X-MCS-Signature');
+        $origin_header = $request->get_header('X-MCS-Origin');
+
+        // Debug logging (no secrets logged)
+        if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+            $debug_headers = [
+                'api_key_present' => !empty($api_key),
+                'nonce_present' => !empty($nonce),
+                'timestamp_present' => !empty($timestamp),
+                'signature_present' => !empty($signature),
+                'origin_header' => $origin_header ?: 'none',
+                'nonce' => $nonce ? substr($nonce, 0, 8) . '...' : 'none',
+                'timestamp' => $timestamp ?: 'none'
+            ];
+            error_log('[minpaku-suite] HMAC detailed verification - Headers: ' . json_encode($debug_headers));
+        }
+
+        if (!$api_key || !$nonce || !$timestamp || !$signature) {
+            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                error_log('[minpaku-suite] HMAC detailed verification failed: missing required headers');
+            }
+            return new \WP_Error('missing_headers', 'Missing required authentication headers', ['status' => 401]);
+        }
+
+        // Find API key data
+        $key_data = self::find_api_key_data($api_key);
+        if (!$key_data || !$key_data['active']) {
+            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                error_log('[minpaku-suite] HMAC detailed verification failed: API key not found or inactive');
+            }
+            return new \WP_Error('invalid_api_key', 'Invalid or inactive API key', ['status' => 401]);
+        }
+
+        // Verify timestamp and calculate time difference
+        $request_time = intval($timestamp);
+        $current_time = time();
+        $time_diff = $current_time - $request_time;
+
+        if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+            error_log('[minpaku-suite] HMAC detailed verification - Time diff: ' . $time_diff . ' seconds (max: ' . self::MAX_TIMESTAMP_DIFF . ')');
+        }
+
+        if (abs($time_diff) > self::MAX_TIMESTAMP_DIFF) {
+            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                error_log('[minpaku-suite] HMAC detailed verification failed: timestamp outside acceptable range');
+            }
+            return new \WP_Error('clock_skew', 'Request timestamp outside acceptable range', [
+                'status' => 401,
+                'skew_seconds' => $time_diff
+            ]);
+        }
+
+        // Check nonce replay
+        if (!self::verify_nonce($nonce)) {
+            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                error_log('[minpaku-suite] HMAC detailed verification failed: nonce replay detected');
+            }
+            return new \WP_Error('nonce_replay', 'Nonce has already been used', ['status' => 401]);
+        }
+
+        // Verify signature (with body hash)
+        $expected_signature = self::calculate_signature(
+            $request->get_method(),
+            $request->get_route(),
+            $nonce,
+            $timestamp,
+            $request->get_body(),
+            $key_data['secret']
+        );
+
+        $signature_valid = hash_equals($expected_signature, $signature);
+
+        if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+            error_log('[minpaku-suite] HMAC detailed verification - Signature valid: ' . ($signature_valid ? 'true' : 'false'));
+            if (!$signature_valid) {
+                // Log string components (no secret) for debugging
+                $body_hash = hash('sha256', $request->get_body());
+                $string_components = [
+                    'method' => strtoupper($request->get_method()),
+                    'path' => $request->get_route(),
+                    'nonce' => substr($nonce, 0, 8) . '...',
+                    'timestamp' => $timestamp,
+                    'body_hash' => substr($body_hash, 0, 16) . '...'
+                ];
+                error_log('[minpaku-suite] HMAC detailed verification - String components: ' . json_encode($string_components));
+            }
+        }
+
+        if (!$signature_valid) {
+            return new \WP_Error('invalid_signature', 'HMAC signature verification failed', ['status' => 401]);
+        }
+
+        // Check origin policy if X-MCS-Origin header is present
+        if ($origin_header) {
+            $enforce_origin = apply_filters('mcs_connector_enforce_origin_on_verify', false);
+            if ($enforce_origin) {
+                $parsed_origin = parse_url($origin_header);
+                $domain = $parsed_origin['host'] ?? '';
+
+                if ($domain && !ConnectorSettings::is_domain_allowed($domain)) {
+                    if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                        error_log('[minpaku-suite] HMAC detailed verification failed: origin not in allowed domains - ' . $domain);
+                    }
+                    return new \WP_Error('origin_not_allowed', 'Origin domain not in allowed list', ['status' => 403]);
+                }
+            }
+
+            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                error_log('[minpaku-suite] HMAC detailed verification - Origin header: ' . $origin_header);
+            }
+        }
+
+        // Update last used timestamp
+        ConnectorSettings::update_last_used($key_data['site_id']);
+
+        // Store nonce to prevent replay
+        self::store_nonce($nonce);
+
+        if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+            error_log('[minpaku-suite] HMAC detailed verification successful for site: ' . $key_data['site_id']);
+        }
+
+        return true;
+    }
+
+    /**
      * Calculate HMAC signature
      */
     public static function calculate_signature(
@@ -221,12 +363,15 @@ class ConnectorAuth
         string $body,
         string $secret
     ): string {
+        // Use body SHA256 hash for consistency with external connector
+        $body_hash = hash('sha256', $body);
+
         $string_to_sign = implode("\n", [
             strtoupper($method),
             $path,
             $nonce,
             $timestamp,
-            $body
+            $body_hash
         ]);
 
         return base64_encode(hash_hmac('sha256', $string_to_sign, $secret, true));

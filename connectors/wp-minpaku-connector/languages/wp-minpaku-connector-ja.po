@@ -391,6 +391,10 @@ msgstr "確認：ネットワーク接続とポータルサーバーステータ
 msgid "Network error occurred. Please try again."
 msgstr "ネットワークエラーが発生しました。再試行してください。"
 
+#. New M4.1 diagnostic messages - Step C enhanced
+msgid "HTTP %d error occurred. Check portal server status."
+msgstr "HTTP %dエラーが発生しました。ポータルサーバーステータスを確認してください。"
+
 #. Shortcode error handling improvements
 msgid "Connection not configured"
 msgstr "接続が設定されていません"
@@ -539,3 +543,7 @@ msgstr "確認：ネットワーク接続とポータルサーバーステータ
 
 msgid "Network error occurred. Please try again."
 msgstr "ネットワークエラーが発生しました。再試行してください。"
+
+#. New M4.1 diagnostic messages - Step C enhanced
+msgid "HTTP %d error occurred. Check portal server status."
+msgstr "HTTP %dエラーが発生しました。ポータルサーバーステータスを確認してください。"

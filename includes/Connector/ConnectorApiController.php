@@ -62,7 +62,7 @@ class ConnectorApiController
         register_rest_route(self::NAMESPACE, '/verify', [
             'methods' => 'GET',
             'callback' => [__CLASS__, 'verify_connection'],
-            'permission_callback' => [__CLASS__, 'check_connector_permissions'],
+            'permission_callback' => [__CLASS__, 'check_verify_permissions'],
         ]);
 
         // Properties endpoint
@@ -157,6 +157,23 @@ class ConnectorApiController
         ]);
     }
 
+
+    /**
+     * Check verify endpoint permissions with detailed error responses
+     */
+    public static function check_verify_permissions(\WP_REST_Request $request)
+    {
+        // Set CORS headers
+        ConnectorAuth::set_cors_headers();
+
+        // Check rate limiting
+        if (!self::check_rate_limit($request)) {
+            return new \WP_Error('rate_limit_exceeded', 'Rate limit exceeded', ['status' => 429]);
+        }
+
+        // Verify HMAC authentication with detailed errors
+        return ConnectorAuth::verify_request_detailed($request);
+    }
 
     /**
      * Check connector permissions and set CORS headers
@@ -271,21 +288,13 @@ class ConnectorApiController
     }
 
     /**
-     * Verify connection endpoint
+     * Verify connection endpoint (HMAC authentication required)
      */
     public static function verify_connection(\WP_REST_Request $request): \WP_REST_Response
     {
-        return new \WP_REST_Response([
-            'success' => true,
-            'message' => __('Connection verified successfully.', 'minpaku-suite'),
-            'version' => MINPAKU_SUITE_VERSION,
-            'timestamp' => current_time('mysql'),
-            'endpoints' => [
-                'properties' => rest_url(self::NAMESPACE . '/properties'),
-                'availability' => rest_url(self::NAMESPACE . '/availability'),
-                'quote' => rest_url(self::NAMESPACE . '/quote')
-            ]
-        ], 200);
+        // If we reach here, HMAC authentication has already passed
+        // Return 204 No Content for successful verification
+        return new \WP_REST_Response(null, 204);
     }
 
     /**

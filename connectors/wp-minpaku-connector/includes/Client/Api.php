@@ -115,6 +115,110 @@ class MPC_Client_Api {
     }
 
     /**
+     * Test connection with detailed diagnostic information
+     */
+    public function test_connection_detailed() {
+        $start_time = microtime(true);
+        $result = array(
+            'success' => false,
+            'http_status' => null,
+            'response_body' => '',
+            'response_body_preview' => '',
+            'request_url' => '',
+            'request_headers_sent' => array(),
+            'request_time_ms' => 0,
+            'wp_error' => null,
+            'parsed_data' => null
+        );
+
+        if (!$this->signer) {
+            $result['wp_error'] = array(
+                'code' => 'no_credentials',
+                'message' => __('API credentials not configured.', 'wp-minpaku-connector')
+            );
+            return $result;
+        }
+
+        $path = '/wp-json/minpaku/v1/connector/verify';
+        $url = $this->portal_url . ltrim($path, '/');
+        $result['request_url'] = $url;
+
+        // Get signature data with logging
+        $signature_data = $this->signer->sign_request('GET', $path, '');
+
+        // Mask sensitive headers for logging
+        $masked_headers = array();
+        foreach ($signature_data['headers'] as $key => $value) {
+            if ($key === 'X-MCS-Signature') {
+                $masked_headers[$key] = substr($value, 0, 8) . '...';
+            } elseif ($key === 'X-MCS-Key') {
+                $masked_headers[$key] = substr($value, 0, 8) . '...';
+            } else {
+                $masked_headers[$key] = $value;
+            }
+        }
+        $result['request_headers_sent'] = $masked_headers;
+
+        // Add X-MCS-Origin header for server-to-server identification
+        $signature_data['headers']['X-MCS-Origin'] = get_site_url();
+
+        $args = array(
+            'method' => 'GET',
+            'headers' => $signature_data['headers'],
+            'timeout' => 8,
+            'redirection' => 2,
+            'httpversion' => '1.1',
+            'user-agent' => 'WPMC/1.0',
+            'reject_unsafe_urls' => true,
+            'sslverify' => true
+        );
+
+        // Debug logging for request
+        if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+            error_log('[minpaku-connector] Detailed diagnostic request to: ' . $url);
+            error_log('[minpaku-connector] Request headers (masked): ' . json_encode($masked_headers));
+        }
+
+        $response = wp_remote_request($url, $args);
+        $result['request_time_ms'] = round((microtime(true) - $start_time) * 1000);
+
+        if (is_wp_error($response)) {
+            $result['wp_error'] = array(
+                'code' => $response->get_error_code(),
+                'message' => $response->get_error_message(),
+                'data' => $response->get_error_data()
+            );
+
+            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                error_log('[minpaku-connector] WP_Error in detailed test: ' . $response->get_error_message());
+            }
+
+            return $result;
+        }
+
+        $result['http_status'] = wp_remote_retrieve_response_code($response);
+        $result['response_body'] = wp_remote_retrieve_body($response);
+        $result['response_body_preview'] = substr($result['response_body'], 0, 400);
+
+        $parsed_data = json_decode($result['response_body'], true);
+        if (json_last_error() === JSON_ERROR_NONE) {
+            $result['parsed_data'] = $parsed_data;
+        }
+
+        // Determine success based on status and content
+        if ($result['http_status'] === 200 || $result['http_status'] === 204) {
+            $result['success'] = true;
+        }
+
+        // Debug logging for response
+        if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+            error_log('[minpaku-connector] Detailed diagnostic response - Status: ' . $result['http_status'] . ', Body length: ' . strlen($result['response_body']));
+        }
+
+        return $result;
+    }
+
+    /**
      * Get properties from the portal
      */
     public function get_properties($args = array()) {

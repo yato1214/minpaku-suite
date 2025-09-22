@@ -72,22 +72,25 @@ class MPC_Client_Signer {
      * Calculate HMAC signature
      */
     private function calculate_signature($method, $path, $nonce, $timestamp, $body) {
+        // Sign with body SHA256 hash, not raw body
+        $body_hash = hash('sha256', $body);
+
         $string_to_sign = implode("\n", array(
             strtoupper($method),
             $path,
             $nonce,
             $timestamp,
-            $body
+            $body_hash
         ));
 
         return base64_encode(hash_hmac('sha256', $string_to_sign, $this->secret, true));
     }
 
     /**
-     * Generate unique nonce
+     * Generate unique nonce (16 random bytes as hex)
      */
     private function generate_nonce() {
-        return wp_generate_uuid4();
+        return bin2hex(random_bytes(16));
     }
 
     /**
