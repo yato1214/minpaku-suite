@@ -128,7 +128,9 @@ class MPC_Client_Api {
             'request_headers_sent' => array(),
             'request_time_ms' => 0,
             'wp_error' => null,
-            'parsed_data' => null
+            'curl_error' => null,
+            'parsed_data' => null,
+            'wp_http_block_external_warning' => false
         );
 
         if (!$this->signer) {
@@ -139,11 +141,16 @@ class MPC_Client_Api {
             return $result;
         }
 
+        // Strict request specification enforcement
         $path = '/wp-json/minpaku/v1/connector/verify';
-        $url = $this->portal_url . ltrim($path, '/');
+
+        // Ensure proper URL construction with no trailing/double slashes
+        $base_url = rtrim($this->portal_url, '/');
+        $clean_path = '/' . ltrim($path, '/');
+        $url = $base_url . $clean_path;
         $result['request_url'] = $url;
 
-        // Get signature data with logging
+        // Get signature data - enforce GET method with empty body
         $signature_data = $this->signer->sign_request('GET', $path, '');
 
         // Mask sensitive headers for logging
@@ -162,6 +169,10 @@ class MPC_Client_Api {
         // Add X-MCS-Origin header for server-to-server identification
         $signature_data['headers']['X-MCS-Origin'] = get_site_url();
 
+        // Remove Content-Type header for GET request (no body)
+        unset($signature_data['headers']['Content-Type']);
+
+        // Strict request arguments
         $args = array(
             'method' => 'GET',
             'headers' => $signature_data['headers'],
@@ -169,50 +180,92 @@ class MPC_Client_Api {
             'redirection' => 2,
             'httpversion' => '1.1',
             'user-agent' => 'WPMC/1.0',
-            'reject_unsafe_urls' => true,
-            'sslverify' => true
+            'blocking' => true,
+            'reject_unsafe_urls' => false, // Always false for connector requests
+            'sslverify' => (strpos($url, 'https://') === 0) // Only verify SSL for HTTPS
         );
+
+        // Check for WP_HTTP_BLOCK_EXTERNAL
+        if (defined('WP_HTTP_BLOCK_EXTERNAL') && WP_HTTP_BLOCK_EXTERNAL) {
+            $result['wp_http_block_external_warning'] = true;
+        }
 
         // Debug logging for request
         if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
-            error_log('[minpaku-connector] Detailed diagnostic request to: ' . $url);
+            error_log('[minpaku-connector] Detailed diagnostic request - Method: GET');
+            error_log('[minpaku-connector] Request URL: ' . $url);
             error_log('[minpaku-connector] Request headers (masked): ' . json_encode($masked_headers));
+            error_log('[minpaku-connector] WP_HTTP_BLOCK_EXTERNAL: ' . (defined('WP_HTTP_BLOCK_EXTERNAL') && WP_HTTP_BLOCK_EXTERNAL ? 'true' : 'false'));
         }
 
-        $response = wp_remote_request($url, $args);
-        $result['request_time_ms'] = round((microtime(true) - $start_time) * 1000);
+        // Temporarily disable unsafe URL rejection for this specific request
+        add_filter('http_request_reject_unsafe_urls', '__return_false', 999);
 
-        if (is_wp_error($response)) {
-            $result['wp_error'] = array(
-                'code' => $response->get_error_code(),
-                'message' => $response->get_error_message(),
-                'data' => $response->get_error_data()
-            );
+        // Temporarily disable WP_HTTP_BLOCK_EXTERNAL for this request
+        $external_block_disabled = false;
+        if (defined('WP_HTTP_BLOCK_EXTERNAL') && WP_HTTP_BLOCK_EXTERNAL) {
+            add_filter('pre_option_wp_http_block_external', '__return_false', 999);
+            $external_block_disabled = true;
+        }
 
-            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
-                error_log('[minpaku-connector] WP_Error in detailed test: ' . $response->get_error_message());
+        try {
+            $response = wp_remote_request($url, $args);
+            $result['request_time_ms'] = round((microtime(true) - $start_time) * 1000);
+
+            if (is_wp_error($response)) {
+                $result['wp_error'] = array(
+                    'code' => $response->get_error_code(),
+                    'message' => $response->get_error_message(),
+                    'data' => $response->get_error_data()
+                );
+
+                // Extract cURL error details if available
+                $error_data = $response->get_error_data();
+                if (is_array($error_data) && isset($error_data['curl'])) {
+                    $result['curl_error'] = $error_data['curl'];
+                }
+
+                if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                    error_log('[minpaku-connector] WP_Error in detailed test: ' . $response->get_error_message());
+                    if ($result['curl_error']) {
+                        error_log('[minpaku-connector] cURL error details: ' . json_encode($result['curl_error']));
+                    }
+                }
+
+                return $result;
             }
 
-            return $result;
-        }
+            $result['http_status'] = wp_remote_retrieve_response_code($response);
+            $result['response_body'] = wp_remote_retrieve_body($response);
+            $result['response_body_preview'] = substr($result['response_body'], 0, 400);
 
-        $result['http_status'] = wp_remote_retrieve_response_code($response);
-        $result['response_body'] = wp_remote_retrieve_body($response);
-        $result['response_body_preview'] = substr($result['response_body'], 0, 400);
+            $parsed_data = json_decode($result['response_body'], true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $result['parsed_data'] = $parsed_data;
+            }
 
-        $parsed_data = json_decode($result['response_body'], true);
-        if (json_last_error() === JSON_ERROR_NONE) {
-            $result['parsed_data'] = $parsed_data;
-        }
+            // Determine success based on status (204 for success, other codes for specific errors)
+            if ($result['http_status'] === 204) {
+                $result['success'] = true;
+            } elseif ($result['http_status'] === 200) {
+                // Some servers might return 200 instead of 204
+                $result['success'] = true;
+            }
 
-        // Determine success based on status and content
-        if ($result['http_status'] === 200 || $result['http_status'] === 204) {
-            $result['success'] = true;
-        }
+            // Debug logging for response
+            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                error_log('[minpaku-connector] Detailed diagnostic response - Status: ' . $result['http_status'] . ', Body length: ' . strlen($result['response_body']));
+                if ($result['parsed_data']) {
+                    error_log('[minpaku-connector] Parsed response data: ' . json_encode($result['parsed_data']));
+                }
+            }
 
-        // Debug logging for response
-        if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
-            error_log('[minpaku-connector] Detailed diagnostic response - Status: ' . $result['http_status'] . ', Body length: ' . strlen($result['response_body']));
+        } finally {
+            // Always restore filters
+            remove_filter('http_request_reject_unsafe_urls', '__return_false', 999);
+            if ($external_block_disabled) {
+                remove_filter('pre_option_wp_http_block_external', '__return_false', 999);
+            }
         }
 
         return $result;
@@ -392,6 +445,20 @@ class MPC_Client_Api {
             'sslverify' => true
         );
 
+        // Check if this is a development domain and adjust settings
+        $parsed_url = wp_parse_url($url);
+        $host = $parsed_url['host'] ?? '';
+        $is_dev_domain = $this->is_development_domain($host);
+
+        if ($is_dev_domain) {
+            $args['reject_unsafe_urls'] = false;
+
+            // Debug logging for development domain
+            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                error_log('[minpaku-connector] Development domain detected: ' . $host . ', adjusting request args');
+            }
+        }
+
         if (!empty($body)) {
             $args['body'] = $body;
         }
@@ -404,13 +471,26 @@ class MPC_Client_Api {
                 'headers_sent' => array_keys($signature_data['headers']),
                 'body_length' => strlen($body),
                 'timeout' => 8,
-                'redirection' => 2
+                'redirection' => 2,
+                'is_dev_domain' => $is_dev_domain
             );
             error_log('[minpaku-connector] Outgoing request: ' . json_encode($debug_request));
         }
 
         $start_time = microtime(true);
+
+        // For development domains, temporarily disable external blocking
+        if ($is_dev_domain && defined('WP_HTTP_BLOCK_EXTERNAL') && WP_HTTP_BLOCK_EXTERNAL) {
+            add_filter('pre_option_wp_http_block_external', '__return_false', 999);
+        }
+
         $response = wp_remote_request($url, $args);
+
+        // Restore external blocking if it was disabled
+        if ($is_dev_domain && defined('WP_HTTP_BLOCK_EXTERNAL') && WP_HTTP_BLOCK_EXTERNAL) {
+            remove_filter('pre_option_wp_http_block_external', '__return_false', 999);
+        }
+
         $request_time = round((microtime(true) - $start_time) * 1000); // milliseconds
 
         // Debug logging for response
@@ -435,6 +515,29 @@ class MPC_Client_Api {
         }
 
         return $response;
+    }
+
+    /**
+     * Check if the given host is a development domain
+     */
+    private function is_development_domain($host) {
+        // IPv4 addresses
+        if (filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+            return true;
+        }
+
+        // localhost
+        if ($host === 'localhost') {
+            return true;
+        }
+
+        // Development TLDs
+        if (strpos($host, '.') !== false) {
+            $tld = substr(strrchr($host, '.'), 1);
+            return in_array($tld, ['local', 'test', 'localdomain'], true);
+        }
+
+        return false;
     }
 
     /**

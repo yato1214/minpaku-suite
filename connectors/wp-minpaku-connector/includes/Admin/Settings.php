@@ -209,6 +209,29 @@ class MPC_Admin_Settings {
     }
 
     /**
+     * Check if the given host is a development domain
+     */
+    private static function is_development_domain($host) {
+        // IPv4 addresses
+        if (filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+            return true;
+        }
+
+        // localhost
+        if ($host === 'localhost') {
+            return true;
+        }
+
+        // Development TLDs
+        if (strpos($host, '.') !== false) {
+            $tld = substr(strrchr($host, '.'), 1);
+            return in_array($tld, ['local', 'test', 'localdomain'], true);
+        }
+
+        return false;
+    }
+
+    /**
      * AJAX handler for connection test
      */
     public static function ajax_test_connection() {
@@ -376,13 +399,41 @@ class MPC_Admin_Settings {
 
         $ping_url = trailingslashit($normalized_url) . 'wp-json/minpaku/v1/connector/ping';
 
-        $start_time = microtime(true);
-        $response = wp_remote_get($ping_url, array(
+        // Check if this is a development domain
+        $parsed_url = wp_parse_url($ping_url);
+        $host = $parsed_url['host'] ?? '';
+        $is_dev_domain = self::is_development_domain($host);
+
+        $args = array(
             'timeout' => 8,
             'redirection' => 2,
             'user-agent' => 'WPMC/1.0',
             'sslverify' => true
-        ));
+        );
+
+        if ($is_dev_domain) {
+            $args['reject_unsafe_urls'] = false;
+
+            // Debug logging for development domain
+            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                error_log('[minpaku-connector] Development domain detected in ping test: ' . $host);
+            }
+        }
+
+        $start_time = microtime(true);
+
+        // For development domains, temporarily disable external blocking
+        if ($is_dev_domain && defined('WP_HTTP_BLOCK_EXTERNAL') && WP_HTTP_BLOCK_EXTERNAL) {
+            add_filter('pre_option_wp_http_block_external', '__return_false', 999);
+        }
+
+        $response = wp_remote_get($ping_url, $args);
+
+        // Restore external blocking if it was disabled
+        if ($is_dev_domain && defined('WP_HTTP_BLOCK_EXTERNAL') && WP_HTTP_BLOCK_EXTERNAL) {
+            remove_filter('pre_option_wp_http_block_external', '__return_false', 999);
+        }
+
         $request_time = round((microtime(true) - $start_time) * 1000);
 
         $result = array(
@@ -441,45 +492,86 @@ class MPC_Admin_Settings {
             'http_status' => $detailed_result['http_status'],
             'response_body_preview' => $detailed_result['response_body_preview'],
             'request_headers_sent' => $detailed_result['request_headers_sent'],
-            'success' => $detailed_result['success']
+            'success' => $detailed_result['success'],
+            'wp_http_block_external_warning' => $detailed_result['wp_http_block_external_warning'] ?? false
         );
 
-        // Handle WP_Error cases
+        // Handle WP_Error cases with enhanced details
         if ($detailed_result['wp_error']) {
             $result['wp_error'] = $detailed_result['wp_error'];
-            $result['guidance'] = __('Network error occurred. Please try again.', 'wp-minpaku-connector');
 
-            // Specific guidance for common WP errors
+            // Add cURL error details if available
+            if ($detailed_result['curl_error']) {
+                $result['curl_error'] = $detailed_result['curl_error'];
+            }
+
             $error_code = $detailed_result['wp_error']['code'];
+
+            // Enhanced guidance for WP_Error cases
             if ($error_code === 'http_request_failed') {
-                $result['guidance'] = __('Check: Network connectivity and portal server status', 'wp-minpaku-connector');
+                $result['guidance'] = __('http_request_failed: ネットワーク/URL制限の可能性があります。接続設定をご確認ください。', 'wp-minpaku-connector');
+
+                // Check for specific error patterns in the message
+                $error_message = $detailed_result['wp_error']['message'];
+                if (strpos($error_message, 'URL is external') !== false || strpos($error_message, 'reject_unsafe_urls') !== false) {
+                    $result['guidance'] = __('URL制限エラー: 開発環境への接続が制限されています。設定を確認してください。', 'wp-minpaku-connector');
+                } elseif (strpos($error_message, 'cURL error') !== false) {
+                    $result['guidance'] = __('cURL接続エラー: ネットワーク接続またはSSL設定を確認してください。', 'wp-minpaku-connector');
+                }
             } elseif (strpos($error_code, 'timeout') !== false) {
-                $result['guidance'] = __('Check: Network connectivity and portal server status', 'wp-minpaku-connector');
+                $result['guidance'] = __('タイムアウトエラー: ネットワーク接続とポータルサーバーの状態を確認してください。', 'wp-minpaku-connector');
+            } elseif ($error_code === 'http_request_not_executed') {
+                $result['guidance'] = __('リクエスト実行エラー: WP_HTTP_BLOCK_EXTERNAL設定を確認してください。', 'wp-minpaku-connector');
+            } else {
+                $result['guidance'] = sprintf(__('ネットワークエラー (%s): 再度お試しください。', 'wp-minpaku-connector'), $error_code);
             }
 
             wp_send_json_error($result);
             return;
         }
 
-        // Handle HTTP status-based guidance
+        // Handle HTTP status-based guidance with enhanced details
         if (!$detailed_result['success']) {
             $status = $detailed_result['http_status'];
+
             if ($status === 401) {
-                $result['guidance'] = __('Check: API Key format, Secret key, Site ID', 'wp-minpaku-connector');
+                $result['guidance'] = __('認証エラー: APIキー形式、シークレットキー、サイトIDを確認してください。', 'wp-minpaku-connector');
+
+                // Try to extract more specific error info from response
+                if ($detailed_result['parsed_data'] && isset($detailed_result['parsed_data']['code'])) {
+                    $error_code = $detailed_result['parsed_data']['code'];
+                    if ($error_code === 'invalid_signature') {
+                        $result['guidance'] = __('HMAC署名検証エラー: シークレットキーまたは時刻同期を確認してください。', 'wp-minpaku-connector');
+                    } elseif ($error_code === 'invalid_api_key') {
+                        $result['guidance'] = __('APIキーエラー: 正しいAPIキー形式か確認してください。', 'wp-minpaku-connector');
+                    } elseif ($error_code === 'invalid_timestamp') {
+                        $result['guidance'] = __('タイムスタンプエラー: サーバーの時刻同期を確認してください。', 'wp-minpaku-connector');
+                    }
+                }
             } elseif ($status === 403) {
-                $result['guidance'] = __('Check: Allowed domains list in portal settings', 'wp-minpaku-connector');
+                $result['guidance'] = __('アクセス拒否: ポータル設定の許可ドメインリストを確認してください。', 'wp-minpaku-connector');
             } elseif ($status === 404) {
-                $result['guidance'] = __('Check: Portal Base URL spelling and accessibility', 'wp-minpaku-connector');
-            } elseif ($status === 408 || $status >= 500) {
-                $result['guidance'] = __('Check: Network connectivity and portal server status', 'wp-minpaku-connector');
+                $result['guidance'] = __('エンドポイント不明: ポータルベースURLのスペルと接続性を確認してください。', 'wp-minpaku-connector');
+            } elseif ($status === 408) {
+                $result['guidance'] = __('リクエストタイムアウト: ネットワーク接続とポータルサーバーの状態を確認してください。', 'wp-minpaku-connector');
+            } elseif ($status >= 500) {
+                $result['guidance'] = sprintf(__('サーバーエラー (HTTP %d): ポータルサーバーの状態を確認してください。', 'wp-minpaku-connector'), $status);
             } else {
-                $result['guidance'] = sprintf(__('HTTP %d error occurred. Check portal server status.', 'wp-minpaku-connector'), $status);
+                $result['guidance'] = sprintf(__('HTTP %dエラーが発生しました。ポータルサーバーの状態を確認してください。', 'wp-minpaku-connector'), $status);
             }
         }
 
         // Include parsed response data if available
         if ($detailed_result['parsed_data']) {
             $result['parsed_data'] = $detailed_result['parsed_data'];
+        }
+
+        // Add WP_HTTP_BLOCK_EXTERNAL warning if needed
+        if ($result['wp_http_block_external_warning']) {
+            if (!isset($result['warnings'])) {
+                $result['warnings'] = array();
+            }
+            $result['warnings'][] = __('WP_HTTP_BLOCK_EXTERNALが有効です。外部接続が制限される可能性があります。', 'wp-minpaku-connector');
         }
 
         if ($detailed_result['success']) {
@@ -812,6 +904,16 @@ class MPC_Admin_Settings {
                             if (response.data.wp_error) {
                                 html += '<br><small>Error: ' + response.data.wp_error.code + '</small>';
                                 html += '<br><small>' + response.data.wp_error.message + '</small>';
+
+                                // Show cURL error details if available
+                                if (response.data.curl_error) {
+                                    if (response.data.curl_error.errno) {
+                                        html += '<br><small>cURL errno: ' + response.data.curl_error.errno + '</small>';
+                                    }
+                                    if (response.data.curl_error.error) {
+                                        html += '<br><small>cURL error: ' + response.data.curl_error.error + '</small>';
+                                    }
+                                }
                             }
 
                             // Show response body preview
@@ -821,6 +923,19 @@ class MPC_Admin_Settings {
                                     preview = preview.substring(0, 100) + '...';
                                 }
                                 html += '<br><small>Response: ' + preview + '</small>';
+                            }
+
+                            // Show request details
+                            if (response.data.request_headers_sent) {
+                                var headerCount = Object.keys(response.data.request_headers_sent).length;
+                                html += '<br><small>Headers sent: ' + headerCount + '</small>';
+                            }
+
+                            // Show warnings
+                            if (response.data.warnings && response.data.warnings.length > 0) {
+                                for (var i = 0; i < response.data.warnings.length; i++) {
+                                    html += '<br><small style="color: #dba617;">⚠ ' + response.data.warnings[i] + '</small>';
+                                }
                             }
 
                             // Show guidance
