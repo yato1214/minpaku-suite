@@ -13,6 +13,7 @@ class WMC_Admin_Settings {
 
     public static function init() {
         add_action('admin_init', array(__CLASS__, 'register_settings'));
+        add_action('wp_ajax_wmc_test_connection', array(__CLASS__, 'ajax_test_connection'));
     }
 
     /**
@@ -88,6 +89,89 @@ class WMC_Admin_Settings {
         }
 
         return $sanitized;
+    }
+
+    /**
+     * AJAX handler for connection test
+     */
+    public static function ajax_test_connection() {
+        check_ajax_referer('wmc_test_connection', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_die(__('You do not have permission to perform this action.', 'wp-minpaku-connector'));
+        }
+
+        // Log connection test attempt
+        if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+            error_log('[minpaku-connector] Connection test initiated by user: ' . get_current_user_id());
+        }
+
+        $api = new WMC_Client_Api();
+        $result = $api->test_connection();
+
+        // Enhanced error handling for specific cases
+        if (!$result['success']) {
+            $message = $result['message'];
+            $error_type = 'general';
+
+            // Check for specific error patterns
+            if (strpos($message, '401') !== false || strpos($message, 'Unauthorized') !== false) {
+                $message = __('Authentication failed. Please check your API Key and Secret.', 'wp-minpaku-connector');
+                $error_type = 'auth';
+            } elseif (strpos($message, '403') !== false || strpos($message, 'Forbidden') !== false) {
+                $message = __('Access denied. Please check that your domain is added to the allowed domains list in the portal.', 'wp-minpaku-connector');
+                $error_type = 'permission';
+            } elseif (strpos($message, '404') !== false || strpos($message, 'Not Found') !== false) {
+                $message = __('Portal endpoint not found. Please check your Portal Base URL.', 'wp-minpaku-connector');
+                $error_type = 'url';
+            } elseif (strpos($message, '408') !== false || strpos($message, 'timeout') !== false) {
+                $message = __('Connection timeout. Please check your portal server and network connectivity.', 'wp-minpaku-connector');
+                $error_type = 'timeout';
+            } elseif (strpos($message, '5') === 0 || strpos($message, 'Internal Server Error') !== false) {
+                $message = __('Portal server error. Please contact your portal administrator.', 'wp-minpaku-connector');
+                $error_type = 'server';
+            } elseif (strpos($message, 'time') !== false && strpos($message, 'sync') !== false) {
+                $message = __('Server time synchronization issue. Please check your server clock or contact your hosting provider.', 'wp-minpaku-connector');
+                $error_type = 'time';
+            }
+
+            // Log detailed error for debugging
+            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                error_log('[minpaku-connector] Connection test failed (' . $error_type . '): ' . $result['message']);
+            }
+
+            wp_send_json_error(array(
+                'message' => $message,
+                'type' => $error_type,
+                'original' => $result['message']
+            ));
+        }
+
+        // Success case - check for time sync warnings
+        $warnings = array();
+        if (isset($result['data']['server_time'])) {
+            $server_time = strtotime($result['data']['server_time']);
+            $local_time = time();
+            $time_diff = abs($server_time - $local_time);
+
+            if ($time_diff > 300) { // More than 5 minutes difference
+                $warnings[] = sprintf(
+                    __('Warning: Server time difference detected (%d seconds). Consider checking time synchronization.', 'wp-minpaku-connector'),
+                    $time_diff
+                );
+            }
+        }
+
+        // Log successful connection
+        if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+            error_log('[minpaku-connector] Connection test successful to: ' . (isset($result['data']['portal_url']) ? $result['data']['portal_url'] : 'unknown'));
+        }
+
+        wp_send_json_success(array(
+            'message' => $result['message'],
+            'warnings' => $warnings,
+            'data' => $result['data']
+        ));
     }
 
     /**
@@ -211,25 +295,61 @@ class WMC_Admin_Settings {
                 var button = $(this);
                 var result = $('#test-result');
 
-                button.prop('disabled', true).text(wmcAdmin.strings.testing);
-                result.removeClass('success error').text('');
+                button.prop('disabled', true).text('<?php echo esc_js(__('Testing...', 'wp-minpaku-connector')); ?>');
+                result.removeClass('success error warning').html('<span class="spinner is-active" style="float:none;margin:0 5px 0 0;"></span><?php echo esc_js(__('Testing connection...', 'wp-minpaku-connector')); ?>');
 
-                $.post(wmcAdmin.ajaxUrl, {
+                $.post(ajaxurl, {
                     action: 'wmc_test_connection',
-                    nonce: wmcAdmin.nonce
+                    nonce: '<?php echo wp_create_nonce('wmc_test_connection'); ?>'
                 })
                 .done(function(response) {
                     if (response.success) {
-                        result.addClass('success').html('✓ ' + wmcAdmin.strings.success);
-                        if (response.data.message) {
-                            result.append('<br><small>' + response.data.message + '</small>');
+                        var html = '<span style="color: #00a32a; font-weight: bold;">✓ ' + response.data.message + '</span>';
+
+                        // Add warnings if any
+                        if (response.data.warnings && response.data.warnings.length > 0) {
+                            html += '<br><span style="color: #dba617; font-size: 0.9em;">⚠ ' + response.data.warnings.join('<br>⚠ ') + '</span>';
+                        }
+
+                        result.removeClass('error warning').addClass('success').html(html);
+
+                        // Show additional success info
+                        if (response.data.data && response.data.data.version) {
+                            result.append('<br><small style="color: #666;"><?php echo esc_js(__('Portal version:', 'wp-minpaku-connector')); ?> ' + response.data.data.version + '</small>');
                         }
                     } else {
-                        result.addClass('error').html('✗ ' + (response.data.message || wmcAdmin.strings.error));
+                        var errorHtml = '<span style="color: #d63638; font-weight: bold;">✗ ' + response.data.message + '</span>';
+
+                        // Add specific error guidance
+                        if (response.data.type === 'auth') {
+                            errorHtml += '<br><small style="color: #666;"><?php echo esc_js(__('Check: API Key format, Secret key, Site ID', 'wp-minpaku-connector')); ?></small>';
+                        } else if (response.data.type === 'permission') {
+                            errorHtml += '<br><small style="color: #666;"><?php echo esc_js(__('Check: Allowed domains list in portal settings', 'wp-minpaku-connector')); ?></small>';
+                        } else if (response.data.type === 'url') {
+                            errorHtml += '<br><small style="color: #666;"><?php echo esc_js(__('Check: Portal Base URL spelling and accessibility', 'wp-minpaku-connector')); ?></small>';
+                        } else if (response.data.type === 'timeout') {
+                            errorHtml += '<br><small style="color: #666;"><?php echo esc_js(__('Check: Network connectivity and portal server status', 'wp-minpaku-connector')); ?></small>';
+                        }
+
+                        result.removeClass('success warning').addClass('error').html(errorHtml);
+
+                        // Log error for debugging
+                        if (window.console && response.data.original) {
+                            console.log('WMC Connection Test Error:', response.data.original);
+                        }
                     }
                 })
-                .fail(function() {
-                    result.addClass('error').html('✗ ' + wmcAdmin.strings.error);
+                .fail(function(xhr, status, error) {
+                    var errorMsg = '<?php echo esc_js(__('Network error occurred. Please try again.', 'wp-minpaku-connector')); ?>';
+                    if (xhr.responseJSON && xhr.responseJSON.data) {
+                        errorMsg = xhr.responseJSON.data;
+                    }
+                    result.removeClass('success warning').addClass('error').html('<span style="color: #d63638; font-weight: bold;">✗ ' + errorMsg + '</span>');
+
+                    // Log error for debugging
+                    if (window.console) {
+                        console.log('WMC AJAX Error:', xhr, status, error);
+                    }
                 })
                 .always(function() {
                     button.prop('disabled', false).text('<?php echo esc_js(__('Test Connection', 'wp-minpaku-connector')); ?>');

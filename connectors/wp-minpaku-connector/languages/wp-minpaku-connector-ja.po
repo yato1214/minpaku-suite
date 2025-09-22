@@ -324,3 +324,140 @@ msgstr "空室"
 #: includes/Shortcodes/Embed.php
 msgid "Unavailable"
 msgstr "満室"
+
+#. New M4.1 messages - Connection test enhancements
+msgid "Testing..."
+msgstr "テスト中..."
+
+msgid "Testing connection..."
+msgstr "接続をテスト中..."
+
+msgid "Portal version:"
+msgstr "ポータルバージョン："
+
+msgid "Authentication failed. Please check your API Key and Secret."
+msgstr "認証に失敗しました。APIキーとシークレットを確認してください。"
+
+msgid "Access denied. Please check that your domain is added to the allowed domains list in the portal."
+msgstr "アクセスが拒否されました。ポータルの許可ドメインリストにドメインが追加されているか確認してください。"
+
+msgid "Portal endpoint not found. Please check your Portal Base URL."
+msgstr "ポータルエンドポイントが見つかりません。ポータルベースURLを確認してください。"
+
+msgid "Connection timeout. Please check your portal server and network connectivity."
+msgstr "接続がタイムアウトしました。ポータルサーバーとネットワーク接続を確認してください。"
+
+msgid "Portal server error. Please contact your portal administrator."
+msgstr "ポータルサーバーエラー。ポータル管理者にお問い合わせください。"
+
+msgid "Server time synchronization issue. Please check your server clock or contact your hosting provider."
+msgstr "サーバー時刻同期の問題。サーバークロックを確認するか、ホスティングプロバイダーにお問い合わせください。"
+
+msgid "Warning: Server time difference detected (%d seconds). Consider checking time synchronization."
+msgstr "警告：サーバー時刻差が検出されました（%d秒）。時刻同期の確認を検討してください。"
+
+msgid "Check: API Key format, Secret key, Site ID"
+msgstr "確認：APIキー形式、シークレットキー、サイトID"
+
+msgid "Check: Allowed domains list in portal settings"
+msgstr "確認：ポータル設定の許可ドメインリスト"
+
+msgid "Check: Portal Base URL spelling and accessibility"
+msgstr "確認：ポータルベースURLのスペルとアクセス可能性"
+
+msgid "Check: Network connectivity and portal server status"
+msgstr "確認：ネットワーク接続とポータルサーバーステータス"
+
+msgid "Network error occurred. Please try again."
+msgstr "ネットワークエラーが発生しました。再試行してください。"
+
+#. Shortcode error handling improvements
+msgid "Connection not configured"
+msgstr "接続が設定されていません"
+
+msgid "Please configure the Minpaku Connector in Settings > Minpaku Connector."
+msgstr "設定 > 民泊コネクタで民泊コネクタを設定してください。"
+
+msgid "System error"
+msgstr "システムエラー"
+
+msgid "Unable to initialize connector. Please check your configuration."
+msgstr "コネクタを初期化できません。設定を確認してください。"
+
+msgid "Invalid shortcode type"
+msgstr "無効なショートコードタイプ"
+
+msgid "Valid types are: %s"
+msgstr "有効なタイプ：%s"
+
+msgid "Display error"
+msgstr "表示エラー"
+
+msgid "Unable to display content. Please try again later."
+msgstr "コンテンツを表示できません。後で再試行してください。"
+
+msgid "Go to Settings"
+msgstr "設定へ移動"
+
+msgid "Access denied"
+msgstr "アクセス拒否"
+
+msgid "Unable to access property listings. Please check your connection settings."
+msgstr "施設一覧にアクセスできません。接続設定を確認してください。"
+
+msgid "Connection timeout"
+msgstr "接続タイムアウト"
+
+msgid "The portal is taking too long to respond. Please try again later."
+msgstr "ポータルの応答に時間がかかりすぎています。後で再試行してください。"
+
+msgid "Unable to load properties"
+msgstr "施設を読み込めません"
+
+msgid "There was a problem connecting to the portal. Please try again later."
+msgstr "ポータルへの接続に問題がありました。後で再試行してください。"
+
+msgid "No properties available"
+msgstr "利用可能な施設がありません"
+
+msgid "There are currently no properties to display."
+msgstr "現在表示する施設がありません。"
+
+msgid "Property listings"
+msgstr "施設一覧"
+
+msgid "Available Properties"
+msgstr "利用可能な施設"
+
+msgid "Property ID required"
+msgstr "施設IDが必要です"
+
+msgid "Please specify a valid property ID to display the availability calendar."
+msgstr "空室カレンダーを表示するために有効な施設IDを指定してください。"
+
+msgid "Property with ID %d was not found. Please check the property ID."
+msgstr "ID %dの施設が見つかりませんでした。施設IDを確認してください。"
+
+msgid "Unable to access property availability. Please check your connection settings."
+msgstr "施設の空室状況にアクセスできません。接続設定を確認してください。"
+
+msgid "Unable to load availability"
+msgstr "空室状況を読み込めません"
+
+msgid "There was a problem loading the availability calendar. Please try again later."
+msgstr "空室カレンダーの読み込みに問題がありました。後で再試行してください。"
+
+msgid "No availability data"
+msgstr "空室データなし"
+
+msgid "Availability information is not currently available for this property."
+msgstr "この施設の空室情報は現在利用できません。"
+
+msgid "Property availability calendar"
+msgstr "施設空室カレンダー"
+
+msgid "Unable to display properties due to a technical issue."
+msgstr "技術的な問題により施設を表示できません。"
+
+msgid "Unable to display availability calendar due to a technical issue."
+msgstr "技術的な問題により空室カレンダーを表示できません。"

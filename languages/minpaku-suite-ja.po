@@ -677,3 +677,9 @@ msgstr "この操作を実行する権限がありません。"
 
 msgid "Unnamed Site"
 msgstr "名前なしサイト"
+
+msgid "Origin not allowed"
+msgstr "送信元が許可されていません"
+
+msgid "Rate limit exceeded. Please try again later."
+msgstr "レート制限に達しました。後でもう一度お試しください。"

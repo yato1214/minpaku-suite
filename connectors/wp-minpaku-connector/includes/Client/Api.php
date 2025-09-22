@@ -26,6 +26,19 @@ class WMC_Client_Api {
     }
 
     /**
+     * Check if API is properly configured
+     */
+    public function is_configured() {
+        $settings = WP_Minpaku_Connector::get_settings();
+
+        return !empty($settings['portal_url']) &&
+               !empty($settings['api_key']) &&
+               !empty($settings['secret']) &&
+               !empty($settings['site_id']) &&
+               $this->signer !== null;
+    }
+
+    /**
      * Test connection to the portal
      */
     public function test_connection() {

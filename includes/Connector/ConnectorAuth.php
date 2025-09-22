@@ -17,6 +17,91 @@ class ConnectorAuth
     private const MAX_TIMESTAMP_DIFF = 300; // 5 minutes
 
     /**
+     * Handle CORS preflight requests
+     */
+    public static function handle_preflight(): void
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'OPTIONS') {
+            return;
+        }
+
+        // Only handle preflight for connector endpoints
+        $request_uri = $_SERVER['REQUEST_URI'] ?? '';
+        if (strpos($request_uri, '/wp-json/minpaku/v1/connector') === false) {
+            return;
+        }
+
+        // Check if origin is allowed
+        $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+        if (!self::is_origin_allowed($origin)) {
+            http_response_code(403);
+            header('Content-Type: application/json');
+            echo json_encode([
+                'error' => 'forbidden',
+                'message' => __('Origin not allowed', 'minpaku-suite')
+            ]);
+            exit;
+        }
+
+        // Set CORS headers for preflight
+        header('Access-Control-Allow-Origin: ' . $origin);
+        header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+        header('Access-Control-Allow-Headers: Content-Type, Authorization, X-MCS-Key, X-MCS-Nonce, X-MCS-Timestamp, X-MCS-Signature');
+        header('Access-Control-Allow-Credentials: true');
+        header('Access-Control-Max-Age: 86400'); // 24 hours
+        header('Vary: Origin');
+
+        // Preflight response
+        http_response_code(200);
+        exit;
+    }
+
+    /**
+     * Check if origin is allowed based on domain settings
+     */
+    private static function is_origin_allowed(string $origin): bool
+    {
+        if (empty($origin)) {
+            return false;
+        }
+
+        // Parse origin to get domain
+        $parsed = parse_url($origin);
+        if (!isset($parsed['host'])) {
+            return false;
+        }
+
+        $domain = $parsed['host'];
+
+        // Remove www prefix for comparison
+        $domain = preg_replace('/^www\./', '', strtolower($domain));
+
+        // Check against allowed domains
+        $allowed_domains = ConnectorSettings::get_allowed_domains();
+        foreach ($allowed_domains as $allowed) {
+            $allowed = preg_replace('/^www\./', '', strtolower($allowed));
+            if ($domain === $allowed) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Set CORS headers for actual requests
+     */
+    public static function set_cors_headers(): void
+    {
+        $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+        if (self::is_origin_allowed($origin)) {
+            header('Access-Control-Allow-Origin: ' . $origin);
+            header('Access-Control-Allow-Credentials: true');
+            header('Vary: Origin');
+        }
+    }
+
+    /**
      * Verify HMAC signature for connector request
      */
     public static function verify_request(\WP_REST_Request $request): bool

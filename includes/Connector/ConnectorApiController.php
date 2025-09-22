@@ -143,11 +143,85 @@ class ConnectorApiController
     public static function check_connector_permissions(\WP_REST_Request $request): bool
     {
         // Set CORS headers
-        $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-        ConnectorAuth::set_cors_headers($origin);
+        ConnectorAuth::set_cors_headers();
+
+        // Check rate limiting
+        if (!self::check_rate_limit($request)) {
+            return false;
+        }
 
         // Verify HMAC authentication
         return ConnectorAuth::verify_request($request);
+    }
+
+    /**
+     * Check rate limiting using transients
+     */
+    private static function check_rate_limit(\WP_REST_Request $request): bool
+    {
+        // Get client IP
+        $client_ip = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['HTTP_X_REAL_IP'] ?? $_SERVER['REMOTE_ADDR'] ?? '';
+        $client_ip = sanitize_text_field($client_ip);
+
+        // Get endpoint
+        $endpoint = $request->get_route();
+
+        // Create rate limit key
+        $rate_key = 'mcs_rate_limit_' . md5($client_ip . '_' . $endpoint);
+
+        // Get current count
+        $current_count = get_transient($rate_key);
+
+        // Set limits per endpoint per minute
+        $limits = [
+            '/minpaku/v1/connector/verify' => 10,      // 10 per minute
+            '/minpaku/v1/connector/properties' => 30,  // 30 per minute
+            '/minpaku/v1/connector/availability' => 60, // 60 per minute
+            '/minpaku/v1/connector/quote' => 20        // 20 per minute
+        ];
+
+        $limit = $limits[$endpoint] ?? 60; // Default 60 per minute
+
+        if ($current_count === false) {
+            // First request - set transient for 1 minute
+            set_transient($rate_key, 1, 60);
+            return true;
+        }
+
+        if ($current_count >= $limit) {
+            // Rate limit exceeded
+            $retry_after = 60; // Seconds until reset
+
+            // Log rate limit violation
+            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                error_log('[minpaku-suite] Rate limit exceeded for IP: ' . $client_ip . ' on endpoint: ' . $endpoint);
+            }
+
+            // Set rate limit headers
+            header('X-RateLimit-Limit: ' . $limit);
+            header('X-RateLimit-Remaining: 0');
+            header('X-RateLimit-Reset: ' . (time() + $retry_after));
+            header('Retry-After: ' . $retry_after);
+
+            // Send 429 response
+            wp_send_json([
+                'error' => 'rate_limit_exceeded',
+                'message' => __('Rate limit exceeded. Please try again later.', 'minpaku-suite'),
+                'retry_after' => $retry_after
+            ], 429);
+
+            return false;
+        }
+
+        // Increment counter
+        set_transient($rate_key, $current_count + 1, 60);
+
+        // Set rate limit headers for successful requests
+        header('X-RateLimit-Limit: ' . $limit);
+        header('X-RateLimit-Remaining: ' . ($limit - $current_count - 1));
+        header('X-RateLimit-Reset: ' . (time() + 60));
+
+        return true;
     }
 
     /**
