@@ -1,307 +1,326 @@
-# WordPress Plugin Language File Template
+# Japanese translation for WP Minpaku Connector
 # Copyright (C) 2024 Yato1214
+# This file is distributed under the same license as the WP Minpaku Connector package.
 msgid ""
 msgstr ""
 "Project-Id-Version: WP Minpaku Connector 1.0.0\n"
 "Report-Msgid-Bugs-To: https://github.com/yato1214/minpaku-suite\n"
 "POT-Creation-Date: 2025-09-22 12:00+0000\n"
-"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
-"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
-"Language-Team: LANGUAGE <LL@li.org>\n"
-"Language: \n"
+"PO-Revision-Date: 2025-09-22 12:00+0900\n"
+"Last-Translator: Yato1214\n"
+"Language-Team: Japanese\n"
+"Language: ja\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"X-Generator: WordPress\n"
+"X-Generator: Manual\n"
+"X-Domain: wp-minpaku-connector\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#. Plugin Name of the plugin/theme
+msgid "WP Minpaku Connector"
+msgstr "WP民泊コネクタ"
+
+#. Plugin URI of the plugin/theme
+msgid "https://github.com/yato1214/minpaku-suite"
+msgstr "https://github.com/yato1214/minpaku-suite"
+
+#. Description of the plugin/theme
+msgid "Connect your WordPress site to Minpaku Suite portal to display property listings and availability calendars."
+msgstr "WordPressサイトを民泊スイートポータルに接続して、施設一覧と空室カレンダーを表示します。"
+
+#. Author of the plugin/theme
+msgid "Yato1214"
+msgstr "Yato1214"
 
 #: wp-minpaku-connector.php
 msgid "You do not have permission to perform this action."
-msgstr ""
+msgstr "この操作を実行する権限がありません。"
 
 #: wp-minpaku-connector.php
 msgid "API client not available."
-msgstr ""
+msgstr "APIクライアントが利用できません。"
 
 #: wp-minpaku-connector.php
 msgid "Minpaku Connector"
-msgstr ""
+msgstr "民泊コネクタ"
+
+#: wp-minpaku-connector.php
+msgid "Testing connection..."
+msgstr "接続をテスト中..."
+
+#: wp-minpaku-connector.php
+msgid "Connection successful!"
+msgstr "接続成功！"
+
+#: wp-minpaku-connector.php
+msgid "Connection failed. Please check your settings."
+msgstr "接続に失敗しました。設定を確認してください。"
 
 #: includes/Admin/Settings.php
 msgid "Portal Connection"
-msgstr ""
+msgstr "ポータル接続"
 
 #: includes/Admin/Settings.php
 msgid "Enter your Minpaku Suite portal connection details. You can get these from your portal admin under Minpaku › Settings › Connector."
-msgstr ""
+msgstr "民泊スイートポータルの接続詳細を入力してください。ポータル管理画面の「民泊 › 設定 › コネクタ」から取得できます。"
 
 #: includes/Admin/Settings.php
 msgid "Portal Base URL"
-msgstr ""
+msgstr "ポータルURL"
 
 #: includes/Admin/Settings.php
 msgid "The base URL of your Minpaku Suite portal (e.g., https://yoursite.com)"
-msgstr ""
+msgstr "民泊スイートポータルのベースURL（例：https://yoursite.com）"
 
 #: includes/Admin/Settings.php
 msgid "Site ID"
-msgstr ""
+msgstr "サイトID"
 
 #: includes/Admin/Settings.php
 msgid "The Site ID generated in your portal connector settings."
-msgstr ""
+msgstr "ポータルコネクタ設定で生成されたサイトID。"
 
 #: includes/Admin/Settings.php
 msgid "API Key"
-msgstr ""
+msgstr "APIキー"
 
 #: includes/Admin/Settings.php
 msgid "The API Key generated in your portal connector settings."
-msgstr ""
+msgstr "ポータルコネクタ設定で生成されたAPIキー。"
 
 #: includes/Admin/Settings.php
 msgid "Secret"
-msgstr ""
+msgstr "シークレット"
 
 #: includes/Admin/Settings.php
 msgid "The Secret key generated in your portal connector settings."
-msgstr ""
+msgstr "ポータルコネクタ設定で生成されたシークレットキー。"
 
 #: includes/Admin/Settings.php
 msgid "You do not have permission to access this page."
-msgstr ""
+msgstr "このページにアクセスする権限がありません。"
 
 #: includes/Admin/Settings.php
 msgid "Minpaku Connector Settings"
-msgstr ""
+msgstr "民泊コネクタ設定"
 
 #: includes/Admin/Settings.php
 msgid "Connect your WordPress site to a Minpaku Suite portal to display property listings and availability calendars."
-msgstr ""
+msgstr "WordPressサイトを民泊スイートポータルに接続して、施設一覧と空室カレンダーを表示します。"
 
 #: includes/Admin/Settings.php
 msgid "Connection Test"
-msgstr ""
+msgstr "接続テスト"
 
 #: includes/Admin/Settings.php
 msgid "Test your connection to the Minpaku Suite portal."
-msgstr ""
+msgstr "民泊スイートポータルへの接続をテストします。"
 
 #: includes/Admin/Settings.php
 msgid "Test Connection"
-msgstr ""
+msgstr "接続テスト"
 
 #: includes/Admin/Settings.php
 msgid "Usage"
-msgstr ""
+msgstr "使用方法"
 
 #: includes/Admin/Settings.php
 msgid "Use these shortcodes to display content from your Minpaku Suite portal:"
-msgstr ""
+msgstr "以下のショートコードを使用して民泊スイートポータルのコンテンツを表示します："
 
 #: includes/Admin/Settings.php
 msgid "Property Listings"
-msgstr ""
+msgstr "施設一覧"
 
 #: includes/Admin/Settings.php
 msgid "Display a grid of property listings. Parameters: limit (number of properties), columns (grid columns)."
-msgstr ""
+msgstr "施設一覧をグリッド表示します。パラメータ：limit（施設数）、columns（グリッド列数）。"
 
 #: includes/Admin/Settings.php
 msgid "Availability Calendar"
-msgstr ""
+msgstr "空室カレンダー"
 
 #: includes/Admin/Settings.php
 msgid "Display availability calendar for a specific property. Parameters: property_id (required), months (number of months to display)."
-msgstr ""
+msgstr "特定施設の空室カレンダーを表示します。パラメータ：property_id（必須）、months（表示月数）。"
 
 #: includes/Admin/Settings.php
 msgid "Property Details"
-msgstr ""
+msgstr "施設詳細"
 
 #: includes/Admin/Settings.php
 msgid "Display detailed information for a specific property. Parameters: property_id (required)."
-msgstr ""
+msgstr "特定施設の詳細情報を表示します。パラメータ：property_id（必須）。"
 
 #: includes/Admin/Settings.php
 msgid "Please complete the connection settings above before using shortcodes."
-msgstr ""
+msgstr "ショートコードを使用する前に、上記の接続設定を完了してください。"
 
 #: includes/Admin/Settings.php
 msgid "Setup Instructions"
-msgstr ""
+msgstr "セットアップ手順"
 
 #: includes/Admin/Settings.php
 msgid "Log in to your Minpaku Suite portal admin area."
-msgstr ""
+msgstr "民泊スイートポータルの管理画面にログインします。"
 
 #: includes/Admin/Settings.php
 msgid "Go to Minpaku › Settings › Connector."
-msgstr ""
+msgstr "「民泊 › 設定 › コネクタ」に移動します。"
 
 #: includes/Admin/Settings.php
 msgid "Enable the connector and add your WordPress site domain to the allowed domains list."
-msgstr ""
+msgstr "コネクタを有効にして、WordPressサイトのドメインを許可ドメインリストに追加します。"
 
 #: includes/Admin/Settings.php
 msgid "Generate new API keys for this site."
-msgstr ""
+msgstr "このサイト用の新しいAPIキーを生成します。"
 
 #: includes/Admin/Settings.php
 msgid "Copy the Portal Base URL, Site ID, API Key, and Secret to the form above."
-msgstr ""
+msgstr "ポータルURL、サイトID、APIキー、シークレットを上記のフォームにコピーします。"
 
 #: includes/Admin/Settings.php
 msgid "Save the settings and test the connection."
-msgstr ""
+msgstr "設定を保存して接続をテストします。"
 
 #: includes/Admin/Settings.php
 msgid "Use the shortcodes on your pages and posts to display content."
-msgstr ""
+msgstr "ページや投稿でショートコードを使用してコンテンツを表示します。"
 
 #: includes/Client/Api.php
 msgid "API credentials not configured."
-msgstr ""
+msgstr "API認証情報が設定されていません。"
 
 #: includes/Client/Api.php
 msgid "Connection failed: %s"
-msgstr ""
+msgstr "接続に失敗しました：%s"
 
 #: includes/Client/Api.php
 msgid "Connected successfully to %s (v%s)"
-msgstr ""
+msgstr "%s (v%s) への接続に成功しました"
 
 #: includes/Client/Api.php
 msgid "Unknown error occurred."
-msgstr ""
+msgstr "不明なエラーが発生しました。"
 
 #: includes/Client/Api.php
 msgid "Failed to fetch properties."
-msgstr ""
+msgstr "施設の取得に失敗しました。"
 
 #: includes/Client/Api.php
 msgid "Failed to fetch availability."
-msgstr ""
+msgstr "空室情報の取得に失敗しました。"
 
 #: includes/Client/Api.php
 msgid "Property not found."
-msgstr ""
+msgstr "施設が見つかりません。"
 
 #: includes/Client/Api.php
 msgid "Failed to generate quote."
-msgstr ""
+msgstr "見積もりの生成に失敗しました。"
 
 #: includes/Shortcodes/Embed.php
 msgid "Minpaku Connector is not properly configured."
-msgstr ""
+msgstr "民泊コネクタが正しく設定されていません。"
 
 #: includes/Shortcodes/Embed.php
 msgid "Invalid shortcode type specified."
-msgstr ""
+msgstr "無効なショートコードタイプが指定されました。"
 
 #: includes/Shortcodes/Embed.php
 msgid "No properties found."
-msgstr ""
+msgstr "施設が見つかりません。"
 
 #: includes/Shortcodes/Embed.php
 msgid "Property ID is required for availability display."
-msgstr ""
+msgstr "空室表示には施設IDが必要です。"
 
 #: includes/Shortcodes/Embed.php
 msgid "No availability data found."
-msgstr ""
+msgstr "空室データが見つかりません。"
 
 #: includes/Shortcodes/Embed.php
 msgid "Property ID is required."
-msgstr ""
+msgstr "施設IDが必要です。"
 
 #: includes/Shortcodes/Embed.php
 msgid "Availability from %s to %s"
-msgstr ""
+msgstr "%sから%sまでの空室状況"
 
 #: includes/Shortcodes/Embed.php
 msgid "Capacity:"
-msgstr ""
+msgstr "定員："
 
 #: includes/Shortcodes/Embed.php
 msgid "Bedrooms:"
-msgstr ""
+msgstr "寝室数："
 
 #: includes/Shortcodes/Embed.php
 msgid "From:"
-msgstr ""
+msgstr "料金："
 
 #: includes/Shortcodes/Embed.php
 msgid "Capacity"
-msgstr ""
+msgstr "定員"
 
 #: includes/Shortcodes/Embed.php
 msgid "Bedrooms"
-msgstr ""
+msgstr "寝室"
 
 #: includes/Shortcodes/Embed.php
 msgid "Bathrooms"
-msgstr ""
+msgstr "バスルーム"
 
 #: includes/Shortcodes/Embed.php
 msgid "Base Price:"
-msgstr ""
+msgstr "基本料金："
 
 #: includes/Shortcodes/Embed.php
 msgid "per night"
-msgstr ""
+msgstr "／泊"
 
 #: includes/Shortcodes/Embed.php
 msgid "Location"
-msgstr ""
+msgstr "所在地"
 
 #: includes/Shortcodes/Embed.php
 msgid "Amenities"
-msgstr ""
+msgstr "アメニティ"
 
 #: includes/Shortcodes/Embed.php
 msgid "Sun"
-msgstr ""
+msgstr "日"
 
 #: includes/Shortcodes/Embed.php
 msgid "Mon"
-msgstr ""
+msgstr "月"
 
 #: includes/Shortcodes/Embed.php
 msgid "Tue"
-msgstr ""
+msgstr "火"
 
 #: includes/Shortcodes/Embed.php
 msgid "Wed"
-msgstr ""
+msgstr "水"
 
 #: includes/Shortcodes/Embed.php
 msgid "Thu"
-msgstr ""
+msgstr "木"
 
 #: includes/Shortcodes/Embed.php
 msgid "Fri"
-msgstr ""
+msgstr "金"
 
 #: includes/Shortcodes/Embed.php
 msgid "Sat"
-msgstr ""
+msgstr "土"
 
 #: includes/Shortcodes/Embed.php
 msgid "Available"
-msgstr ""
+msgstr "空室"
 
 #: includes/Shortcodes/Embed.php
 msgid "Unavailable"
-msgstr ""
-
-#: assets/admin.js
-msgid "Testing connection..."
-msgstr ""
-
-#: assets/admin.js
-msgid "Connection successful!"
-msgstr ""
-
-#: assets/admin.js
-msgid "Connection failed. Please check your settings."
-msgstr ""
+msgstr "満室"

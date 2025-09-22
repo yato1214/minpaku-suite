@@ -5,8 +5,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Minpaku Suite 0.4.1\n"
 "Report-Msgid-Bugs-To: https://github.com/yato1214/minpaku-suite\n"
-"POT-Creation-Date: 2024-12-20 12:00+0000\n"
-"PO-Revision-Date: 2024-12-20 12:00+0900\n"
+"POT-Creation-Date: 2025-09-22 12:00+0000\n"
+"PO-Revision-Date: 2025-09-22 12:00+0900\n"
 "Last-Translator: Yato1214\n"
 "Language-Team: Japanese\n"
 "Language: ja\n"
@@ -516,3 +516,164 @@ msgstr "概要"
 
 msgid "今後%d日"
 msgstr "今後%d日"
+
+#. Additional M4 Connector strings
+msgid "Connector"
+msgstr "コネクタ"
+
+msgid "Connector Settings"
+msgstr "コネクタ設定"
+
+msgid "Site name (optional)"
+msgstr "サイト名（任意）"
+
+msgid "Secret:"
+msgstr "シークレット："
+
+msgid "Connection verified successfully."
+msgstr "接続の確認が成功しました。"
+
+msgid "Unable to fetch properties."
+msgstr "施設を取得できません。"
+
+msgid "Unable to fetch availability."
+msgstr "空室情報を取得できません。"
+
+msgid "Unable to generate quote."
+msgstr "見積もりを生成できません。"
+
+msgid "This is a preliminary quote. Final pricing may vary."
+msgstr "これは仮見積もりです。最終価格は変更される場合があります。"
+
+msgid "Error generating keys."
+msgstr "キー生成エラー。"
+
+msgid "Error rotating keys."
+msgstr "キーローテーションエラー。"
+
+#. Connector Settings Template strings
+msgid "Configure external WordPress connector for embedding property listings and availability calendars."
+msgstr "施設一覧と空室カレンダーを埋め込むための外部WordPressコネクタを設定します。"
+
+msgid "Enable Connector"
+msgstr "コネクタを有効化"
+
+msgid "Enable external WordPress connector API"
+msgstr "外部WordPressコネクタAPIを有効化"
+
+msgid "When enabled, external WordPress sites can connect to display your properties."
+msgstr "有効にすると、外部WordPressサイトが接続して施設を表示できます。"
+
+msgid "Allowed Domains"
+msgstr "許可ドメイン"
+
+msgid "Enter one domain per line (e.g., example.com). Only these domains can access the connector API."
+msgstr "1行に1つずつドメインを入力してください（例：example.com）。これらのドメインのみがコネクタAPIにアクセスできます。"
+
+msgid "API Keys"
+msgstr "APIキー"
+
+msgid "Generate API keys for external WordPress sites. Each site needs its own API key and secret."
+msgstr "外部WordPressサイト用のAPIキーを生成します。各サイトには独自のAPIキーとシークレットが必要です。"
+
+msgid "No API keys generated yet."
+msgstr "APIキーはまだ生成されていません。"
+
+msgid "Site Name"
+msgstr "サイト名"
+
+msgid "Created"
+msgstr "作成日"
+
+msgid "Last Used"
+msgstr "最終使用日"
+
+msgid "Actions"
+msgstr "操作"
+
+msgid "Never"
+msgstr "未使用"
+
+msgid "Show Details"
+msgstr "詳細を表示"
+
+msgid "Rotate"
+msgstr "ローテート"
+
+msgid "Delete"
+msgstr "削除"
+
+msgid "Are you sure you want to delete these API keys?"
+msgstr "これらのAPIキーを削除してもよろしいですか？"
+
+msgid "Connection Details for:"
+msgstr "接続詳細："
+
+msgid "Portal Base URL:"
+msgstr "ポータルベースURL："
+
+msgid "Note:"
+msgstr "注意："
+
+msgid "Copy these values to your external WordPress connector plugin settings."
+msgstr "これらの値を外部WordPressコネクタプラグイン設定にコピーしてください。"
+
+msgid "API Endpoints"
+msgstr "APIエンドポイント"
+
+msgid "The following endpoints are available for external WordPress connectors:"
+msgstr "以下のエンドポイントが外部WordPressコネクタで利用可能です："
+
+msgid "Endpoint"
+msgstr "エンドポイント"
+
+msgid "Method"
+msgstr "メソッド"
+
+msgid "Description"
+msgstr "説明"
+
+msgid "Verify connection and test authentication"
+msgstr "接続を確認し、認証をテストします"
+
+msgid "Get list of properties"
+msgstr "施設一覧を取得します"
+
+msgid "Get availability calendar for a property"
+msgstr "施設の空室カレンダーを取得します"
+
+msgid "Generate price quote for a booking"
+msgstr "予約の見積もりを生成します"
+
+msgid "Generating..."
+msgstr "生成中..."
+
+msgid "Generate New API Keys"
+msgstr "新しいAPIキーを生成"
+
+msgid "Are you sure you want to rotate these API keys? The old keys will stop working immediately."
+msgstr "これらのAPIキーをローテートしてもよろしいですか？古いキーは即座に機能しなくなります。"
+
+msgid "Settings saved successfully."
+msgstr "設定が正常に保存されました。"
+
+msgid "API keys deleted successfully."
+msgstr "APIキーが正常に削除されました。"
+
+msgid "API keys generated successfully."
+msgstr "APIキーが正常に生成されました。"
+
+msgid "API keys rotated successfully."
+msgstr "APIキーが正常にローテートされました。"
+
+msgid "Site ID is required."
+msgstr "サイトIDが必要です。"
+
+msgid "Site not found."
+msgstr "サイトが見つかりません。"
+
+msgid "You do not have permission to perform this action."
+msgstr "この操作を実行する権限がありません。"
+
+msgid "Unnamed Site"
+msgstr "名前なしサイト"
