@@ -88,18 +88,6 @@ class ConnectorAuth
         return false;
     }
 
-    /**
-     * Set CORS headers for actual requests
-     */
-    public static function set_cors_headers(): void
-    {
-        $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-        if (self::is_origin_allowed($origin)) {
-            header('Access-Control-Allow-Origin: ' . $origin);
-            header('Access-Control-Allow-Credentials: true');
-            header('Vary: Origin');
-        }
-    }
 
     /**
      * Verify HMAC signature for connector request
@@ -264,18 +252,6 @@ class ConnectorAuth
         }
     }
 
-    /**
-     * Handle preflight OPTIONS request
-     */
-    public static function handle_preflight(): void
-    {
-        if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-            $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-            self::set_cors_headers($origin);
-            status_header(200);
-            exit;
-        }
-    }
 
     /**
      * Generate nonce for external clients
