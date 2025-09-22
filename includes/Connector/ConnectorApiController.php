@@ -38,6 +38,13 @@ class ConnectorApiController
      */
     public static function register_routes(): void
     {
+        // Ping endpoint (diagnostic, no auth required)
+        register_rest_route(self::NAMESPACE, '/ping', [
+            'methods' => 'GET',
+            'callback' => [__CLASS__, 'ping_connection'],
+            'permission_callback' => [__CLASS__, 'check_ping_permissions'],
+        ]);
+
         // Verify endpoint
         register_rest_route(self::NAMESPACE, '/verify', [
             'methods' => 'GET',
@@ -138,6 +145,39 @@ class ConnectorApiController
     }
 
     /**
+     * Check ping permissions (no auth required, but respects filters)
+     */
+    public static function check_ping_permissions(\WP_REST_Request $request): bool
+    {
+        // Set CORS headers for ping endpoint
+        ConnectorAuth::set_cors_headers();
+
+        // Check if public ping is enabled via filter
+        $enable_public_ping = apply_filters('mcs_connector_enable_public_ping', false);
+
+        // If not enabled by filter, check if user is admin
+        if (!$enable_public_ping && !current_user_can('manage_options')) {
+            return false;
+        }
+
+        // Basic rate limiting for ping endpoint (more lenient)
+        $client_ip = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['HTTP_X_REAL_IP'] ?? $_SERVER['REMOTE_ADDR'] ?? '';
+        $client_ip = sanitize_text_field($client_ip);
+        $rate_key = 'mcs_ping_rate_' . md5($client_ip);
+
+        $current_count = get_transient($rate_key);
+        if ($current_count === false) {
+            set_transient($rate_key, 1, 60); // 1 minute window
+        } elseif ($current_count >= 30) { // 30 pings per minute max
+            return false;
+        } else {
+            set_transient($rate_key, $current_count + 1, 60);
+        }
+
+        return true;
+    }
+
+    /**
      * Check connector permissions and set CORS headers
      */
     public static function check_connector_permissions(\WP_REST_Request $request): bool
@@ -174,6 +214,7 @@ class ConnectorApiController
 
         // Set limits per endpoint per minute
         $limits = [
+            '/minpaku/v1/connector/ping' => 30,        // 30 per minute (diagnostic)
             '/minpaku/v1/connector/verify' => 10,      // 10 per minute
             '/minpaku/v1/connector/properties' => 30,  // 30 per minute
             '/minpaku/v1/connector/availability' => 60, // 60 per minute
@@ -222,6 +263,30 @@ class ConnectorApiController
         header('X-RateLimit-Reset: ' . (time() + 60));
 
         return true;
+    }
+
+    /**
+     * Ping connection endpoint (diagnostic, no auth required)
+     */
+    public static function ping_connection(\WP_REST_Request $request): \WP_REST_Response
+    {
+        if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+            $client_ip = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['HTTP_X_REAL_IP'] ?? $_SERVER['REMOTE_ADDR'] ?? '';
+            error_log('[minpaku-suite] Ping endpoint accessed from IP: ' . sanitize_text_field($client_ip));
+        }
+
+        return new \WP_REST_Response([
+            'ok' => true,
+            'site' => get_bloginfo('name'),
+            'version' => MINPAKU_SUITE_VERSION,
+            'timestamp' => current_time('timestamp'),
+            'endpoints' => [
+                'verify' => rest_url(self::NAMESPACE . '/verify'),
+                'properties' => rest_url(self::NAMESPACE . '/properties'),
+                'availability' => rest_url(self::NAMESPACE . '/availability'),
+                'quote' => rest_url(self::NAMESPACE . '/quote')
+            ]
+        ], 200);
     }
 
     /**

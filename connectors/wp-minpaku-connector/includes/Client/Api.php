@@ -280,10 +280,10 @@ class MPC_Client_Api {
         $args = array(
             'method' => $method,
             'headers' => $signature_data['headers'],
-            'timeout' => 30,
-            'redirection' => 5,
+            'timeout' => 8,
+            'redirection' => 2,
             'httpversion' => '1.1',
-            'user-agent' => 'WP-Minpaku-Connector/' . WP_MINPAKU_CONNECTOR_VERSION,
+            'user-agent' => 'WPMC/1.0',
             'reject_unsafe_urls' => true,
             'sslverify' => true
         );
@@ -292,7 +292,45 @@ class MPC_Client_Api {
             $args['body'] = $body;
         }
 
-        return wp_remote_request($url, $args);
+        // Debug logging for outgoing request
+        if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+            $debug_request = array(
+                'method' => $method,
+                'url' => $url,
+                'headers_sent' => array_keys($signature_data['headers']),
+                'body_length' => strlen($body),
+                'timeout' => 8,
+                'redirection' => 2
+            );
+            error_log('[minpaku-connector] Outgoing request: ' . json_encode($debug_request));
+        }
+
+        $start_time = microtime(true);
+        $response = wp_remote_request($url, $args);
+        $request_time = round((microtime(true) - $start_time) * 1000); // milliseconds
+
+        // Debug logging for response
+        if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+            if (is_wp_error($response)) {
+                $error_data = array(
+                    'errors' => $response->get_error_messages(),
+                    'error_data' => $response->get_error_data(),
+                    'request_time_ms' => $request_time
+                );
+                error_log('[minpaku-connector] Request failed: ' . json_encode($error_data));
+            } else {
+                $response_code = wp_remote_retrieve_response_code($response);
+                $response_headers = wp_remote_retrieve_headers($response);
+                $debug_response = array(
+                    'status_code' => $response_code,
+                    'request_time_ms' => $request_time,
+                    'response_headers' => array_keys($response_headers->getAll())
+                );
+                error_log('[minpaku-connector] Request completed: ' . json_encode($debug_response));
+            }
+        }
+
+        return $response;
     }
 
     /**

@@ -13,8 +13,8 @@ Write-Host "Building WP Minpaku Connector v$Version..." -ForegroundColor Green
 
 # Define paths
 $SourceDir = "wp-minpaku-connector"
-$DistDir = "dist"
-$TempDir = "temp-build"
+$DistDir = Join-Path $ScriptDir "dist"
+$TempDir = Join-Path $ScriptDir "temp-build"
 $ZipName = "wp-minpaku-connector.zip"
 $ZipPath = Join-Path $DistDir $ZipName
 

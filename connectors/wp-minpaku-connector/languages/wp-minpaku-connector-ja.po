@@ -481,3 +481,61 @@ msgstr "技術的な問題により施設を表示できません。"
 
 msgid "Unable to display availability calendar due to a technical issue."
 msgstr "技術的な問題により空室カレンダーを表示できません。"
+
+# Diagnostic UI strings
+msgid "Connection Diagnostics"
+msgstr "接続診断"
+
+msgid "Perform step-by-step diagnostics to troubleshoot connection issues."
+msgstr "段階的診断を実行して接続問題をトラブルシューティングします。"
+
+msgid "Run Diagnostics"
+msgstr "診断を実行"
+
+msgid "Diagnostic Steps"
+msgstr "診断ステップ"
+
+msgid "Step A: URL Normalization & DNS"
+msgstr "ステップA：URL正規化とDNS"
+
+msgid "Step B: Basic Connectivity (/connector/ping)"
+msgstr "ステップB：基本接続性（/connector/ping）"
+
+msgid "Step C: Authentication (/connector/verify)"
+msgstr "ステップC：認証（/connector/verify）"
+
+msgid "Checking..."
+msgstr "確認中..."
+
+msgid "Waiting..."
+msgstr "待機中..."
+
+msgid "Running..."
+msgstr "実行中..."
+
+msgid "Success"
+msgstr "成功"
+
+msgid "Failed"
+msgstr "失敗"
+
+msgid "None"
+msgstr "なし"
+
+msgid "Network error"
+msgstr "ネットワークエラー"
+
+msgid "Check: API Key format, Secret key, Site ID"
+msgstr "確認：APIキー形式、シークレットキー、サイトID"
+
+msgid "Check: Allowed domains list in portal settings"
+msgstr "確認：ポータル設定の許可ドメインリスト"
+
+msgid "Check: Portal Base URL spelling and accessibility"
+msgstr "確認：ポータルベースURLのスペルとアクセス可能性"
+
+msgid "Check: Network connectivity and portal server status"
+msgstr "確認：ネットワーク接続とポータルサーバーステータス"
+
+msgid "Network error occurred. Please try again."
+msgstr "ネットワークエラーが発生しました。再試行してください。"

@@ -16,6 +16,9 @@ class MPC_Admin_Settings {
     public static function init() {
         add_action('admin_init', array(__CLASS__, 'register_settings'));
         add_action('wp_ajax_mpc_test_connection', array(__CLASS__, 'ajax_test_connection'));
+        add_action('wp_ajax_mpc_diagnostic_step_a', array(__CLASS__, 'ajax_diagnostic_step_a'));
+        add_action('wp_ajax_mpc_diagnostic_step_b', array(__CLASS__, 'ajax_diagnostic_step_b'));
+        add_action('wp_ajax_mpc_diagnostic_step_c', array(__CLASS__, 'ajax_diagnostic_step_c'));
     }
 
     /**
@@ -129,14 +132,20 @@ class MPC_Admin_Settings {
             $scheme = $parts['scheme'];
             $host = $parts['host'];
 
-            // http/httpsスキームかつ開発用ドメインなら許可
+            // http/httpsスキームかつ開発用ドメイン/IPv4なら許可
             $is_dev_scheme = in_array($scheme, ['http', 'https'], true);
             $is_dev_host = false;
 
-            if (!str_contains($host, '.')) {
-                // ドット無し→ localhost を許容
+            // IPv4 address check
+            if (filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+                $is_dev_host = true;
+            }
+            // localhost without dots
+            else if (!str_contains($host, '.')) {
                 $is_dev_host = ($host === 'localhost');
-            } else {
+            }
+            // Domain with development TLD
+            else {
                 $tld = substr(strrchr($host, '.'), 1);
                 $is_dev_host = in_array($tld, ['local','test','localdomain'], true);
             }
@@ -161,18 +170,25 @@ class MPC_Admin_Settings {
             return [false, $s, \__('ポータルURLのスキームは http/https にしてください。', 'wp-minpaku-connector')];
         }
 
-        // ホスト再確認（開発用ドメインまたは通常ドメイン）
+        // ホスト再確認（開発用ドメインまたは通常ドメイン + ポート対応）
         $ok_host = false;
-        if ($host && !str_contains($host, '.')) {
-            // ドット無し→ localhost を許容
+
+        // IP address validation (IPv4)
+        if (filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+            $ok_host = true; // Allow all IPv4 addresses
+        }
+        // localhost without dots
+        else if ($host && !str_contains($host, '.')) {
             $ok_host = ($host === 'localhost');
-        } else {
-            $tld = $host ? substr(strrchr($host, '.'), 1) : '';
+        }
+        // Domain with TLD
+        else if ($host && str_contains($host, '.')) {
+            $tld = substr(strrchr($host, '.'), 1);
             $ok_host = ($tld && (in_array($tld, ['local','test','localdomain'], true) || preg_match('/^[a-z]{2,63}$/i', (string)$tld)));
         }
 
         if (!$ok_host) {
-            return [false, $s, \__('ポータルURLのドメインが許可されていません（.local/.test/localhost対応）。', 'wp-minpaku-connector')];
+            return [false, $s, \__('ポータルURLのドメインが許可されていません（.local/.test/localhost/IPv4対応）。', 'wp-minpaku-connector')];
         }
 
         return [true, $s, ''];
@@ -293,6 +309,171 @@ class MPC_Admin_Settings {
     }
 
     /**
+     * AJAX handler for diagnostic Step A: URL normalization & DNS
+     */
+    public static function ajax_diagnostic_step_a() {
+        check_ajax_referer('mpc_diagnostic', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(__('You do not have permission to perform this action.', 'wp-minpaku-connector'));
+        }
+
+        $settings = \WP_Minpaku_Connector::get_settings();
+        $portal_url = $settings['portal_url'] ?? '';
+
+        // URL normalization
+        list($url_ok, $normalized_url, $url_msg) = self::normalize_and_validate_portal_url($portal_url);
+
+        $result = array(
+            'original_url' => $portal_url,
+            'normalized_url' => $normalized_url,
+            'validation' => array(
+                'valid' => $url_ok,
+                'message' => $url_msg
+            )
+        );
+
+        // DNS resolution attempt
+        if ($url_ok) {
+            $parts = wp_parse_url($normalized_url);
+            $host = $parts['host'] ?? '';
+
+            if ($host) {
+                $ip = gethostbyname($host);
+                $result['dns'] = array(
+                    'host' => $host,
+                    'resolved_ip' => $ip !== $host ? $ip : false,
+                    'success' => $ip !== $host
+                );
+            }
+        }
+
+        if ($url_ok) {
+            wp_send_json_success($result);
+        } else {
+            wp_send_json_error($result);
+        }
+    }
+
+    /**
+     * AJAX handler for diagnostic Step B: Anonymous ping test
+     */
+    public static function ajax_diagnostic_step_b() {
+        check_ajax_referer('mpc_diagnostic', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(__('You do not have permission to perform this action.', 'wp-minpaku-connector'));
+        }
+
+        $settings = \WP_Minpaku_Connector::get_settings();
+        $portal_url = $settings['portal_url'] ?? '';
+
+        list($url_ok, $normalized_url, $url_msg) = self::normalize_and_validate_portal_url($portal_url);
+
+        if (!$url_ok) {
+            wp_send_json_error(array('message' => $url_msg));
+        }
+
+        $ping_url = trailingslashit($normalized_url) . 'wp-json/minpaku/v1/connector/ping';
+
+        $start_time = microtime(true);
+        $response = wp_remote_get($ping_url, array(
+            'timeout' => 8,
+            'redirection' => 2,
+            'user-agent' => 'WPMC/1.0',
+            'sslverify' => true
+        ));
+        $request_time = round((microtime(true) - $start_time) * 1000);
+
+        $result = array(
+            'url' => $ping_url,
+            'request_time_ms' => $request_time
+        );
+
+        if (is_wp_error($response)) {
+            $result['success'] = false;
+            $result['error'] = $response->get_error_message();
+            $result['error_data'] = $response->get_error_data();
+            wp_send_json_error($result);
+        } else {
+            $status_code = wp_remote_retrieve_response_code($response);
+            $body = wp_remote_retrieve_body($response);
+            $data = json_decode($body, true);
+
+            $result['success'] = ($status_code === 200);
+            $result['status_code'] = $status_code;
+            $result['response'] = substr($body, 0, 500); // First 500 chars
+            $result['parsed_data'] = $data;
+
+            if ($status_code === 200) {
+                wp_send_json_success($result);
+            } else {
+                wp_send_json_error($result);
+            }
+        }
+    }
+
+    /**
+     * AJAX handler for diagnostic Step C: Authenticated verify test
+     */
+    public static function ajax_diagnostic_step_c() {
+        check_ajax_referer('mpc_diagnostic', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(__('You do not have permission to perform this action.', 'wp-minpaku-connector'));
+        }
+
+        $settings = \WP_Minpaku_Connector::get_settings();
+        $portal_url = $settings['portal_url'] ?? '';
+
+        list($url_ok, $normalized_url, $url_msg) = self::normalize_and_validate_portal_url($portal_url);
+
+        if (!$url_ok) {
+            wp_send_json_error(array('message' => $url_msg));
+        }
+
+        $api = new \MinpakuConnector\Client\MPC_Client_Api();
+
+        $verify_url = trailingslashit($normalized_url) . 'wp-json/minpaku/v1/connector/verify';
+        $start_time = microtime(true);
+        $result_data = $api->test_connection();
+        $request_time = round((microtime(true) - $start_time) * 1000);
+
+        $result = array(
+            'url' => $verify_url,
+            'request_time_ms' => $request_time,
+            'success' => $result_data['success'],
+            'message' => $result_data['message']
+        );
+
+        if (isset($result_data['data'])) {
+            $result['response_data'] = $result_data['data'];
+        }
+
+        // Add guidance based on common error patterns
+        if (!$result_data['success']) {
+            $message = $result_data['message'];
+            if (strpos($message, '401') !== false) {
+                $result['guidance'] = __('Check: API Key format, Secret key, Site ID', 'wp-minpaku-connector');
+            } elseif (strpos($message, '403') !== false) {
+                $result['guidance'] = __('Check: Allowed domains list in portal settings', 'wp-minpaku-connector');
+            } elseif (strpos($message, '404') !== false) {
+                $result['guidance'] = __('Check: Portal Base URL spelling and accessibility', 'wp-minpaku-connector');
+            } elseif (strpos($message, '408') !== false || strpos($message, 'timeout') !== false) {
+                $result['guidance'] = __('Check: Network connectivity and portal server status', 'wp-minpaku-connector');
+            } else {
+                $result['guidance'] = __('Network error occurred. Please try again.', 'wp-minpaku-connector');
+            }
+        }
+
+        if ($result_data['success']) {
+            wp_send_json_success($result);
+        } else {
+            wp_send_json_error($result);
+        }
+    }
+
+    /**
      * Connection section callback
      */
     public static function connection_section_callback() {
@@ -371,6 +552,43 @@ class MPC_Admin_Settings {
                     </button>
                     <span id="test-result"></span>
                 </p>
+
+                <hr>
+                <h2><?php echo esc_html__('Connection Diagnostics', 'wp-minpaku-connector'); ?></h2>
+                <p><?php echo esc_html__('Perform step-by-step diagnostics to troubleshoot connection issues.', 'wp-minpaku-connector'); ?></p>
+                <p>
+                    <button type="button" id="run-diagnostics" class="button button-secondary">
+                        <?php echo esc_html__('Run Diagnostics', 'wp-minpaku-connector'); ?>
+                    </button>
+                </p>
+
+                <div id="diagnostic-results" style="display:none; margin-top: 15px;">
+                    <h3><?php echo esc_html__('Diagnostic Steps', 'wp-minpaku-connector'); ?></h3>
+
+                    <div class="diagnostic-step" id="step-a">
+                        <h4><?php echo esc_html__('Step A: URL Normalization & DNS', 'wp-minpaku-connector'); ?></h4>
+                        <div class="diagnostic-content">
+                            <span class="spinner"></span>
+                            <span class="diagnostic-status"><?php echo esc_html__('Checking...', 'wp-minpaku-connector'); ?></span>
+                        </div>
+                    </div>
+
+                    <div class="diagnostic-step" id="step-b">
+                        <h4><?php echo esc_html__('Step B: Basic Connectivity (/connector/ping)', 'wp-minpaku-connector'); ?></h4>
+                        <div class="diagnostic-content">
+                            <span class="spinner"></span>
+                            <span class="diagnostic-status"><?php echo esc_html__('Waiting...', 'wp-minpaku-connector'); ?></span>
+                        </div>
+                    </div>
+
+                    <div class="diagnostic-step" id="step-c">
+                        <h4><?php echo esc_html__('Step C: Authentication (/connector/verify)', 'wp-minpaku-connector'); ?></h4>
+                        <div class="diagnostic-content">
+                            <span class="spinner"></span>
+                            <span class="diagnostic-status"><?php echo esc_html__('Waiting...', 'wp-minpaku-connector'); ?></span>
+                        </div>
+                    </div>
+                </div>
 
                 <hr>
                 <h2><?php echo esc_html__('Usage', 'wp-minpaku-connector'); ?></h2>
@@ -473,6 +691,112 @@ class MPC_Admin_Settings {
                     button.prop('disabled', false).text('<?php echo esc_js(__('Test Connection', 'wp-minpaku-connector')); ?>');
                 });
             });
+
+            // Diagnostic functionality
+            $('#run-diagnostics').on('click', function() {
+                var button = $(this);
+                var resultsDiv = $('#diagnostic-results');
+
+                button.prop('disabled', true).text('<?php echo esc_js(__('Running...', 'wp-minpaku-connector')); ?>');
+                resultsDiv.show();
+
+                // Reset all steps
+                $('.diagnostic-step').removeClass('step-success step-error');
+                $('.diagnostic-step .spinner').removeClass('is-active');
+                $('.diagnostic-status').text('<?php echo esc_js(__('Waiting...', 'wp-minpaku-connector')); ?>');
+
+                // Run Step A
+                runDiagnosticStep('a', function(success) {
+                    if (success) {
+                        // Run Step B
+                        runDiagnosticStep('b', function(success) {
+                            if (success) {
+                                // Run Step C
+                                runDiagnosticStep('c', function(success) {
+                                    button.prop('disabled', false).text('<?php echo esc_js(__('Run Diagnostics', 'wp-minpaku-connector')); ?>');
+                                });
+                            } else {
+                                button.prop('disabled', false).text('<?php echo esc_js(__('Run Diagnostics', 'wp-minpaku-connector')); ?>');
+                            }
+                        });
+                    } else {
+                        button.prop('disabled', false).text('<?php echo esc_js(__('Run Diagnostics', 'wp-minpaku-connector')); ?>');
+                    }
+                });
+            });
+
+            function runDiagnosticStep(step, callback) {
+                var stepDiv = $('#step-' + step);
+                var statusSpan = stepDiv.find('.diagnostic-status');
+                var spinner = stepDiv.find('.spinner');
+
+                stepDiv.removeClass('step-success step-error');
+                spinner.addClass('is-active');
+                statusSpan.text('<?php echo esc_js(__('Running...', 'wp-minpaku-connector')); ?>');
+
+                $.post(ajaxurl, {
+                    action: 'mpc_diagnostic_step_' + step,
+                    nonce: '<?php echo wp_create_nonce('mpc_diagnostic'); ?>'
+                })
+                .done(function(response) {
+                    spinner.removeClass('is-active');
+
+                    if (response.success) {
+                        stepDiv.addClass('step-success');
+                        var html = '<span style="color: #00a32a; font-weight: bold;">✓ <?php echo esc_js(__('Success', 'wp-minpaku-connector')); ?></span>';
+
+                        // Add step-specific success information
+                        if (step === 'a') {
+                            html += '<br><small>URL: ' + (response.data.normalized_url || '<?php echo esc_js(__('None', 'wp-minpaku-connector')); ?>') + '</small>';
+                            if (response.data.dns && response.data.dns.success) {
+                                html += '<br><small>IP: ' + response.data.dns.resolved_ip + '</small>';
+                            }
+                        } else if (step === 'b') {
+                            html += '<br><small>Status: ' + response.data.status_code + ' (' + response.data.request_time_ms + 'ms)</small>';
+                            if (response.data.parsed_data && response.data.parsed_data.site) {
+                                html += '<br><small>Site: ' + response.data.parsed_data.site + '</small>';
+                            }
+                        } else if (step === 'c') {
+                            html += '<br><small>Time: ' + response.data.request_time_ms + 'ms</small>';
+                            if (response.data.response_data && response.data.response_data.version) {
+                                html += '<br><small>Version: ' + response.data.response_data.version + '</small>';
+                            }
+                        }
+
+                        statusSpan.html(html);
+                        callback(true);
+                    } else {
+                        stepDiv.addClass('step-error');
+                        var html = '<span style="color: #d63638; font-weight: bold;">✗ <?php echo esc_js(__('Failed', 'wp-minpaku-connector')); ?></span>';
+
+                        // Add error details
+                        if (response.data && response.data.message) {
+                            html += '<br><small>' + response.data.message + '</small>';
+                        }
+
+                        // Add step-specific error information
+                        if (step === 'b' && response.data) {
+                            if (response.data.status_code) {
+                                html += '<br><small>HTTP ' + response.data.status_code + '</small>';
+                            }
+                            if (response.data.error) {
+                                html += '<br><small>' + response.data.error + '</small>';
+                            }
+                        } else if (step === 'c' && response.data && response.data.guidance) {
+                            html += '<br><small style="color: #666;">' + response.data.guidance + '</small>';
+                        }
+
+                        statusSpan.html(html);
+                        callback(false);
+                    }
+                })
+                .fail(function(xhr, status, error) {
+                    spinner.removeClass('is-active');
+                    stepDiv.addClass('step-error');
+                    statusSpan.html('<span style="color: #d63638; font-weight: bold;">✗ <?php echo esc_js(__('Network error', 'wp-minpaku-connector')); ?></span>');
+                    callback(false);
+                });
+            }
         });
         </script>
 
@@ -507,6 +831,49 @@ class MPC_Admin_Settings {
             font-style: italic;
             margin-top: 5px;
             margin-bottom: 15px;
+        }
+
+        /* Diagnostic styles */
+        .diagnostic-step {
+            margin: 15px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: #f9f9f9;
+        }
+
+        .diagnostic-step h4 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+
+        .diagnostic-step.step-success {
+            border-color: #00a32a;
+            background: #f0f9f0;
+        }
+
+        .diagnostic-step.step-error {
+            border-color: #d63638;
+            background: #fdf0f0;
+        }
+
+        .diagnostic-content {
+            display: flex;
+            align-items: center;
+        }
+
+        .diagnostic-status {
+            margin-left: 10px;
+        }
+
+        .diagnostic-step .spinner {
+            float: none;
+            margin: 0;
+            visibility: hidden;
+        }
+
+        .diagnostic-step .spinner.is-active {
+            visibility: visible;
         }
         </style>
         <?php

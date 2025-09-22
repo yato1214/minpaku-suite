@@ -28,7 +28,31 @@ class MPC_Client_Signer {
         $nonce = $this->generate_nonce();
         $timestamp = time();
 
+        // Check for server time sync issues
+        $current_time = time();
+        $time_drift = abs($timestamp - $current_time);
+        if ($time_drift > 300) { // ±300 seconds
+            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                error_log('[minpaku-connector] WARNING: Server time drift detected: ' . $time_drift . ' seconds. Consider checking time synchronization.');
+            }
+        }
+
         $signature = $this->calculate_signature($method, $path, $nonce, $timestamp, $body);
+
+        // Debug logging (no secrets logged)
+        if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+            $body_hash = hash('sha256', $body);
+            $debug_info = array(
+                'method' => strtoupper($method),
+                'path' => $path,
+                'nonce' => substr($nonce, 0, 8) . '...',
+                'timestamp' => $timestamp,
+                'body_length' => strlen($body),
+                'body_hash' => substr($body_hash, 0, 16) . '...',
+                'api_key_prefix' => substr($this->api_key, 0, 8) . '...'
+            );
+            error_log('[minpaku-connector] HMAC signature generation: ' . json_encode($debug_info));
+        }
 
         return array(
             'headers' => array(

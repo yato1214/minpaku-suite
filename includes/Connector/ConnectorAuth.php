@@ -45,11 +45,16 @@ class ConnectorAuth
 
         // Set CORS headers for preflight
         header('Access-Control-Allow-Origin: ' . $origin);
-        header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-        header('Access-Control-Allow-Headers: Content-Type, Authorization, X-MCS-Key, X-MCS-Nonce, X-MCS-Timestamp, X-MCS-Signature');
-        header('Access-Control-Allow-Credentials: true');
+        header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+        header('Access-Control-Allow-Headers: X-MCS-Key, X-MCS-Nonce, X-MCS-Timestamp, X-MCS-Signature, Content-Type');
+        header('Access-Control-Allow-Credentials: false');
         header('Access-Control-Max-Age: 86400'); // 24 hours
         header('Vary: Origin');
+
+        // Debug logging for preflight
+        if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+            error_log('[minpaku-suite] CORS preflight handled for origin: ' . $origin);
+        }
 
         // Preflight response
         http_response_code(200);
@@ -96,6 +101,9 @@ class ConnectorAuth
     {
         // Check if connector is enabled
         if (!ConnectorSettings::is_enabled()) {
+            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                error_log('[minpaku-suite] Connector authentication failed: connector disabled');
+            }
             return false;
         }
 
@@ -105,23 +113,56 @@ class ConnectorAuth
         $timestamp = $request->get_header('X-MCS-Timestamp');
         $signature = $request->get_header('X-MCS-Signature');
 
+        // Debug logging (no secrets logged)
+        if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+            $debug_headers = [
+                'api_key_present' => !empty($api_key),
+                'nonce_present' => !empty($nonce),
+                'timestamp_present' => !empty($timestamp),
+                'signature_present' => !empty($signature),
+                'nonce' => $nonce ? substr($nonce, 0, 8) . '...' : 'none',
+                'timestamp' => $timestamp ?: 'none'
+            ];
+            error_log('[minpaku-suite] HMAC verification - Headers: ' . json_encode($debug_headers));
+        }
+
         if (!$api_key || !$nonce || !$timestamp || !$signature) {
+            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                error_log('[minpaku-suite] HMAC verification failed: missing required headers');
+            }
             return false;
         }
 
         // Find API key data
         $key_data = self::find_api_key_data($api_key);
         if (!$key_data || !$key_data['active']) {
+            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                error_log('[minpaku-suite] HMAC verification failed: API key not found or inactive');
+            }
             return false;
         }
 
-        // Verify timestamp
+        // Verify timestamp and calculate time difference
+        $request_time = intval($timestamp);
+        $current_time = time();
+        $time_diff = $current_time - $request_time;
+
+        if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+            error_log('[minpaku-suite] HMAC verification - Time diff: ' . $time_diff . ' seconds (max: ' . self::MAX_TIMESTAMP_DIFF . ')');
+        }
+
         if (!self::verify_timestamp($timestamp)) {
+            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                error_log('[minpaku-suite] HMAC verification failed: timestamp outside acceptable range');
+            }
             return false;
         }
 
         // Check nonce replay
         if (!self::verify_nonce($nonce)) {
+            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                error_log('[minpaku-suite] HMAC verification failed: nonce replay detected');
+            }
             return false;
         }
 
@@ -135,7 +176,24 @@ class ConnectorAuth
             $key_data['secret']
         );
 
-        if (!hash_equals($expected_signature, $signature)) {
+        $signature_valid = hash_equals($expected_signature, $signature);
+
+        if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+            error_log('[minpaku-suite] HMAC verification - Signature valid: ' . ($signature_valid ? 'true' : 'false'));
+            if (!$signature_valid) {
+                // Log string components (no secret) for debugging
+                $string_components = [
+                    'method' => strtoupper($request->get_method()),
+                    'path' => $request->get_route(),
+                    'nonce' => substr($nonce, 0, 8) . '...',
+                    'timestamp' => $timestamp,
+                    'body_length' => strlen($request->get_body())
+                ];
+                error_log('[minpaku-suite] HMAC verification - String components: ' . json_encode($string_components));
+            }
+        }
+
+        if (!$signature_valid) {
             return false;
         }
 
@@ -144,6 +202,10 @@ class ConnectorAuth
 
         // Store nonce to prevent replay
         self::store_nonce($nonce);
+
+        if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+            error_log('[minpaku-suite] HMAC verification successful for site: ' . $key_data['site_id']);
+        }
 
         return true;
     }
@@ -246,9 +308,20 @@ class ConnectorAuth
         if (!empty($origin) && self::check_cors_origin($origin)) {
             header('Access-Control-Allow-Origin: ' . $origin);
             header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
-            header('Access-Control-Allow-Headers: Content-Type, X-MCS-Key, X-MCS-Nonce, X-MCS-Timestamp, X-MCS-Signature');
+            header('Access-Control-Allow-Headers: X-MCS-Key, X-MCS-Nonce, X-MCS-Timestamp, X-MCS-Signature, Content-Type');
             header('Access-Control-Allow-Credentials: false');
             header('Access-Control-Max-Age: 86400');
+            header('Vary: Origin');
+
+            // Debug logging for CORS headers
+            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                error_log('[minpaku-suite] CORS headers set for origin: ' . $origin);
+            }
+        } else if (!empty($origin)) {
+            // Debug logging for blocked origin
+            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                error_log('[minpaku-suite] CORS blocked for origin: ' . $origin);
+            }
         }
     }
 
