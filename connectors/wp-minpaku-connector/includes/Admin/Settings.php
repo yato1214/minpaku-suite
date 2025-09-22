@@ -183,6 +183,12 @@ class MPC_Admin_Settings {
      */
     public static function normalize_portal_url($url) {
         list($ok, $normalized, $msg) = self::normalize_and_validate_portal_url($url);
+
+        // Debug log for legacy function calls
+        if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+            error_log('[minpaku-connector] Legacy normalize_portal_url() called - URL: ' . $url . ' | Result: ' . ($ok ? $normalized : 'false') . ' | Message: ' . $msg);
+        }
+
         return $ok ? $normalized : false;
     }
 
@@ -197,12 +203,25 @@ class MPC_Admin_Settings {
         }
 
         // Log connection test attempt with URL validation
+        $settings = \WP_Minpaku_Connector::get_settings();
+        $portal_url = $settings['portal_url'] ?? '';
+        list($url_ok, $normalized_url, $url_msg) = self::normalize_and_validate_portal_url($portal_url);
+
         if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
             error_log('[minpaku-connector] Connection test initiated by user: ' . get_current_user_id());
-            $settings = \WP_Minpaku_Connector::get_settings();
-            $portal_url = $settings['portal_url'] ?? '';
-            list($url_ok, $normalized_url, $url_msg) = self::normalize_and_validate_portal_url($portal_url);
             error_log('[minpaku-connector] Portal URL validation - Original: ' . $portal_url . ' | Valid: ' . ($url_ok ? 'true' : 'false') . ' | Message: ' . $url_msg);
+        }
+
+        // If URL validation fails, return error immediately
+        if (!$url_ok) {
+            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                error_log('[minpaku-connector] Connection test aborted due to invalid URL: ' . $url_msg);
+            }
+            wp_send_json_error(array(
+                'message' => $url_msg,
+                'type' => 'url_validation',
+                'original' => $portal_url
+            ));
         }
 
         $api = new \MinpakuConnector\Client\MPC_Client_Api();

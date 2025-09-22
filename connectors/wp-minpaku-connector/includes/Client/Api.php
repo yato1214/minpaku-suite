@@ -25,12 +25,25 @@ class MPC_Client_Api {
         if (!empty($settings['portal_url'])) {
             if (\class_exists('MinpakuConnector\Admin\MPC_Admin_Settings')) {
                 $normalized_url = \MinpakuConnector\Admin\MPC_Admin_Settings::normalize_portal_url($settings['portal_url']);
+
+                // Debug log for API client URL normalization
+                if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                    error_log('[minpaku-connector] API Client URL normalization - Original: ' . $settings['portal_url'] . ' | Normalized: ' . ($normalized_url ?: 'false'));
+                }
             }
             if ($normalized_url === false) {
                 $normalized_url = $settings['portal_url']; // Fallback to original
+                if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                    error_log('[minpaku-connector] API Client using fallback URL: ' . $normalized_url);
+                }
             }
         }
         $this->portal_url = trailingslashit($normalized_url);
+
+        // Debug log for final portal URL
+        if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+            error_log('[minpaku-connector] API Client final portal_url: ' . $this->portal_url);
+        }
 
         if (!empty($settings['api_key']) && !empty($settings['secret'])) {
             $this->signer = new MPC_Client_Signer($settings['api_key'], $settings['secret']);
@@ -54,11 +67,22 @@ class MPC_Client_Api {
      * Test connection to the portal
      */
     public function test_connection() {
+        if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+            error_log('[minpaku-connector] test_connection() called - portal_url: ' . $this->portal_url . ' | has_signer: ' . ($this->signer ? 'true' : 'false'));
+        }
+
         if (!$this->signer) {
+            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                error_log('[minpaku-connector] test_connection() failed: API credentials not configured');
+            }
             return array(
                 'success' => false,
                 'message' => __('API credentials not configured.', 'wp-minpaku-connector')
             );
+        }
+
+        if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+            error_log('[minpaku-connector] Making request to: ' . $this->portal_url . 'wp-json/minpaku/v1/connector/verify');
         }
 
         $response = $this->make_request('GET', '/wp-json/minpaku/v1/connector/verify');
