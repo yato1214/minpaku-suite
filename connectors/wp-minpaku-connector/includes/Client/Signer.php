@@ -28,6 +28,10 @@ class MPC_Client_Signer {
         $nonce = $this->generate_nonce();
         $timestamp = time();
 
+        // Normalize the path to ensure it starts with / and doesn't have double slashes
+        $normalized_path = '/' . ltrim($path, '/');
+        $normalized_path = preg_replace('#/+#', '/', $normalized_path);
+
         // Check for server time sync issues
         $current_time = time();
         $time_drift = abs($timestamp - $current_time);
@@ -37,21 +41,41 @@ class MPC_Client_Signer {
             }
         }
 
-        $signature = $this->calculate_signature($method, $path, $nonce, $timestamp, $body);
+        $signature = $this->calculate_signature($method, $normalized_path, $nonce, $timestamp, $body);
 
         // Debug logging (no secrets logged)
         if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
             $body_hash = hash('sha256', $body);
+            $string_to_sign = implode("\n", array(
+                strtoupper($method),
+                $normalized_path,
+                $nonce,
+                $timestamp,
+                $body_hash
+            ));
+
             $debug_info = array(
                 'method' => strtoupper($method),
-                'path' => $path,
+                'original_path' => $path,
+                'normalized_path' => $normalized_path,
                 'nonce' => substr($nonce, 0, 8) . '...',
                 'timestamp' => $timestamp,
                 'body_length' => strlen($body),
-                'body_hash' => substr($body_hash, 0, 16) . '...',
-                'api_key_prefix' => substr($this->api_key, 0, 8) . '...'
+                'body_hash' => $body_hash,
+                'string_to_sign_lines' => array(
+                    'method' => strtoupper($method),
+                    'path' => $normalized_path,
+                    'nonce' => $nonce,
+                    'timestamp' => $timestamp,
+                    'body_hash' => $body_hash
+                ),
+                'string_to_sign_raw' => $string_to_sign,
+                'string_to_sign_length' => strlen($string_to_sign),
+                'api_key_prefix' => substr($this->api_key, 0, 8) . '...',
+                'secret_length' => strlen($this->secret),
+                'signature_prefix' => substr($signature, 0, 12) . '...'
             );
-            error_log('[minpaku-connector] HMAC signature generation: ' . json_encode($debug_info));
+            error_log('[minpaku-connector] HMAC signature generation (detailed): ' . json_encode($debug_info, JSON_PRETTY_PRINT));
         }
 
         return array(

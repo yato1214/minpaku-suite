@@ -493,7 +493,8 @@ class MPC_Admin_Settings {
             'response_body_preview' => $detailed_result['response_body_preview'],
             'request_headers_sent' => $detailed_result['request_headers_sent'],
             'success' => $detailed_result['success'],
-            'wp_http_block_external_warning' => $detailed_result['wp_http_block_external_warning'] ?? false
+            'wp_http_block_external_warning' => $detailed_result['wp_http_block_external_warning'] ?? false,
+            'signature_debug' => $detailed_result['signature_debug'] ?? array()
         );
 
         // Handle WP_Error cases with enhanced details
@@ -929,6 +930,31 @@ class MPC_Admin_Settings {
                             if (response.data.request_headers_sent) {
                                 var headerCount = Object.keys(response.data.request_headers_sent).length;
                                 html += '<br><small>Headers sent: ' + headerCount + '</small>';
+                            }
+
+                            // Show signature debug information for 401 errors
+                            if (response.data.signature_debug && response.data.http_status === 401) {
+                                html += '<br><details style="margin-top: 5px;"><summary style="cursor: pointer; font-size: 11px;">🔍 署名デバッグ情報</summary>';
+                                html += '<div style="font-family: monospace; font-size: 10px; margin: 5px 0; background: #f5f5f5; padding: 5px; border-radius: 3px;">';
+                                if (response.data.signature_debug.method) {
+                                    html += 'Method: ' + response.data.signature_debug.method + '<br>';
+                                }
+                                if (response.data.signature_debug.path) {
+                                    html += 'Path: ' + response.data.signature_debug.path + '<br>';
+                                }
+                                if (response.data.signature_debug.timestamp) {
+                                    html += 'Timestamp: ' + response.data.signature_debug.timestamp + '<br>';
+                                }
+                                if (response.data.signature_debug.body_hash) {
+                                    html += 'Body Hash: ' + response.data.signature_debug.body_hash + '<br>';
+                                }
+                                if (response.data.signature_debug.string_to_sign) {
+                                    html += 'String to Sign Length: ' + response.data.signature_debug.string_to_sign_length + '<br>';
+                                }
+                                if (response.data.signature_debug.signature_full) {
+                                    html += 'Signature: ' + response.data.signature_debug.signature_full.substring(0, 16) + '...<br>';
+                                }
+                                html += '</div></details>';
                             }
 
                             // Show warnings

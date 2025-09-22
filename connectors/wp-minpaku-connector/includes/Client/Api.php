@@ -130,7 +130,8 @@ class MPC_Client_Api {
             'wp_error' => null,
             'curl_error' => null,
             'parsed_data' => null,
-            'wp_http_block_external_warning' => false
+            'wp_http_block_external_warning' => false,
+            'signature_debug' => array()
         );
 
         if (!$this->signer) {
@@ -147,11 +148,37 @@ class MPC_Client_Api {
         // Ensure proper URL construction with no trailing/double slashes
         $base_url = rtrim($this->portal_url, '/');
         $clean_path = '/' . ltrim($path, '/');
+        $clean_path = preg_replace('#/+#', '/', $clean_path); // Remove double slashes
         $url = $base_url . $clean_path;
         $result['request_url'] = $url;
 
         // Get signature data - enforce GET method with empty body
-        $signature_data = $this->signer->sign_request('GET', $path, '');
+        // Use the same clean path for signature calculation
+        $signature_data = $this->signer->sign_request('GET', $clean_path, '');
+
+        // Capture signature debugging information
+        $body_hash = hash('sha256', '');
+        $string_to_sign = implode("\n", array(
+            'GET',
+            $clean_path,
+            $signature_data['nonce'],
+            $signature_data['timestamp'],
+            $body_hash
+        ));
+
+        $result['signature_debug'] = array(
+            'method' => 'GET',
+            'original_path' => $path,
+            'clean_path' => $clean_path,
+            'nonce' => $signature_data['nonce'],
+            'timestamp' => $signature_data['timestamp'],
+            'body_length' => 0,
+            'body_hash' => $body_hash,
+            'string_to_sign' => $string_to_sign,
+            'string_to_sign_length' => strlen($string_to_sign),
+            'signature_full' => $signature_data['signature'],
+            'api_key' => substr($signature_data['headers']['X-MCS-Key'], 0, 8) . '...'
+        );
 
         // Mask sensitive headers for logging
         $masked_headers = array();
