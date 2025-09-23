@@ -55,13 +55,25 @@ class AvailabilityService
      */
     private static function calculateOccupancyMap(int $property_id, \DateTime $from, \DateTime $to): array
     {
+        error_log('[AvailabilityService] Starting calculateOccupancyMap');
+
         // Initialize all dates as vacant
         $occupancy_map = self::getEmptyOccupancyMap($from, $to);
+        error_log('[AvailabilityService] Created empty occupancy map with ' . count($occupancy_map) . ' dates');
 
         // Get all bookings for this property in the date range
         $bookings = self::getPropertyBookings($property_id, $from, $to);
 
+        $processed_bookings = 0;
+        $loop_protection = 0;
+        $max_loops = 10000; // Prevent infinite loops
+
         foreach ($bookings as $booking) {
+            if (++$loop_protection > $max_loops) {
+                error_log('[AvailabilityService] Loop protection triggered - breaking out of booking processing');
+                break;
+            }
+
             $status = get_post_meta($booking->ID, '_mcs_status', true);
             $checkin = get_post_meta($booking->ID, '_mcs_checkin', true);
             $checkout = get_post_meta($booking->ID, '_mcs_checkout', true);
@@ -84,7 +96,15 @@ class AvailabilityService
 
             // Mark dates as occupied (checkout day is not included)
             $current_date = clone $checkin_date;
+            $date_loop_protection = 0;
+            $max_date_loops = 1000; // Prevent infinite date loops
+
             while ($current_date < $checkout_date) {
+                if (++$date_loop_protection > $max_date_loops) {
+                    error_log('[AvailabilityService] Date loop protection triggered for booking ' . $booking->ID);
+                    break;
+                }
+
                 $date_str = $current_date->format('Y-m-d');
 
                 if (isset($occupancy_map[$date_str])) {
@@ -97,8 +117,11 @@ class AvailabilityService
 
                 $current_date->modify('+1 day');
             }
+
+            $processed_bookings++;
         }
 
+        error_log('[AvailabilityService] calculateOccupancyMap completed. Processed ' . $processed_bookings . ' bookings');
         return $occupancy_map;
     }
 
@@ -107,10 +130,16 @@ class AvailabilityService
      */
     private static function getPropertyBookings(int $property_id, \DateTime $from, \DateTime $to): array
     {
+        error_log('[AvailabilityService] Starting getPropertyBookings for property ' . $property_id);
+
+        // Add timeout protection
+        $start_time = microtime(true);
+        $max_execution_time = 10; // 10 seconds max
+
         $args = [
             'post_type' => 'mcs_booking',
             'post_status' => 'publish',
-            'posts_per_page' => -1,
+            'posts_per_page' => 500, // Limit to prevent memory issues
             'meta_query' => [
                 'relation' => 'AND',
                 [
@@ -163,7 +192,15 @@ class AvailabilityService
             ]
         ];
 
-        return get_posts($args);
+        try {
+            $bookings = get_posts($args);
+            $query_time = microtime(true) - $start_time;
+            error_log('[AvailabilityService] getPropertyBookings completed in ' . number_format($query_time, 4) . ' seconds. Found ' . count($bookings) . ' bookings');
+            return $bookings;
+        } catch (\Exception $e) {
+            error_log('[AvailabilityService] getPropertyBookings ERROR: ' . $e->getMessage());
+            return [];
+        }
     }
 
     /**

@@ -1,7 +1,64 @@
 /**
- * Connector Calendar CSS - Live Data Display
- * Minimal calendar with price badges from portal API
+ * Connector Calendar CSS - Matching Portal Design
+ * Exact copy of portal design for consistency
  */
+
+.mpc-calendar-legend {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 16px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.mpc-calendar-legend h4 {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+}
+
+.mpc-legend-items {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.mpc-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.mpc-legend-color {
+    width: 24px;
+    height: 20px;
+    border-radius: 4px;
+    border: 1px solid rgba(0,0,0,0.15);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.mpc-legend-color--vacant {
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    border-left: 4px solid #28a745;
+}
+
+.mpc-legend-color--partial {
+    background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+    border-left: 4px solid #ffc107;
+}
+
+.mpc-legend-color--full {
+    background: #dc3545;
+    border: 1px solid #dc3545;
+}
+
+.mpc-legend-label {
+    font-size: 13px;
+    color: #555;
+    font-weight: 500;
+}
 
 .mpc-calendar-container {
     max-width: 100%;
@@ -55,13 +112,14 @@
 
 .mcs-day {
     position: relative;
-    min-height: 64px;
+    min-height: 80px;
     padding: 8px;
     border-right: 1px solid #f0f0f0;
     cursor: pointer;
     transition: all 0.2s ease;
     background: white;
     display: flex;
+    flex-direction: column;
     align-items: flex-start;
     justify-content: flex-start;
 }
@@ -70,9 +128,10 @@
     border-right: none;
 }
 
-.mcs-day:hover:not(.mcs-day--disabled):not(.mcs-day--empty) {
+.mcs-day--vacant:hover:not(.mcs-day--disabled):not(.mcs-day--empty):not(.mcs-day--past) {
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    cursor: pointer;
 }
 
 .mcs-day--empty {
@@ -81,27 +140,34 @@
 }
 
 .mcs-day--vacant {
-    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
-    border-left: 4px solid #28a745;
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%) !important;
+    border-left: 4px solid #28a745 !important;
+    cursor: pointer !important;
 }
 
 .mcs-day--partial {
-    background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
-    border-left: 4px solid #ffc107;
-    cursor: default;
+    background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%) !important;
+    border-left: 4px solid #ffc107 !important;
+    cursor: not-allowed !important;
 }
 
 .mcs-day--full {
-    background: linear-gradient(135deg, #f8d7da 0%, #f5c2c7 100%);
-    border-left: 4px solid #dc3545;
-    cursor: default;
+    background: #dc3545 !important;
+    color: white !important;
+    border-left: 4px solid #a71e2a !important;
+    cursor: not-allowed !important;
+}
+
+.mcs-day--full .mcs-day-number {
+    color: white !important;
+    font-weight: 700 !important;
 }
 
 .mcs-day--past,
 .mcs-day--disabled {
     background: #f5f5f5;
     color: #999;
-    cursor: default;
+    cursor: not-allowed;
 }
 
 .mcs-day-number {
@@ -112,16 +178,16 @@
 }
 
 .mcs-day-price {
-    position: absolute;
-    top: 4px;
-    right: 6px;
     font-size: 11px;
-    padding: 2px 6px;
-    border-radius: 4px;
+    padding: 2px 4px;
+    border-radius: 3px;
     background: rgba(0,0,0,0.06);
     color: #333;
     font-weight: 500;
     white-space: nowrap;
+    margin-top: 4px;
+    align-self: flex-start;
+    line-height: 1.2;
 }
 
 /* Error styles */
@@ -158,17 +224,174 @@
     100% { transform: rotate(360deg); }
 }
 
+/* Property listing calendar button */
+.wmc-property-actions {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #eee;
+}
+
+.wmc-calendar-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    width: 100%;
+    justify-content: center;
+}
+
+.wmc-calendar-button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    color: white;
+}
+
+.wmc-calendar-button:active {
+    transform: translateY(0);
+}
+
+.wmc-calendar-icon {
+    font-size: 16px;
+}
+
+.wmc-calendar-text {
+    font-weight: 500;
+}
+
+/* Modal styles */
+.wmc-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.wmc-modal-overlay.wmc-modal-active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.wmc-modal-content {
+    background: white;
+    border-radius: 12px;
+    max-width: 90vw;
+    max-height: 90vh;
+    width: 800px;
+    overflow: hidden;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    transform: scale(0.9);
+    transition: transform 0.3s ease;
+}
+
+.wmc-modal-active .wmc-modal-content {
+    transform: scale(1);
+}
+
+.wmc-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px;
+    border-bottom: 1px solid #eee;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.wmc-modal-title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.wmc-modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: white;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+    line-height: 1;
+}
+
+.wmc-modal-close:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.wmc-modal-body {
+    padding: 24px;
+    max-height: calc(90vh - 80px);
+    overflow-y: auto;
+}
+
+.wmc-modal-loading {
+    text-align: center;
+    padding: 40px;
+}
+
+.wmc-loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #667eea;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 16px;
+}
+
+.wmc-modal-calendar-content {
+    display: none;
+}
+
+/* Prevent body scroll when modal is open */
+body.wmc-modal-open {
+    overflow: hidden;
+}
+
 /* Responsive design */
 @media (max-width: 600px) {
     .mcs-day {
-        min-height: 48px;
+        min-height: 60px;
         padding: 6px 4px;
+        font-size: 12px;
+    }
+
+    .mcs-day-number {
         font-size: 12px;
     }
 
     .mcs-day-price {
         font-size: 10px;
-        padding: 1px 4px;
+        padding: 1px 3px;
+        margin-top: 3px;
+    }
+
+    .mpc-legend-items {
+        gap: 12px;
+    }
+
+    .mpc-legend-color {
+        width: 20px;
+        height: 16px;
     }
 
     .mpc-calendar-month-title {
@@ -179,5 +402,28 @@
     .mpc-calendar-day-header {
         padding: 8px 4px;
         font-size: 11px;
+    }
+
+    .wmc-modal-content {
+        width: 95vw;
+        max-height: 95vh;
+    }
+
+    .wmc-modal-header {
+        padding: 16px 20px;
+    }
+
+    .wmc-modal-title {
+        font-size: 16px;
+    }
+
+    .wmc-modal-body {
+        padding: 20px;
+        max-height: calc(95vh - 70px);
+    }
+
+    .wmc-calendar-button {
+        padding: 12px 16px;
+        font-size: 13px;
     }
 }

@@ -489,7 +489,7 @@ class MPC_Client_Api {
         $args = array(
             'method' => $method,
             'headers' => $signature_data['headers'],
-            'timeout' => 8,
+            'timeout' => 30, // Increased timeout for stability
             'redirection' => 2,
             'httpversion' => '1.1',
             'user-agent' => 'WPMC/1.0',
@@ -522,7 +522,7 @@ class MPC_Client_Api {
                 'url' => $url,
                 'headers_sent' => array_keys($signature_data['headers']),
                 'body_length' => strlen($body),
-                'timeout' => 8,
+                'timeout' => 30,
                 'redirection' => 2,
                 'is_dev_domain' => $is_dev_domain
             );

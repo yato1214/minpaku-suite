@@ -298,6 +298,14 @@ class MPC_Shortcodes_Embed {
         }
         $output .= '</div>';
 
+        // Add calendar button for property listing
+        $output .= '<div class="wmc-property-actions">';
+        $output .= '<button class="wmc-calendar-button" data-property-id="' . esc_attr($property['id']) . '" data-property-title="' . esc_attr($property['title']) . '">';
+        $output .= '<span class="wmc-calendar-icon">📅</span>';
+        $output .= '<span class="wmc-calendar-text">' . esc_html__('Check Availability', 'wp-minpaku-connector') . '</span>';
+        $output .= '</button>';
+        $output .= '</div>';
+
         $output .= '</div>';
         $output .= '</div>';
 
@@ -533,6 +541,32 @@ class MPC_Shortcodes_Embed {
                 ['jquery'],
                 filemtime($js_path),
                 true
+            );
+
+            // Localize script with portal URL for calendar redirects
+            $settings = \WP_Minpaku_Connector::get_settings();
+            $portal_url = '';
+
+            if (!empty($settings['portal_url'])) {
+                if (\class_exists('MinpakuConnector\Admin\MPC_Admin_Settings')) {
+                    $portal_url = \MinpakuConnector\Admin\MPC_Admin_Settings::normalize_portal_url($settings['portal_url']);
+                    if ($portal_url === false) {
+                        $portal_url = $settings['portal_url']; // Fallback to original
+                    }
+                } else {
+                    $portal_url = $settings['portal_url'];
+                }
+            }
+
+            wp_localize_script(
+                'wp-minpaku-connector-calendar',
+                'mpcCalendarData',
+                array(
+                    'portalUrl' => untrailingslashit($portal_url),
+                    'nonce' => wp_create_nonce('mpc_calendar_nonce'),
+                    'ajaxUrl' => admin_url('admin-ajax.php'),
+                    'debug' => defined('WP_DEBUG') && WP_DEBUG
+                )
             );
         }
     }

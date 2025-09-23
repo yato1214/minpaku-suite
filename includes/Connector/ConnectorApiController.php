@@ -501,13 +501,22 @@ class ConnectorApiController
                     $debug_message = '[' . date('Y-m-d H:i:s') . '] About to call AvailabilityService::get_availability_range()' . PHP_EOL;
                     file_put_contents($debug_file, $debug_message, FILE_APPEND | LOCK_EX);
 
+                    // Set execution timeout for this call
+                    $original_timeout = ini_get('max_execution_time');
+                    set_time_limit(20); // 20 seconds max for availability service
+
+                    $call_start_time = microtime(true);
                     $availability = \MinpakuSuite\Availability\AvailabilityService::get_availability_range(
                         $property_id,
                         $start->format('Y-m-d'),
                         $end->format('Y-m-d')
                     );
+                    $call_duration = microtime(true) - $call_start_time;
 
-                    $debug_message = '[' . date('Y-m-d H:i:s') . '] AvailabilityService call completed' . PHP_EOL;
+                    // Restore original timeout
+                    set_time_limit($original_timeout);
+
+                    $debug_message = '[' . date('Y-m-d H:i:s') . '] AvailabilityService call completed in ' . number_format($call_duration, 4) . ' seconds' . PHP_EOL;
                     file_put_contents($debug_file, $debug_message, FILE_APPEND | LOCK_EX);
 
                     $debug_message = '[' . date('Y-m-d H:i:s') . '] AvailabilityService returned ' . count($availability) . ' items' . PHP_EOL;

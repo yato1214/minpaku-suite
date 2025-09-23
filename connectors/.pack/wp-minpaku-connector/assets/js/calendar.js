@@ -74,7 +74,7 @@ class MPCConnectorCalendar {
     }
 
     /**
-     * Handle day click - dispatch custom event
+     * Handle day click - dispatch custom event and redirect to portal
      */
     handleDayClick(dayCell, date, propertyId, calendarData) {
         // Calculate checkout date (next day)
@@ -114,8 +114,56 @@ class MPCConnectorCalendar {
             console.log('MPC Calendar: Day clicked', eventData);
         }
 
-        // Future: Could implement booking modal or redirect here
-        // For now, just provide the event for external handling
+        // Check if custom event was prevented
+        if (!customEvent.defaultPrevented) {
+            this.redirectToPortalBooking(eventData);
+        }
+    }
+
+    /**
+     * Redirect to portal booking page (admin new booking page)
+     */
+    redirectToPortalBooking(eventData) {
+        // Get portal URL from WordPress localization or global variable
+        let portalUrl = '';
+
+        if (typeof mpcCalendarData !== 'undefined' && mpcCalendarData.portalUrl) {
+            portalUrl = mpcCalendarData.portalUrl;
+        } else if (typeof wpMinpakuConnector !== 'undefined' && wpMinpakuConnector.portalUrl) {
+            portalUrl = wpMinpakuConnector.portalUrl;
+        } else {
+            console.warn('MPC Calendar: Portal URL not configured');
+            return;
+        }
+
+        // Generate nonce-like parameter (simplified for external sites)
+        const timestamp = Date.now().toString(36);
+        const randomStr = Math.random().toString(36).substring(2, 8);
+        const nonceParam = timestamp + randomStr;
+
+        // Build admin booking URL with parameters (matches the actual booking page format)
+        const bookingParams = new URLSearchParams({
+            post_type: 'mcs_booking',
+            property_id: eventData.propertyId,
+            checkin: eventData.checkin,
+            checkout: eventData.checkout,
+            adults: eventData.adults,
+            children: eventData.children,
+            infants: eventData.infants,
+            currency: eventData.currency,
+            _mcs_nonce: nonceParam
+        });
+
+        // Construct the admin booking URL (WordPress admin format)
+        const bookingUrl = `${portalUrl.replace(/\/$/, '')}/wp-admin/post-new.php?${bookingParams.toString()}`;
+
+        // Open in new tab/window to preserve user's current page
+        window.open(bookingUrl, '_blank', 'noopener,noreferrer');
+
+        // Log for debugging
+        if (window.console && window.console.log) {
+            console.log('MPC Calendar: Redirecting to admin booking page:', bookingUrl);
+        }
     }
 
     /**
@@ -163,15 +211,22 @@ jQuery(document).ready(function($) {
     'use strict';
 
     // Auto-initialize calendars that don't have explicit initialization
-    $('.mpc-calendar-container').each(function() {
+    if (!window.mpcCalendarInstances) {
+        window.mpcCalendarInstances = new MPCConnectorCalendar();
+    }
+
+    // Auto-initialize calendars marked for auto-init
+    $('.mpc-calendar-container[data-auto-init="true"]').each(function() {
         const container = $(this);
         const calendarId = container.attr('id');
 
-        // Check if this calendar is already initialized
-        if (calendarId && !window.mpcCalendarInstances) {
-            window.mpcCalendarInstances = new MPCConnectorCalendar();
+        if (calendarId) {
+            window.mpcCalendarInstances.initCalendar('#' + calendarId);
         }
     });
+
+    // Initialize modal calendar functionality for property listings
+    initModalCalendar();
 
     // Provide a global helper function for external sites
     window.initMPCCalendar = function(selector) {
@@ -189,3 +244,163 @@ jQuery(document).ready(function($) {
         console.log('Example: document.addEventListener("mcs:day-click", function(e) { console.log(e.detail); });');
     }
 });
+
+/**
+ * Modal Calendar functionality for property listings
+ */
+function initModalCalendar() {
+    const $ = jQuery;
+
+    // Handle calendar button clicks
+    $(document).on('click', '.wmc-calendar-button', function(e) {
+        e.preventDefault();
+
+        const propertyId = $(this).data('property-id');
+        const propertyTitle = $(this).data('property-title');
+
+        if (!propertyId) {
+            console.warn('Property ID not found for calendar button');
+            return;
+        }
+
+        showCalendarModal(propertyId, propertyTitle);
+    });
+
+    // Close modal when clicking outside or on close button
+    $(document).on('click', '.wmc-modal-overlay, .wmc-modal-close', function(e) {
+        if (e.target === this) {
+            closeCalendarModal();
+        }
+    });
+
+    // Close modal with ESC key
+    $(document).on('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeCalendarModal();
+        }
+    });
+}
+
+/**
+ * Show calendar modal for a property
+ */
+function showCalendarModal(propertyId, propertyTitle) {
+    const $ = jQuery;
+
+    // Create modal if it doesn't exist
+    if ($('#wmc-calendar-modal').length === 0) {
+        const modalHtml = `
+            <div id="wmc-calendar-modal" class="wmc-modal-overlay">
+                <div class="wmc-modal-content">
+                    <div class="wmc-modal-header">
+                        <h3 class="wmc-modal-title"></h3>
+                        <button class="wmc-modal-close" aria-label="Close">&times;</button>
+                    </div>
+                    <div class="wmc-modal-body">
+                        <div class="wmc-modal-loading">
+                            <div class="wmc-loading-spinner"></div>
+                            <p>Loading availability calendar...</p>
+                        </div>
+                        <div class="wmc-modal-calendar-content"></div>
+                    </div>
+                </div>
+            </div>
+        `;
+        $('body').append(modalHtml);
+    }
+
+    const modal = $('#wmc-calendar-modal');
+    const title = modal.find('.wmc-modal-title');
+    const loadingDiv = modal.find('.wmc-modal-loading');
+    const contentDiv = modal.find('.wmc-modal-calendar-content');
+
+    // Set title and show modal
+    title.text(propertyTitle || `Property ${propertyId} - Availability Calendar`);
+    loadingDiv.show();
+    contentDiv.hide().empty();
+    modal.addClass('wmc-modal-active');
+    $('body').addClass('wmc-modal-open');
+
+    // Load calendar content via AJAX
+    loadCalendarContent(propertyId, function(success, content) {
+        loadingDiv.hide();
+        if (success) {
+            contentDiv.html(content).show();
+
+            // Initialize calendar functionality for the modal content
+            if (window.mpcCalendarInstances) {
+                const calendarContainer = contentDiv.find('.mpc-calendar-container');
+                if (calendarContainer.length && calendarContainer.attr('id')) {
+                    window.mpcCalendarInstances.initCalendar('#' + calendarContainer.attr('id'));
+                }
+            }
+        } else {
+            contentDiv.html('<div class="wmc-error">Failed to load calendar. Please try again.</div>').show();
+        }
+    });
+}
+
+/**
+ * Close calendar modal
+ */
+function closeCalendarModal() {
+    const $ = jQuery;
+    const modal = $('#wmc-calendar-modal');
+
+    modal.removeClass('wmc-modal-active');
+    $('body').removeClass('wmc-modal-open');
+
+    // Clean up calendar instances
+    setTimeout(function() {
+        const contentDiv = modal.find('.wmc-modal-calendar-content');
+        const calendarContainer = contentDiv.find('.mpc-calendar-container');
+
+        if (calendarContainer.length && calendarContainer.attr('id') && window.mpcCalendarInstances) {
+            window.mpcCalendarInstances.destroy(calendarContainer.attr('id'));
+        }
+
+        contentDiv.empty();
+    }, 300);
+}
+
+/**
+ * Load calendar content via AJAX or generate it directly
+ */
+function loadCalendarContent(propertyId, callback) {
+    // For now, generate calendar shortcode HTML directly
+    // In a full implementation, this would make an AJAX call to WordPress
+
+    setTimeout(function() {
+        const calendarId = 'mpc-modal-calendar-' + propertyId;
+        const calendarHtml = `
+            <div class="mpc-calendar-legend">
+                <h4>空室状況の見方</h4>
+                <div class="mpc-legend-items">
+                    <div class="mpc-legend-item">
+                        <span class="mpc-legend-color mpc-legend-color--vacant"></span>
+                        <span class="mpc-legend-label">空き</span>
+                    </div>
+                    <div class="mpc-legend-item">
+                        <span class="mpc-legend-color mpc-legend-color--partial"></span>
+                        <span class="mpc-legend-label">一部予約あり</span>
+                    </div>
+                    <div class="mpc-legend-item">
+                        <span class="mpc-legend-color mpc-legend-color--full"></span>
+                        <span class="mpc-legend-label">満室</span>
+                    </div>
+                </div>
+            </div>
+            <div id="${calendarId}" class="mpc-calendar-container"
+                 data-property-id="${propertyId}"
+                 data-show-prices="1"
+                 data-adults="2"
+                 data-children="0"
+                 data-infants="0"
+                 data-currency="JPY">
+                <div class="wmc-error">Calendar content will be loaded here...</div>
+            </div>
+        `;
+
+        callback(true, calendarHtml);
+    }, 500);
+}

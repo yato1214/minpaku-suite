@@ -203,9 +203,20 @@ class MPC_Shortcodes_Embed {
      * Render availability calendar
      */
     private static function render_availability($atts, $api) {
-        // Use the new Calendar class
+        // Use the new Calendar class with proper attribute mapping
         if (class_exists('MinpakuConnector\Shortcodes\MPC_Shortcodes_Calendar')) {
-            return \MinpakuConnector\Shortcodes\MPC_Shortcodes_Calendar::render_calendar($atts);
+            // Map attributes from main shortcode to calendar-specific format
+            $calendar_atts = array(
+                'property_id' => $atts['property_id'] ?? '',
+                'months' => $atts['months'] ?? 2,
+                'show_prices' => $atts['show_prices'] ?? 'true',
+                'adults' => $atts['adults'] ?? 2,
+                'children' => $atts['children'] ?? 0,
+                'infants' => $atts['infants'] ?? 0,
+                'currency' => $atts['currency'] ?? 'JPY'
+            );
+
+            return \MinpakuConnector\Shortcodes\MPC_Shortcodes_Calendar::render_calendar($calendar_atts);
         }
 
         // Fallback error
@@ -285,6 +296,14 @@ class MPC_Shortcodes_Embed {
             $output .= '<span class="wmc-meta-value">¥' . number_format($property['meta']['base_price']) . '</span>';
             $output .= '</span>';
         }
+        $output .= '</div>';
+
+        // Add calendar button for property listing
+        $output .= '<div class="wmc-property-actions">';
+        $output .= '<button class="wmc-calendar-button" data-property-id="' . esc_attr($property['id']) . '" data-property-title="' . esc_attr($property['title']) . '">';
+        $output .= '<span class="wmc-calendar-icon">📅</span>';
+        $output .= '<span class="wmc-calendar-text">' . esc_html__('Check Availability', 'wp-minpaku-connector') . '</span>';
+        $output .= '</button>';
         $output .= '</div>';
 
         $output .= '</div>';
@@ -371,6 +390,21 @@ class MPC_Shortcodes_Embed {
                 $output .= '<li>' . esc_html($amenity) . '</li>';
             }
             $output .= '</ul>';
+            $output .= '</div>';
+        }
+
+        // Add availability calendar for property view
+        if (class_exists('MinpakuConnector\Shortcodes\MPC_Shortcodes_Calendar')) {
+            $output .= '<div class="wmc-property-calendar">';
+            $output .= '<h4>' . esc_html__('Availability Calendar', 'wp-minpaku-connector') . '</h4>';
+
+            $calendar_atts = array(
+                'property_id' => $property['id'],
+                'months' => 3,
+                'show_prices' => 'true'
+            );
+
+            $output .= \MinpakuConnector\Shortcodes\MPC_Shortcodes_Calendar::render_calendar($calendar_atts);
             $output .= '</div>';
         }
 
@@ -507,6 +541,32 @@ class MPC_Shortcodes_Embed {
                 ['jquery'],
                 filemtime($js_path),
                 true
+            );
+
+            // Localize script with portal URL for calendar redirects
+            $settings = \WP_Minpaku_Connector::get_settings();
+            $portal_url = '';
+
+            if (!empty($settings['portal_url'])) {
+                if (\class_exists('MinpakuConnector\Admin\MPC_Admin_Settings')) {
+                    $portal_url = \MinpakuConnector\Admin\MPC_Admin_Settings::normalize_portal_url($settings['portal_url']);
+                    if ($portal_url === false) {
+                        $portal_url = $settings['portal_url']; // Fallback to original
+                    }
+                } else {
+                    $portal_url = $settings['portal_url'];
+                }
+            }
+
+            wp_localize_script(
+                'wp-minpaku-connector-calendar',
+                'mpcCalendarData',
+                array(
+                    'portalUrl' => untrailingslashit($portal_url),
+                    'nonce' => wp_create_nonce('mpc_calendar_nonce'),
+                    'ajaxUrl' => admin_url('admin-ajax.php'),
+                    'debug' => defined('WP_DEBUG') && WP_DEBUG
+                )
             );
         }
     }

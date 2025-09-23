@@ -96,7 +96,8 @@ class MPC_Shortcodes_Calendar {
              data-adults="<?php echo esc_attr($adults); ?>"
              data-children="<?php echo esc_attr($children); ?>"
              data-infants="<?php echo esc_attr($infants); ?>"
-             data-currency="<?php echo esc_attr($currency); ?>">
+             data-currency="<?php echo esc_attr($currency); ?>"
+             data-auto-init="true">
 
             <?php for ($i = 0; $i < $months; $i++): ?>
                 <?php
@@ -215,21 +216,24 @@ class MPC_Shortcodes_Calendar {
         if (isset($availability_data['availability']) && is_array($availability_data['availability'])) {
             foreach ($availability_data['availability'] as $day_data) {
                 if (isset($day_data['date']) && $day_data['date'] === $date_string) {
+                    // Check available flag first
+                    $available = $day_data['available'] ?? true;
                     $status = $day_data['status'] ?? 'available';
 
                     // Map API statuses to CSS class names
-                    switch ($status) {
-                        case 'available':
-                        case 'VACANT':
-                            return 'vacant';
-                        case 'booked':
-                        case 'FULL':
-                            return 'full';
-                        case 'partial':
-                        case 'PARTIAL':
-                            return 'partial';
-                        default:
-                            return 'vacant';
+                    if (!$available) {
+                        switch ($status) {
+                            case 'booked':
+                            case 'FULL':
+                                return 'full';
+                            case 'partial':
+                            case 'PARTIAL':
+                                return 'partial';
+                            default:
+                                return 'full';
+                        }
+                    } else {
+                        return 'vacant';
                     }
                 }
             }
@@ -241,16 +245,83 @@ class MPC_Shortcodes_Calendar {
      * Get price for a specific date
      */
     private static function get_price_for_day($date_string, $availability_data) {
-        if (isset($availability_data['pricing']) && is_array($availability_data['pricing'])) {
-            foreach ($availability_data['pricing'] as $day_data) {
+        // Debug logging for price data structure
+        if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+            error_log('[minpaku-connector] Price lookup for date: ' . $date_string);
+            error_log('[minpaku-connector] Availability data structure: ' . print_r($availability_data, true));
+        }
+
+        // First check availability array for price data
+        if (isset($availability_data['availability']) && is_array($availability_data['availability'])) {
+            foreach ($availability_data['availability'] as $day_data) {
                 if (isset($day_data['date']) && $day_data['date'] === $date_string) {
-                    $price = $day_data['price'] ?? 0;
+                    // Check multiple possible price fields
+                    $price = 0;
+
+                    // Try different price field names
+                    if (isset($day_data['price']) && is_numeric($day_data['price'])) {
+                        $price = floatval($day_data['price']);
+                    } elseif (isset($day_data['rate']) && is_numeric($day_data['rate'])) {
+                        $price = floatval($day_data['rate']);
+                    } elseif (isset($day_data['base_price']) && is_numeric($day_data['base_price'])) {
+                        $price = floatval($day_data['base_price']);
+                    } elseif (isset($day_data['total_price']) && is_numeric($day_data['total_price'])) {
+                        $price = floatval($day_data['total_price']);
+                    } elseif (isset($day_data['nightly_rate']) && is_numeric($day_data['nightly_rate'])) {
+                        $price = floatval($day_data['nightly_rate']);
+                    }
+
+                    if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                        error_log('[minpaku-connector] Found price for ' . $date_string . ': ' . $price);
+                        error_log('[minpaku-connector] Day data: ' . print_r($day_data, true));
+                    }
+
                     if ($price > 0) {
                         return '¥' . number_format($price);
                     }
                 }
             }
         }
+
+        // Fallback to pricing array if available
+        if (isset($availability_data['pricing']) && is_array($availability_data['pricing'])) {
+            foreach ($availability_data['pricing'] as $day_data) {
+                if (isset($day_data['date']) && $day_data['date'] === $date_string) {
+                    $price = 0;
+
+                    if (isset($day_data['price']) && is_numeric($day_data['price'])) {
+                        $price = floatval($day_data['price']);
+                    } elseif (isset($day_data['rate']) && is_numeric($day_data['rate'])) {
+                        $price = floatval($day_data['rate']);
+                    } elseif (isset($day_data['base_price']) && is_numeric($day_data['base_price'])) {
+                        $price = floatval($day_data['base_price']);
+                    }
+
+                    if ($price > 0) {
+                        return '¥' . number_format($price);
+                    }
+                }
+            }
+        }
+
+        // Check if there's a rates array with date-indexed prices
+        if (isset($availability_data['rates']) && is_array($availability_data['rates'])) {
+            if (isset($availability_data['rates'][$date_string]) && is_numeric($availability_data['rates'][$date_string])) {
+                $price = floatval($availability_data['rates'][$date_string]);
+                if ($price > 0) {
+                    return '¥' . number_format($price);
+                }
+            }
+        }
+
+        // Check for property base price as ultimate fallback
+        if (isset($availability_data['property']['base_price']) && is_numeric($availability_data['property']['base_price'])) {
+            $base_price = floatval($availability_data['property']['base_price']);
+            if ($base_price > 0) {
+                return '¥' . number_format($base_price);
+            }
+        }
+
         return __('—', 'wp-minpaku-connector');
     }
 }
