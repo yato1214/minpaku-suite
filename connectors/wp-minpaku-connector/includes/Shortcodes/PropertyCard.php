@@ -14,15 +14,15 @@ if (!defined('ABSPATH')) {
 class MPC_Shortcodes_PropertyCard {
 
     public static function init() {
-        add_shortcode('minpaku_property_card', [__CLASS__, 'render_property_card']);
-        add_shortcode('minpaku_property_list', [__CLASS__, 'render_property_list']);
+        add_shortcode('minpaku_property_card', array(__CLASS__, 'render_property_card'));
+        add_shortcode('minpaku_property_list', array(__CLASS__, 'render_property_list'));
     }
 
     /**
      * Render single property card shortcode
      */
     public static function render_property_card($atts) {
-        $atts = shortcode_atts([
+        $atts = shortcode_atts(array(
             'property_id' => '',
             'show_price' => 'true',
             'price_nights' => 2,
@@ -31,7 +31,7 @@ class MPC_Shortcodes_PropertyCard {
             'infants' => 0,
             'currency' => 'JPY',
             'layout' => 'card'
-        ], $atts, 'minpaku_property_card');
+        ), $atts, 'minpaku_property_card');
 
         if (empty($atts['property_id'])) {
             return '<p>' . __('Property ID is required.', 'wp-minpaku-connector') . '</p>';
@@ -49,7 +49,7 @@ class MPC_Shortcodes_PropertyCard {
      * Render property list shortcode
      */
     public static function render_property_list($atts) {
-        $atts = shortcode_atts([
+        $atts = shortcode_atts(array(
             'limit' => 12,
             'show_prices' => 'true',
             'price_nights' => 2,
@@ -59,7 +59,7 @@ class MPC_Shortcodes_PropertyCard {
             'currency' => 'JPY',
             'layout' => 'grid',
             'columns' => 3
-        ], $atts, 'minpaku_property_list');
+        ), $atts, 'minpaku_property_list');
 
         $properties = self::get_properties_list($atts['limit']);
 
@@ -209,7 +209,7 @@ class MPC_Shortcodes_PropertyCard {
              data-currency="<?php echo esc_attr($atts['currency']); ?>">
 
             <?php foreach ($properties as $property): ?>
-                <?php echo self::render_single_card($property, array_merge($atts, ['layout' => 'grid-item'])); ?>
+                <?php echo self::render_single_card($property, array_merge($atts, array('layout' => 'grid-item'))); ?>
             <?php endforeach; ?>
         </div>
 
@@ -257,18 +257,18 @@ class MPC_Shortcodes_PropertyCard {
         }
 
         // Fallback to dummy data for testing
-        return [
+        return array(
             'id' => $property_id,
             'title' => sprintf(__('Property %s', 'wp-minpaku-connector'), $property_id),
             'address' => __('Address not available', 'wp-minpaku-connector'),
             'capacity' => 4,
             'bedrooms' => 2,
             'bathrooms' => 1,
-            'amenities' => ['WiFi', 'Kitchen', 'TV'],
+            'amenities' => array('WiFi', 'Kitchen', 'TV'),
             'description' => __('Property description not available.', 'wp-minpaku-connector'),
             'image' => '',
             'url' => '#'
-        ];
+        );
     }
 
     /**
@@ -288,7 +288,7 @@ class MPC_Shortcodes_PropertyCard {
             $api = new \MinpakuConnector\Client\MPC_Client_Api();
 
             if ($api->is_configured()) {
-                $result = $api->get_properties(['limit' => $limit]);
+                $result = $api->get_properties(array('limit' => $limit));
 
                 if ($result['success'] && !empty($result['data'])) {
                     $properties = $result['data'];
@@ -302,20 +302,20 @@ class MPC_Shortcodes_PropertyCard {
         }
 
         // Fallback to dummy data for testing
-        $properties = [];
+        $properties = array();
         for ($i = 1; $i <= $limit; $i++) {
-            $properties[] = [
+            $properties[] = array(
                 'id' => 'test-' . $i,
                 'title' => sprintf(__('Test Property %d', 'wp-minpaku-connector'), $i),
                 'address' => sprintf(__('Test Address %d', 'wp-minpaku-connector'), $i),
                 'capacity' => rand(2, 8),
                 'bedrooms' => rand(1, 4),
                 'bathrooms' => rand(1, 3),
-                'amenities' => ['WiFi', 'Kitchen', 'TV', 'AC'],
+                'amenities' => array('WiFi', 'Kitchen', 'TV', 'AC'),
                 'description' => sprintf(__('This is a test property %d for demonstration.', 'wp-minpaku-connector'), $i),
                 'image' => '',
                 'url' => '#'
-            ];
+            );
         }
 
         return $properties;

@@ -58,15 +58,15 @@
 
 .mpc-calendar-day {
     position: relative;
-    min-height: 60px;
-    padding: 8px;
+    min-height: 70px;
+    padding: 0;
     border-right: 1px solid #f0f0f0;
     cursor: pointer;
-    transition: background-color 0.2s ease;
+    transition: all 0.2s ease;
     display: flex;
     flex-direction: column;
-    justify-content: flex-start;
-    align-items: flex-start;
+    overflow: hidden;
+    background: white;
 }
 
 .mpc-calendar-day:last-child {
@@ -74,7 +74,8 @@
 }
 
 .mpc-calendar-day:hover {
-    background-color: #f8f9fa;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
 
 .mpc-calendar-day.other-month {
@@ -90,13 +91,74 @@
 
 .mpc-calendar-day.past-date:hover {
     background-color: #f5f5f5;
+    transform: none;
+    box-shadow: none;
+}
+
+/* Availability status colors */
+.mpc-calendar-day.availability-available {
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    border-left: 4px solid #28a745;
+}
+
+.mpc-calendar-day.availability-partial {
+    background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+    border-left: 4px solid #ffc107;
+}
+
+.mpc-calendar-day.availability-full {
+    background: linear-gradient(135deg, #f8d7da 0%, #f5c2c7 100%);
+    border-left: 4px solid #dc3545;
+}
+
+.mpc-calendar-day.availability-unknown {
+    background: linear-gradient(135deg, #e2e3e5 0%, #d6d8db 100%);
+    border-left: 4px solid #6c757d;
+}
+
+.mpc-calendar-day-content {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
 }
 
 .mpc-calendar-day-number {
-    font-weight: 500;
+    font-weight: 600;
     font-size: 14px;
     line-height: 1;
     z-index: 5;
+    color: #333;
+    align-self: flex-start;
+}
+
+.mpc-availability-indicator {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #6c757d;
+    transition: all 0.2s ease;
+}
+
+.mpc-calendar-day.availability-available .mpc-availability-indicator {
+    background: #28a745;
+    box-shadow: 0 0 4px rgba(40, 167, 69, 0.5);
+}
+
+.mpc-calendar-day.availability-partial .mpc-availability-indicator {
+    background: #ffc107;
+    box-shadow: 0 0 4px rgba(255, 193, 7, 0.5);
+}
+
+.mpc-calendar-day.availability-full .mpc-availability-indicator {
+    background: #dc3545;
+    box-shadow: 0 0 4px rgba(220, 53, 69, 0.5);
 }
 
 @media (max-width: 768px) {
@@ -122,24 +184,25 @@
 
 /* Price Badges */
 .mpc-price-badge {
-    position: absolute;
-    bottom: 2px;
-    right: 2px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    position: relative;
+    align-self: flex-end;
+    background: rgba(102, 126, 234, 0.9);
     color: white;
-    font-size: 10px;
+    font-size: 9px;
     font-weight: 600;
-    padding: 2px 6px;
-    border-radius: 8px;
+    padding: 2px 4px;
+    border-radius: 4px;
     white-space: nowrap;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
     z-index: 10;
-    line-height: 1.2;
-    min-width: 20px;
+    line-height: 1.1;
+    min-width: 18px;
     text-align: center;
     opacity: 0;
     transform: scale(0.8);
     transition: all 0.2s ease;
+    margin-top: auto;
+    backdrop-filter: blur(4px);
 }
 
 .mpc-price-badge.loaded {
@@ -182,14 +245,15 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba(0, 0, 0, 0.6);
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 9999;
     opacity: 0;
     visibility: hidden;
-    transition: all 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(4px);
 }
 
 .mpc-quote-modal.active {
@@ -199,138 +263,190 @@
 
 .mpc-quote-modal-content {
     background: white;
-    border-radius: 12px;
-    padding: 24px;
-    max-width: 400px;
-    width: 90%;
-    max-height: 80vh;
-    overflow-y: auto;
-    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-    transform: translateY(20px);
-    transition: transform 0.3s ease;
+    border-radius: 16px;
+    padding: 0;
+    max-width: 420px;
+    width: 95%;
+    max-height: 85vh;
+    overflow: hidden;
+    box-shadow: 0 24px 48px rgba(0,0,0,0.2);
+    transform: translateY(30px) scale(0.95);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid rgba(255,255,255,0.2);
 }
 
 .mpc-quote-modal.active .mpc-quote-modal-content {
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
 }
 
 .mpc-quote-modal-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
-    padding-bottom: 16px;
-    border-bottom: 1px solid #eee;
+    padding: 24px 24px 0 24px;
+    margin-bottom: 0;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 16px 16px 0 0;
 }
 
 .mpc-quote-modal-title {
-    font-size: 18px;
-    font-weight: 600;
-    color: #333;
+    font-size: 20px;
+    font-weight: 700;
+    color: white;
     margin: 0;
+    padding-bottom: 24px;
 }
 
 .mpc-quote-modal-close {
-    background: none;
+    background: rgba(255, 255, 255, 0.2);
     border: none;
-    font-size: 24px;
-    color: #999;
+    font-size: 18px;
+    color: white;
     cursor: pointer;
-    padding: 0;
-    width: 32px;
-    height: 32px;
+    padding: 8px;
+    width: 36px;
+    height: 36px;
     display: flex;
     align-items: center;
     justify-content: center;
     border-radius: 50%;
     transition: all 0.2s ease;
+    font-weight: bold;
 }
 
 .mpc-quote-modal-close:hover {
-    background: #f0f0f0;
-    color: #666;
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.1);
+}
+
+.mpc-quote-modal-body {
+    padding: 24px;
+    overflow-y: auto;
+    max-height: calc(85vh - 120px);
 }
 
 .mpc-quote-dates {
-    background: #f8f9fa;
-    padding: 12px;
-    border-radius: 8px;
-    margin-bottom: 20px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    padding: 16px;
+    border-radius: 12px;
+    margin-bottom: 24px;
     text-align: center;
+    border: 1px solid #e9ecef;
 }
 
 .mpc-quote-dates-text {
-    font-size: 14px;
-    color: #666;
+    font-size: 15px;
+    color: #495057;
     margin: 0;
+    font-weight: 500;
 }
 
 .mpc-quote-breakdown {
-    margin-bottom: 20px;
+    margin-bottom: 24px;
+    background: white;
+    border-radius: 12px;
+    border: 1px solid #e9ecef;
+    overflow: hidden;
 }
 
 .mpc-quote-line {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 8px 0;
-    border-bottom: 1px solid #f0f0f0;
+    padding: 16px 20px;
+    border-bottom: 1px solid #f8f9fa;
+    transition: background-color 0.2s ease;
+}
+
+.mpc-quote-line:hover {
+    background-color: #f8f9fa;
 }
 
 .mpc-quote-line:last-child {
     border-bottom: none;
-    padding-top: 12px;
-    margin-top: 8px;
-    border-top: 2px solid #eee;
-    font-weight: 600;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    font-weight: 700;
     font-size: 16px;
+    margin-top: 0;
+    border-top: none;
+}
+
+.mpc-quote-line:last-child:hover {
+    background: linear-gradient(135deg, #5a6fd8 0%, #6b4190 100%);
 }
 
 .mpc-quote-label {
-    color: #666;
-    font-size: 14px;
+    color: #495057;
+    font-size: 15px;
+    font-weight: 500;
 }
 
 .mpc-quote-amount {
-    color: #333;
-    font-weight: 500;
-    font-size: 14px;
+    color: #212529;
+    font-weight: 600;
+    font-size: 15px;
 }
 
+.mpc-quote-line:last-child .mpc-quote-label,
 .mpc-quote-line:last-child .mpc-quote-amount {
-    color: #667eea;
-    font-size: 16px;
-    font-weight: 600;
+    color: white;
+    font-size: 18px;
+    font-weight: 700;
 }
 
 .mpc-quote-loading {
     text-align: center;
-    padding: 40px 20px;
-    color: #666;
+    padding: 60px 20px;
+    color: #6c757d;
+    font-size: 16px;
+}
+
+.mpc-quote-loading::before {
+    content: '';
+    display: inline-block;
+    width: 32px;
+    height: 32px;
+    border: 3px solid #e9ecef;
+    border-top: 3px solid #667eea;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 16px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
 
 .mpc-quote-error {
     text-align: center;
-    padding: 20px;
-    color: #e74c3c;
-    background: #fdf2f2;
-    border-radius: 8px;
-    margin-bottom: 16px;
+    padding: 24px;
+    color: #dc3545;
+    background: linear-gradient(135deg, #fff5f5 0%, #fed7d7 100%);
+    border-radius: 12px;
+    margin-bottom: 20px;
+    border: 1px solid #f5c6cb;
 }
 
 .mpc-quote-retry {
-    background: #667eea;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
     border: none;
-    padding: 8px 16px;
-    border-radius: 6px;
+    padding: 12px 24px;
+    border-radius: 8px;
     font-size: 14px;
+    font-weight: 600;
     cursor: pointer;
-    transition: background 0.2s ease;
+    transition: all 0.2s ease;
+    margin-top: 12px;
 }
 
 .mpc-quote-retry:hover {
-    background: #5a6fd8;
+    background: linear-gradient(135deg, #5a6fd8 0%, #6b4190 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
 }
 
 /* Property Card Styles */

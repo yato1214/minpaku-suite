@@ -147,6 +147,97 @@ class MPCPriceManager {
     }
 
     /**
+     * Get availability data for a specific date
+     */
+    async getAvailability(propertyId, date) {
+        const cacheKey = `availability_${propertyId}_${date}`;
+
+        // Check memory cache
+        if (this.memoryCache.has(cacheKey)) {
+            const cached = this.memoryCache.get(cacheKey);
+            if (Date.now() - cached.timestamp < this.options.cacheTimeout) {
+                return cached.data;
+            }
+            this.memoryCache.delete(cacheKey);
+        }
+
+        // Check session cache
+        if (this.sessionCache[cacheKey]) {
+            const cached = this.sessionCache[cacheKey];
+            if (Date.now() - cached.timestamp < this.options.cacheTimeout) {
+                this.memoryCache.set(cacheKey, cached);
+                return cached.data;
+            }
+            delete this.sessionCache[cacheKey];
+            this.saveSessionCache();
+        }
+
+        try {
+            // For now, simulate availability data
+            // In production, this would call the availability API
+            const availability = this.simulateAvailability(date);
+            const result = { success: true, data: availability };
+
+            this.cacheResult(cacheKey, result);
+            return result;
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    }
+
+    /**
+     * Simulate availability data (replace with actual API call)
+     */
+    simulateAvailability(date) {
+        const dayOfWeek = new Date(date).getDay();
+        const random = Math.random();
+
+        // Simulate different availability based on day and randomness
+        if (dayOfWeek === 0 || dayOfWeek === 6) { // Weekend
+            if (random < 0.3) return { status: 'full', remaining: 0 };
+            if (random < 0.6) return { status: 'partial', remaining: 1 };
+            return { status: 'available', remaining: 2 };
+        } else { // Weekday
+            if (random < 0.1) return { status: 'full', remaining: 0 };
+            if (random < 0.3) return { status: 'partial', remaining: 1 };
+            return { status: 'available', remaining: 3 };
+        }
+    }
+
+    /**
+     * Update availability status for calendar cell
+     */
+    updateAvailabilityStatus(cell, availability) {
+        // Remove previous availability classes
+        cell.classList.remove('availability-unknown', 'availability-available', 'availability-partial', 'availability-full');
+
+        // Add new availability class
+        cell.classList.add(`availability-${availability.status}`);
+
+        // Update availability indicator if exists
+        const indicator = cell.querySelector('.mpc-availability-indicator');
+        if (indicator) {
+            indicator.setAttribute('title', this.getAvailabilityTooltip(availability));
+        }
+    }
+
+    /**
+     * Get availability tooltip text
+     */
+    getAvailabilityTooltip(availability) {
+        switch (availability.status) {
+            case 'available':
+                return mpcPricing.strings.available || 'Available';
+            case 'partial':
+                return `${mpcPricing.strings.partialAvailable || 'Limited availability'} (${availability.remaining} ${mpcPricing.strings.remaining || 'remaining'})`;
+            case 'full':
+                return mpcPricing.strings.fullyBooked || 'Fully booked';
+            default:
+                return mpcPricing.strings.checkAvailability || 'Check availability';
+        }
+    }
+
+    /**
      * Make actual quote request using WordPress AJAX
      */
     async makeQuoteRequest(propertyId, checkin, checkout, adults, children, infants, currency) {
@@ -251,7 +342,7 @@ class MPCPriceManager {
     }
 
     /**
-     * Load price for calendar day
+     * Load price and availability for calendar day
      */
     async loadPriceForCalendarDay(cell) {
         if (cell.dataset.priceLoaded) return;
@@ -266,11 +357,20 @@ class MPCPriceManager {
         this.showPriceSkeleton(cell);
 
         try {
-            const checkout = this.addDays(date, 1);
-            const result = await this.getQuote(propertyId, date, checkout);
+            // Load both availability and pricing data
+            const [availabilityResult, pricingResult] = await Promise.all([
+                this.getAvailability(propertyId, date),
+                this.getQuote(propertyId, date, this.addDays(date, 1))
+            ]);
 
-            if (result.success && result.data.total_incl_tax) {
-                this.showPriceBadge(cell, result.data.total_incl_tax, result.data.currency);
+            // Update availability status
+            if (availabilityResult.success) {
+                this.updateAvailabilityStatus(cell, availabilityResult.data);
+            }
+
+            // Update pricing
+            if (pricingResult.success && pricingResult.data.total_incl_tax) {
+                this.showPriceBadge(cell, pricingResult.data.total_incl_tax, pricingResult.data.currency);
                 cell.dataset.priceLoaded = 'true';
             } else {
                 this.showPriceError(cell);

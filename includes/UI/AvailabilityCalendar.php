@@ -28,7 +28,12 @@ class AvailabilityCalendar
             'id' => '',
             'slug' => '',
             'title' => '',
-            'months' => 2
+            'months' => 2,
+            'show_prices' => 'true',
+            'adults' => 2,
+            'children' => 0,
+            'infants' => 0,
+            'currency' => 'JPY'
         ], $atts);
 
         $months = max(1, min(12, intval($atts['months'])));
@@ -46,7 +51,7 @@ class AvailabilityCalendar
 
         try {
             $diagnostic_comment = self::getDiagnosticComment($atts, $property_id);
-            return $diagnostic_comment . self::renderCalendar($property_id, $months);
+            return $diagnostic_comment . self::renderCalendar($property_id, $months, $atts);
         } catch (Exception $e) {
             error_log('Minpaku Suite Calendar Error: ' . $e->getMessage());
             $notice = '<div class="mcs-calendar-notice">' . __('Unable to load availability data.', 'minpaku-suite') . '</div>';
@@ -177,24 +182,50 @@ class AvailabilityCalendar
     /**
      * Render calendar HTML
      */
-    private static function renderCalendar(int $property_id, int $months): string
+    private static function renderCalendar(int $property_id, int $months, array $atts = []): string
     {
         if (!class_exists('MinpakuSuite\Availability\AvailabilityService')) {
             return '<p class="mcs-error">' . __('Availability service not available.', 'minpaku-suite') . '</p>';
         }
 
-        $output = '<div class="mcs-availability-calendar">';
+        $show_prices = ($atts['show_prices'] ?? 'true') === 'true';
+        $adults = max(1, intval($atts['adults'] ?? 2));
+        $children = max(0, intval($atts['children'] ?? 0));
+        $infants = max(0, intval($atts['infants'] ?? 0));
+        $currency = sanitize_text_field($atts['currency'] ?? 'JPY');
+
+        $calendar_id = 'mcs-calendar-' . uniqid();
+
+        $output = sprintf(
+            '<div id="%s" class="mcs-availability-calendar" data-property-id="%d" data-show-prices="%s" data-adults="%d" data-children="%d" data-infants="%d" data-currency="%s">',
+            esc_attr($calendar_id),
+            $property_id,
+            $show_prices ? '1' : '0',
+            $adults,
+            $children,
+            $infants,
+            esc_attr($currency)
+        );
 
         $current_date = new \DateTime();
         $current_date->modify('first day of this month');
 
         for ($i = 0; $i < $months; $i++) {
-            $output .= self::renderMonth($property_id, clone $current_date);
+            $output .= self::renderMonth($property_id, clone $current_date, $show_prices);
             $current_date->modify('+1 month');
         }
 
         $output .= self::renderLegend();
         $output .= '</div>';
+
+        // Add JavaScript initialization
+        $output .= '<script>
+        jQuery(document).ready(function($) {
+            if (typeof window.mcsCalendarInit !== "undefined") {
+                window.mcsCalendarInit("#' . esc_js($calendar_id) . '");
+            }
+        });
+        </script>';
 
         return $output;
     }
@@ -202,7 +233,7 @@ class AvailabilityCalendar
     /**
      * Render single month
      */
-    private static function renderMonth(int $property_id, \DateTime $month_start): string
+    private static function renderMonth(int $property_id, \DateTime $month_start, bool $show_prices = false): string
     {
         $month_end = clone $month_start;
         $month_end->modify('+1 month');
@@ -258,12 +289,27 @@ class AvailabilityCalendar
             }
 
             $output .= sprintf(
-                '<div class="mcs-day %s" data-date="%s" title="%s">%d</div>',
+                '<div class="mcs-day %s" data-date="%s" data-property-id="%d" title="%s">',
                 esc_attr($css_class),
                 esc_attr($date_str),
-                esc_attr(self::getStatusLabel($status)),
-                $day
+                $property_id,
+                esc_attr(self::getStatusLabel($status))
             );
+
+            $output .= '<div class="mcs-day-content">';
+            $output .= '<span class="mcs-day-number">' . $day . '</span>';
+
+            // Add availability indicator
+            if (!$is_past) {
+                $output .= '<div class="mcs-availability-indicator" data-status="' . esc_attr($status) . '"></div>';
+            }
+
+            // Add price badge placeholder if enabled and not past date
+            if ($show_prices && !$is_past) {
+                $output .= '<div class="mcs-price-badge loading" data-date="' . esc_attr($date_str) . '">' . __('...', 'minpaku-suite') . '</div>';
+            }
+
+            $output .= '</div></div>';
         }
 
         $output .= '</div></div>';
@@ -362,23 +408,24 @@ class AvailabilityCalendar
     {
         return '
             .mcs-availability-calendar {
-                max-width: 800px;
+                max-width: 100%;
                 margin: 20px 0;
             }
 
             .mcs-calendar-month {
                 margin-bottom: 30px;
-                border: 1px solid #ddd;
+                background: white;
                 border-radius: 8px;
                 overflow: hidden;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             }
 
             .mcs-month-title {
-                background: #f8f9fa;
+                background: #667eea;
+                color: white;
                 margin: 0;
-                padding: 15px;
+                padding: 16px 20px;
                 text-align: center;
-                border-bottom: 1px solid #ddd;
                 font-size: 18px;
                 font-weight: 600;
             }
@@ -386,41 +433,45 @@ class AvailabilityCalendar
             .mcs-calendar-grid {
                 display: grid;
                 grid-template-columns: repeat(7, 1fr);
-                gap: 1px;
-                background: #e9ecef;
+                background: #f0f0f0;
             }
 
             .mcs-day-header {
-                background: #6c757d;
-                color: white;
-                padding: 10px;
+                background: #f8f9fa;
+                color: #666;
+                padding: 12px 8px;
                 text-align: center;
                 font-weight: 600;
                 font-size: 12px;
                 text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e9ecef;
             }
 
             .mcs-day {
-                background: white;
-                padding: 12px;
-                text-align: center;
-                min-height: 40px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
+                position: relative;
+                min-height: 70px;
+                padding: 0;
+                border-right: 1px solid #f0f0f0;
                 cursor: pointer;
                 transition: all 0.2s ease;
-                position: relative;
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+                background: white;
+            }
+
+            .mcs-day:last-child {
+                border-right: none;
             }
 
             .mcs-day:hover {
-                transform: scale(1.05);
-                z-index: 10;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             }
 
             .mcs-day--empty {
-                background: #f8f9fa;
+                background: #fafafa;
                 cursor: default;
             }
 
@@ -430,28 +481,117 @@ class AvailabilityCalendar
             }
 
             .mcs-day--vacant {
-                background: #d4edda;
-                color: #155724;
+                background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+                border-left: 4px solid #28a745;
             }
 
             .mcs-day--partial {
-                background: #fff3cd;
-                color: #856404;
+                background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+                border-left: 4px solid #ffc107;
             }
 
             .mcs-day--full {
-                background: #f8d7da;
-                color: #721c24;
+                background: linear-gradient(135deg, #f8d7da 0%, #f5c2c7 100%);
+                border-left: 4px solid #dc3545;
             }
 
             .mcs-day--past {
-                opacity: 0.6;
+                background: #f5f5f5;
+                color: #999;
                 cursor: not-allowed;
             }
 
             .mcs-day--past:hover {
                 transform: none;
                 box-shadow: none;
+            }
+
+            .mcs-day-content {
+                position: relative;
+                width: 100%;
+                height: 100%;
+                padding: 8px;
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+            }
+
+            .mcs-day-number {
+                font-weight: 600;
+                font-size: 14px;
+                line-height: 1;
+                color: #333;
+                align-self: flex-start;
+            }
+
+            .mcs-availability-indicator {
+                position: absolute;
+                top: 4px;
+                right: 4px;
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                background: #6c757d;
+                transition: all 0.2s ease;
+            }
+
+            .mcs-day--vacant .mcs-availability-indicator {
+                background: #28a745;
+                box-shadow: 0 0 4px rgba(40, 167, 69, 0.5);
+            }
+
+            .mcs-day--partial .mcs-availability-indicator {
+                background: #ffc107;
+                box-shadow: 0 0 4px rgba(255, 193, 7, 0.5);
+            }
+
+            .mcs-day--full .mcs-availability-indicator {
+                background: #dc3545;
+                box-shadow: 0 0 4px rgba(220, 53, 69, 0.5);
+            }
+
+            .mcs-price-badge {
+                position: relative;
+                align-self: flex-end;
+                background: rgba(102, 126, 234, 0.9);
+                color: white;
+                font-size: 9px;
+                font-weight: 600;
+                padding: 2px 4px;
+                border-radius: 4px;
+                white-space: nowrap;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+                line-height: 1.1;
+                min-width: 18px;
+                text-align: center;
+                opacity: 0;
+                transform: scale(0.8);
+                transition: all 0.2s ease;
+                margin-top: auto;
+                backdrop-filter: blur(4px);
+            }
+
+            .mcs-price-badge.loaded {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            .mcs-price-badge.error {
+                background: #ff6b6b;
+                font-size: 8px;
+                padding: 1px 3px;
+            }
+
+            .mcs-price-badge.loading {
+                background: #e0e0e0;
+                color: #999;
+                animation: pulse 1.5s ease-in-out infinite;
+            }
+
+            @keyframes pulse {
+                0% { opacity: 0.6; }
+                50% { opacity: 1; }
+                100% { opacity: 0.6; }
             }
 
             .mcs-calendar-legend {

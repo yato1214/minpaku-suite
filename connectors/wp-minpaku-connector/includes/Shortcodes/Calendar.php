@@ -14,14 +14,14 @@ if (!defined('ABSPATH')) {
 class MPC_Shortcodes_Calendar {
 
     public static function init() {
-        add_shortcode('minpaku_calendar', [__CLASS__, 'render_calendar']);
+        add_shortcode('minpaku_calendar', array(__CLASS__, 'render_calendar'));
     }
 
     /**
      * Render calendar shortcode with price badges
      */
     public static function render_calendar($atts) {
-        $atts = shortcode_atts([
+        $atts = shortcode_atts(array(
             'property_id' => '',
             'months' => 2,
             'show_prices' => 'true',
@@ -29,7 +29,7 @@ class MPC_Shortcodes_Calendar {
             'children' => 0,
             'infants' => 0,
             'currency' => 'JPY'
-        ], $atts, 'minpaku_calendar');
+        ), $atts, 'minpaku_calendar');
 
         if (empty($atts['property_id'])) {
             return '<p>' . __('Property ID is required for calendar display.', 'wp-minpaku-connector') . '</p>';
@@ -57,8 +57,8 @@ class MPC_Shortcodes_Calendar {
 
             <?php for ($i = 0; $i < $months; $i++): ?>
                 <?php
-                $month_date = new DateTime();
-                $month_date->add(new DateInterval('P' . $i . 'M'));
+                $month_date = new \DateTime();
+                $month_date->add(new \DateInterval('P' . $i . 'M'));
                 $year = $month_date->format('Y');
                 $month = $month_date->format('n');
                 ?>
@@ -102,8 +102,8 @@ class MPC_Shortcodes_Calendar {
      * Generate calendar days for a specific month
      */
     private static function generate_calendar_days($year, $month, $property_id, $show_prices) {
-        $first_day = new DateTime("$year-$month-01");
-        $last_day = new DateTime($first_day->format('Y-m-t'));
+        $first_day = new \DateTime("$year-$month-01");
+        $last_day = new \DateTime($first_day->format('Y-m-t'));
         $start_of_week = clone $first_day;
         $start_of_week->modify('last sunday');
 
@@ -127,15 +127,18 @@ class MPC_Shortcodes_Calendar {
 
             for ($day = 0; $day < 7; $day++) {
                 $is_current_month = ($current_date->format('n') == $month);
-                $is_past = ($current_date < new DateTime('today'));
+                $is_past = ($current_date < new \DateTime('today'));
                 $date_string = $current_date->format('Y-m-d');
 
-                $cell_classes = ['mpc-calendar-day', 'calendar-cell'];
+                $cell_classes = array('mpc-calendar-day', 'calendar-cell');
                 if (!$is_current_month) {
                     $cell_classes[] = 'other-month';
                 }
                 if ($is_past) {
                     $cell_classes[] = 'past-date';
+                } else {
+                    // Add availability status classes - will be updated via JavaScript
+                    $cell_classes[] = 'availability-unknown';
                 }
 
                 $output .= sprintf(
@@ -145,15 +148,22 @@ class MPC_Shortcodes_Calendar {
                     esc_attr($property_id)
                 );
 
+                $output .= '<div class="mpc-calendar-day-content">';
                 $output .= '<span class="mpc-calendar-day-number">' . $current_date->format('j') . '</span>';
+
+                // Add availability indicator
+                if (!$is_past && $is_current_month) {
+                    $output .= '<div class="mpc-availability-indicator" data-date="' . esc_attr($date_string) . '"></div>';
+                }
 
                 // Add price badge placeholder if enabled and not past date
                 if ($show_prices && !$is_past && $is_current_month) {
-                    $output .= '<div class="mpc-price-badge loading">' . __('...', 'wp-minpaku-connector') . '</div>';
+                    $output .= '<div class="mpc-price-badge loading" data-date="' . esc_attr($date_string) . '">' . __('...', 'wp-minpaku-connector') . '</div>';
                 }
+                $output .= '</div>';
 
                 $output .= '</div>';
-                $current_date->add(new DateInterval('P1D'));
+                $current_date->add(new \DateInterval('P1D'));
             }
 
             $output .= '</div>';

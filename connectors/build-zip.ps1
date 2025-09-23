@@ -2,7 +2,7 @@
 # Usage: .\build-zip.ps1 [-Version "1.0.1"]
 
 param(
-    [string]$Version = "1.0.1"
+    [string]$Version = "1.0.4"
 )
 
 # Set script directory as working directory
@@ -93,19 +93,40 @@ WP Minpaku Connector allows you to connect your WordPress site to a Minpaku Suit
 
 == Shortcodes ==
 
+**Basic Shortcodes:**
 * `[minpaku_connector type="properties"]` - Display property listings
 * `[minpaku_connector type="calendar" property_id="123"]` - Show availability calendar
 * `[minpaku_connector type="property" property_id="123"]` - Display property details
 
+**New Pricing Shortcodes:**
+* `[minpaku_calendar property_id="123" show_prices="true"]` - Calendar with price badges
+* `[minpaku_property_card property_id="123" show_price="true"]` - Single property card with quick quote
+* `[minpaku_property_list limit="12" columns="3" show_prices="true"]` - Property grid with pricing
+
 == Changelog ==
 
 = $Version =
-* Enhanced Portal Base URL validation for development environments
-* Support for .local, .test, localhost domains with ports
-* Improved error handling and user feedback
-* Comprehensive debug logging
-* Stabilized activation hooks
-* Updated Japanese translations
+* NEW: Enhanced calendar availability visualization with color-coded status
+* NEW: Improved price badge positioning at bottom of calendar cells
+* NEW: Modern calendar design with gradient backgrounds and hover effects
+* NEW: Enhanced quote modal with improved usability and design
+* NEW: Availability indicators with status tooltips (Available/Partial/Full)
+* NEW: Mobile-responsive calendar improvements
+* FIXED: Calendar cell layout and price display positioning
+* Enhanced: Visual feedback for booking status and pricing
+* Updated: Portal calendar with same modern design improvements
+
+= 1.0.2 =
+* NEW: Complete pricing integration with calendar price badges and quote modals
+* NEW: Property card shortcodes with quick pricing display
+* NEW: Advanced caching system (memory, WordPress transients, session storage)
+* NEW: HMAC authenticated QuoteApi client for secure pricing requests
+* NEW: Intersection Observer for lazy loading price badges
+* NEW: Mobile-responsive design with dark mode support
+* Enhanced: Multi-level request coalescing and error handling
+* Enhanced: Accessibility features with ARIA support and keyboard navigation
+* Enhanced: Internationalization support for pricing strings
+* Updated: Modern UI design with animations and loading states
 
 = 1.0.0 =
 * Initial release
