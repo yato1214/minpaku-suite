@@ -196,7 +196,12 @@ class MPC_Shortcodes_Calendar {
                 // Add price badge for available days only when vacant and not past
                 if ($show_prices && $is_current_month && $availability_status === 'vacant' && !$is_past) {
                     $price_text = self::get_price_for_day($date_string, $availability_data);
-                    $output .= '<span class="mcs-day-price">' . esc_html($price_text) . '</span>';
+                    if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                        error_log('[minpaku-connector] Calendar price display for ' . $date_string . ': ' . $price_text);
+                    }
+                    if ($price_text !== '—' && !empty($price_text)) {
+                        $output .= '<span class="mcs-day-price">' . esc_html($price_text) . '</span>';
+                    }
                 }
 
                 $output .= '</div>';

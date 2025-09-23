@@ -364,43 +364,38 @@ function closeCalendarModal() {
 }
 
 /**
- * Load calendar content via AJAX or generate it directly
+ * Load calendar content via AJAX
  */
 function loadCalendarContent(propertyId, callback) {
-    // For now, generate calendar shortcode HTML directly
-    // In a full implementation, this would make an AJAX call to WordPress
+    const $ = jQuery;
 
-    setTimeout(function() {
-        const calendarId = 'mpc-modal-calendar-' + propertyId;
-        const calendarHtml = `
-            <div class="mpc-calendar-legend">
-                <h4>空室状況の見方</h4>
-                <div class="mpc-legend-items">
-                    <div class="mpc-legend-item">
-                        <span class="mpc-legend-color mpc-legend-color--vacant"></span>
-                        <span class="mpc-legend-label">空き</span>
-                    </div>
-                    <div class="mpc-legend-item">
-                        <span class="mpc-legend-color mpc-legend-color--partial"></span>
-                        <span class="mpc-legend-label">一部予約あり</span>
-                    </div>
-                    <div class="mpc-legend-item">
-                        <span class="mpc-legend-color mpc-legend-color--full"></span>
-                        <span class="mpc-legend-label">満室</span>
-                    </div>
-                </div>
-            </div>
-            <div id="${calendarId}" class="mpc-calendar-container"
-                 data-property-id="${propertyId}"
-                 data-show-prices="1"
-                 data-adults="2"
-                 data-children="0"
-                 data-infants="0"
-                 data-currency="JPY">
-                <div class="wmc-error">Calendar content will be loaded here...</div>
-            </div>
-        `;
+    // Check if mpcCalendarData is available
+    if (typeof mpcCalendarData === 'undefined') {
+        console.error('MPC Calendar: Calendar data not available');
+        callback(false, 'Configuration error: Calendar data not available');
+        return;
+    }
 
-        callback(true, calendarHtml);
-    }, 500);
+    // Make AJAX request to get calendar content
+    $.ajax({
+        url: mpcCalendarData.ajaxUrl,
+        type: 'POST',
+        data: {
+            action: 'mpc_get_calendar',
+            property_id: propertyId,
+            nonce: mpcCalendarData.nonce
+        },
+        success: function(response) {
+            if (response.success) {
+                callback(true, response.data);
+            } else {
+                console.error('MPC Calendar: AJAX error:', response.data);
+                callback(false, response.data || 'Failed to load calendar content');
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('MPC Calendar: AJAX request failed:', status, error);
+            callback(false, 'Network error: Failed to load calendar content');
+        }
+    });
 }

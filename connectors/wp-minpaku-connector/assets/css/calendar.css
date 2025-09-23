@@ -259,6 +259,16 @@
     transform: translateY(0);
 }
 
+.wmc-calendar-button--large {
+    padding: 14px 20px;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.wmc-calendar-button--large .wmc-calendar-icon {
+    font-size: 18px;
+}
+
 .wmc-calendar-icon {
     font-size: 16px;
 }

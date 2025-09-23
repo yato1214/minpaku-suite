@@ -394,6 +394,24 @@ class MPC_Client_Api {
             error_log('[minpaku-connector] Availability API response body: ' . $body);
             if ($data) {
                 error_log('[minpaku-connector] Availability API parsed data: ' . print_r($data, true));
+
+                // Debug pricing data structure specifically
+                if (isset($data['data']) && is_array($data['data'])) {
+                    error_log('[minpaku-connector] Availability data structure found: ' . print_r($data['data'], true));
+
+                    // Check for pricing arrays
+                    if (isset($data['data']['pricing'])) {
+                        error_log('[minpaku-connector] Pricing data found: ' . print_r($data['data']['pricing'], true));
+                    }
+
+                    if (isset($data['data']['rates'])) {
+                        error_log('[minpaku-connector] Rates data found: ' . print_r($data['data']['rates'], true));
+                    }
+
+                    if (isset($data['data']['availability'])) {
+                        error_log('[minpaku-connector] Availability array found: ' . print_r($data['data']['availability'], true));
+                    }
+                }
             }
         }
 
