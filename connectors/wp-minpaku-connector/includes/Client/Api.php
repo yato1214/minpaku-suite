@@ -94,10 +94,22 @@ class MPC_Client_Api {
             );
         }
 
+        $status_code = wp_remote_retrieve_response_code($response);
         $body = wp_remote_retrieve_body($response);
+
+        // Handle 204 No Content (successful authentication)
+        if ($status_code === 204) {
+            return array(
+                'success' => true,
+                'message' => sprintf(__('Connected successfully to %s', 'wp-minpaku-connector'), $this->portal_url),
+                'data' => array('status' => 204)
+            );
+        }
+
+        // Handle JSON responses (200, error responses)
         $data = json_decode($body, true);
 
-        if (wp_remote_retrieve_response_code($response) === 200 && isset($data['success']) && $data['success']) {
+        if ($status_code === 200 && isset($data['success']) && $data['success']) {
             return array(
                 'success' => true,
                 'message' => sprintf(__('Connected successfully to %s (v%s)', 'wp-minpaku-connector'),
@@ -109,7 +121,8 @@ class MPC_Client_Api {
         } else {
             return array(
                 'success' => false,
-                'message' => isset($data['message']) ? $data['message'] : __('Unknown error occurred.', 'wp-minpaku-connector')
+                'message' => isset($data['message']) ? $data['message'] : __('Unknown error occurred.', 'wp-minpaku-connector'),
+                'status_code' => $status_code
             );
         }
     }
@@ -195,9 +208,6 @@ class MPC_Client_Api {
 
         // Add X-MCS-Origin header for server-to-server identification
         $signature_data['headers']['X-MCS-Origin'] = get_site_url();
-
-        // Remove Content-Type header for GET request (no body)
-        unset($signature_data['headers']['Content-Type']);
 
         // Strict request arguments
         $args = array(

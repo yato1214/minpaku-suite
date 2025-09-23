@@ -76,16 +76,49 @@ class MPC_Client_Signer {
                 'signature_prefix' => substr($signature, 0, 12) . '...'
             );
             error_log('[minpaku-connector] HMAC signature generation (detailed): ' . json_encode($debug_info, JSON_PRETTY_PRINT));
+
+            // Additional detailed string-to-sign breakdown for comparison with portal
+            error_log('[minpaku-connector] String-to-sign breakdown:');
+            $lines = explode("\n", $string_to_sign);
+            foreach ($lines as $i => $line) {
+                error_log('[minpaku-connector] Line ' . $i . ': ' . json_encode($line));
+            }
+
+            // Also write to file for easier comparison with portal logs
+            $connector_debug_file = ABSPATH . 'wp-content/connector-debug.log';
+            $debug_msg = '[' . date('Y-m-d H:i:s') . '] CONNECTOR string-to-sign details:' . PHP_EOL;
+            $debug_msg .= 'Method: ' . strtoupper($method) . PHP_EOL;
+            $debug_msg .= 'Original path: ' . $path . PHP_EOL;
+            $debug_msg .= 'Normalized path: ' . $normalized_path . PHP_EOL;
+            $debug_msg .= 'Nonce: ' . substr($nonce, 0, 8) . '...' . PHP_EOL;
+            $debug_msg .= 'Timestamp: ' . $timestamp . PHP_EOL;
+            $debug_msg .= 'Body length: ' . strlen($body) . PHP_EOL;
+            $debug_msg .= 'Body hash: ' . $body_hash . PHP_EOL;
+            $debug_msg .= 'String to sign length: ' . strlen($string_to_sign) . PHP_EOL;
+            $debug_msg .= 'String to sign (raw): ' . json_encode($string_to_sign) . PHP_EOL;
+            $debug_msg .= 'String to sign (lines):' . PHP_EOL;
+            foreach ($lines as $i => $line) {
+                $debug_msg .= '  Line ' . $i . ': ' . json_encode($line) . PHP_EOL;
+            }
+            $debug_msg .= 'Generated signature: ' . substr($signature, 0, 12) . '...' . PHP_EOL;
+            $debug_msg .= 'Secret length: ' . strlen($this->secret) . PHP_EOL;
+            file_put_contents($connector_debug_file, $debug_msg, FILE_APPEND | LOCK_EX);
+        }
+
+        $headers = array(
+            'X-MCS-Key' => $this->api_key,
+            'X-MCS-Nonce' => $nonce,
+            'X-MCS-Timestamp' => $timestamp,
+            'X-MCS-Signature' => $signature
+        );
+
+        // Only add Content-Type for POST/PUT requests with body
+        if (strtoupper($method) !== 'GET' && !empty($body)) {
+            $headers['Content-Type'] = 'application/json';
         }
 
         return array(
-            'headers' => array(
-                'X-MCS-Key' => $this->api_key,
-                'X-MCS-Nonce' => $nonce,
-                'X-MCS-Timestamp' => $timestamp,
-                'X-MCS-Signature' => $signature,
-                'Content-Type' => 'application/json'
-            ),
+            'headers' => $headers,
             'nonce' => $nonce,
             'timestamp' => $timestamp,
             'signature' => $signature

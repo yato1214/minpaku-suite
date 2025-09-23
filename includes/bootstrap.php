@@ -16,6 +16,7 @@ class Bootstrap
         add_action('init', [__CLASS__, 'register_ui_components'], 15);
         add_action('init', [__CLASS__, 'register_portal_components'], 15);
         add_action('init', [__CLASS__, 'register_connector_components'], 15);
+        add_action('init', [__CLASS__, 'register_pricing_components'], 15);
         add_action('acf/init', [__CLASS__, 'register_acf'], 10);
         add_action('admin_menu', [__CLASS__, 'register_menu'], 9);
         add_action('admin_enqueue_scripts', [__CLASS__, 'enqueue_admin_styles'], 10);
@@ -56,11 +57,30 @@ class Bootstrap
         }
 
         try {
+            // Load existing ACF fields
             $acf_file = MCS_PATH . 'includes/Acf/RegisterFields.php';
             if (file_exists($acf_file)) {
                 require_once $acf_file;
                 if (class_exists('MinpakuSuite\Acf\RegisterFields')) {
                     \MinpakuSuite\Acf\RegisterFields::init();
+                }
+            }
+
+            // Load pricing ACF fields (simple test version)
+            $simple_pricing_acf_file = MCS_PATH . 'includes/Acf/PricingFieldsSimple.php';
+            if (file_exists($simple_pricing_acf_file)) {
+                require_once $simple_pricing_acf_file;
+                if (class_exists('MinpakuSuite\Acf\PricingFieldsSimple')) {
+                    \MinpakuSuite\Acf\PricingFieldsSimple::init();
+                }
+            }
+
+            // Load full pricing ACF fields
+            $pricing_acf_file = MCS_PATH . 'includes/Acf/PricingFields.php';
+            if (file_exists($pricing_acf_file)) {
+                require_once $pricing_acf_file;
+                if (class_exists('MinpakuSuite\Acf\PricingFields')) {
+                    \MinpakuSuite\Acf\PricingFields::init();
                 }
             }
         } catch (Exception $e) {
@@ -409,6 +429,82 @@ class Bootstrap
             }
         } catch (Exception $e) {
             error_log('Minpaku Suite REST API Error: ' . $e->getMessage());
+        }
+    }
+
+    public static function register_pricing_components()
+    {
+        try {
+            // Load Pricing domain models
+            $pricing_files = [
+                'RateContext.php',
+                'RateRules.php',
+                'Fees.php',
+                'Discounts.php',
+                'PricingEngine.php',
+                'Hooks.php',
+                'TestRunner.php'
+            ];
+
+            foreach ($pricing_files as $file) {
+                $file_path = MCS_PATH . 'includes/Pricing/' . $file;
+                if (file_exists($file_path)) {
+                    require_once $file_path;
+                } else {
+                    error_log('Minpaku Suite Pricing: Missing file ' . $file_path);
+                }
+            }
+
+
+            // Initialize pricing hooks
+            if (class_exists('MinpakuSuite\Pricing\Hooks')) {
+                \MinpakuSuite\Pricing\Hooks::init();
+            }
+
+            // Load pricing test page (debug mode only)
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                $test_page_file = MCS_PATH . 'includes/Admin/PricingTestPage.php';
+                if (file_exists($test_page_file)) {
+                    require_once $test_page_file;
+                    if (class_exists('MinpakuSuite\Admin\PricingTestPage')) {
+                        \MinpakuSuite\Admin\PricingTestPage::init();
+                    }
+                }
+
+                // Load ACF debug checker
+                $acf_debug_file = MCS_PATH . 'includes/Debug/ACFFieldGroupChecker.php';
+                if (file_exists($acf_debug_file)) {
+                    require_once $acf_debug_file;
+                    if (class_exists('MinpakuSuite\Debug\ACFFieldGroupChecker')) {
+                        \MinpakuSuite\Debug\ACFFieldGroupChecker::init();
+                    }
+                }
+            }
+
+            // Add cache invalidation hooks
+            add_action('save_post', [__CLASS__, 'invalidate_pricing_cache'], 10, 1);
+            add_action('mcs_booking_confirmed', [__CLASS__, 'invalidate_pricing_cache'], 10, 1);
+            add_action('mcs_booking_cancelled', [__CLASS__, 'invalidate_pricing_cache'], 10, 1);
+
+        } catch (Exception $e) {
+            error_log('Minpaku Suite Pricing Components Error: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Invalidate pricing cache when property or booking changes
+     */
+    public static function invalidate_pricing_cache($property_id)
+    {
+        if (get_post_type($property_id) === 'mcs_property') {
+            // Delete all quote caches for this property
+            global $wpdb;
+            $wpdb->query($wpdb->prepare(
+                "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s",
+                '_transient_quote_' . $property_id . '_%'
+            ));
+
+            error_log("Minpaku Suite: Invalidated pricing cache for property {$property_id}");
         }
     }
 }

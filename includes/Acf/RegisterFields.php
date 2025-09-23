@@ -15,13 +15,19 @@ class RegisterFields
 {
     public static function init(): void
     {
+        error_log('[MinpakuSuite] RegisterFields::init() called');
+
         if (function_exists('acf_add_local_field_group')) {
+            error_log('[MinpakuSuite] ACF is available, registering fields');
             self::register_property_fields();
+        } else {
+            error_log('[MinpakuSuite] ACF not available - acf_add_local_field_group function missing');
         }
     }
 
     private static function register_property_fields(): void
     {
+        // Register main property fields
         acf_add_local_field_group([
             'key' => 'group_mcs_property_details',
             'title' => __('Property Details', 'minpaku-suite'),
@@ -159,6 +165,27 @@ class RegisterFields
                     'max' => '',
                     'mime_types' => 'jpg,jpeg,png,webp',
                 ],
+                [
+                    'key' => 'field_mcs_base_price_test',
+                    'label' => __('Base Price (Test)', 'minpaku-suite'),
+                    'name' => 'base_price_test',
+                    'type' => 'number',
+                    'instructions' => __('Base nightly rate for testing pricing system', 'minpaku-suite'),
+                    'required' => 0,
+                    'conditional_logic' => 0,
+                    'wrapper' => [
+                        'width' => '50',
+                        'class' => '',
+                        'id' => '',
+                    ],
+                    'default_value' => 10000,
+                    'placeholder' => '',
+                    'prepend' => '¥',
+                    'append' => '',
+                    'min' => 0,
+                    'max' => '',
+                    'step' => 100,
+                ],
             ],
             'location' => [
                 [
@@ -178,6 +205,53 @@ class RegisterFields
             'active' => true,
             'description' => '',
             'show_in_rest' => 1,
+        ]);
+
+        // Register separate pricing fields group for testing
+        acf_add_local_field_group([
+            'key' => 'group_mcs_pricing_test',
+            'title' => __('Pricing Test', 'minpaku-suite'),
+            'fields' => [
+                [
+                    'key' => 'field_mcs_test_rate',
+                    'label' => __('Test Base Rate', 'minpaku-suite'),
+                    'name' => 'test_base_rate',
+                    'type' => 'number',
+                    'instructions' => __('Testing if pricing fields work', 'minpaku-suite'),
+                    'required' => 0,
+                    'default_value' => 15000,
+                    'min' => 0,
+                    'step' => 100,
+                ],
+                [
+                    'key' => 'field_mcs_test_fee',
+                    'label' => __('Test Cleaning Fee', 'minpaku-suite'),
+                    'name' => 'test_cleaning_fee',
+                    'type' => 'number',
+                    'instructions' => __('Testing cleaning fee field', 'minpaku-suite'),
+                    'required' => 0,
+                    'default_value' => 5000,
+                    'min' => 0,
+                    'step' => 100,
+                ]
+            ],
+            'location' => [
+                [
+                    [
+                        'param' => 'post_type',
+                        'operator' => '==',
+                        'value' => 'mcs_property',
+                    ],
+                ],
+            ],
+            'menu_order' => 10,
+            'position' => 'normal',
+            'style' => 'default',
+            'label_placement' => 'top',
+            'instruction_placement' => 'label',
+            'hide_on_screen' => '',
+            'active' => true,
+            'description' => '',
         ]);
     }
 }

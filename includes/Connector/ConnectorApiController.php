@@ -38,6 +38,11 @@ class ConnectorApiController
      */
     public static function register_routes(): void
     {
+        // Debug log that route registration was called
+        error_log('[minpaku-suite] register_routes() called - registering connector API routes');
+        $debug_file = ABSPATH . 'wp-content/minpaku-debug.log';
+        $debug_message = '[' . date('Y-m-d H:i:s') . '] register_routes() called - registering connector API routes' . PHP_EOL;
+        file_put_contents($debug_file, $debug_message, FILE_APPEND | LOCK_EX);
         // Ping endpoint (diagnostic, anonymously accessible by default)
         register_rest_route(self::NAMESPACE, '/ping', [
             'methods' => 'GET',
@@ -64,6 +69,11 @@ class ConnectorApiController
             'callback' => [__CLASS__, 'verify_connection'],
             'permission_callback' => [__CLASS__, 'check_verify_permissions'],
         ]);
+
+        // Debug log that verify endpoint was registered
+        error_log('[minpaku-suite] /verify endpoint registered successfully');
+        $debug_message = '[' . date('Y-m-d H:i:s') . '] /verify endpoint registered with namespace: ' . self::NAMESPACE . PHP_EOL;
+        file_put_contents($debug_file, $debug_message, FILE_APPEND | LOCK_EX);
 
         // Properties endpoint
         register_rest_route(self::NAMESPACE, '/properties', [
@@ -123,9 +133,9 @@ class ConnectorApiController
             ]
         ]);
 
-        // Quote endpoint (skeleton)
+        // Quote endpoint with full pricing engine
         register_rest_route(self::NAMESPACE, '/quote', [
-            'methods' => 'POST',
+            'methods' => 'GET',
             'callback' => [__CLASS__, 'get_quote'],
             'permission_callback' => [__CLASS__, 'check_connector_permissions'],
             'args' => [
@@ -134,24 +144,48 @@ class ConnectorApiController
                     'type' => 'integer',
                     'sanitize_callback' => 'absint'
                 ],
-                'check_in' => [
+                'checkin' => [
                     'required' => true,
                     'type' => 'string',
                     'format' => 'date',
                     'sanitize_callback' => 'sanitize_text_field'
                 ],
-                'check_out' => [
+                'checkout' => [
                     'required' => true,
                     'type' => 'string',
                     'format' => 'date',
                     'sanitize_callback' => 'sanitize_text_field'
                 ],
-                'guests' => [
+                'adults' => [
                     'required' => false,
                     'default' => 2,
                     'type' => 'integer',
                     'minimum' => 1,
+                    'maximum' => 50,
                     'sanitize_callback' => 'absint'
+                ],
+                'children' => [
+                    'required' => false,
+                    'default' => 0,
+                    'type' => 'integer',
+                    'minimum' => 0,
+                    'maximum' => 20,
+                    'sanitize_callback' => 'absint'
+                ],
+                'infants' => [
+                    'required' => false,
+                    'default' => 0,
+                    'type' => 'integer',
+                    'minimum' => 0,
+                    'maximum' => 10,
+                    'sanitize_callback' => 'absint'
+                ],
+                'currency' => [
+                    'required' => false,
+                    'default' => 'JPY',
+                    'type' => 'string',
+                    'enum' => ['JPY', 'USD', 'EUR', 'CNY'],
+                    'sanitize_callback' => 'sanitize_text_field'
                 ]
             ]
         ]);
@@ -163,15 +197,25 @@ class ConnectorApiController
      */
     public static function check_verify_permissions(\WP_REST_Request $request)
     {
+        // Debug log that permissions check was called
+        error_log('[minpaku-suite] check_verify_permissions() called');
+        $debug_file = ABSPATH . 'wp-content/minpaku-debug.log';
+        $debug_message = '[' . date('Y-m-d H:i:s') . '] check_verify_permissions() called' . PHP_EOL;
+        file_put_contents($debug_file, $debug_message, FILE_APPEND | LOCK_EX);
+
         // Set CORS headers
         ConnectorAuth::set_cors_headers();
 
         // Check rate limiting
-        if (!self::check_rate_limit($request)) {
+        $rate_limit_ok = self::check_rate_limit($request);
+        error_log('[minpaku-suite] Rate limit check result: ' . ($rate_limit_ok ? 'passed' : 'failed'));
+        if (!$rate_limit_ok) {
+            error_log('[minpaku-suite] Rate limit exceeded, returning 429');
             return new \WP_Error('rate_limit_exceeded', 'Rate limit exceeded', ['status' => 429]);
         }
 
         // Verify HMAC authentication with detailed errors
+        error_log('[minpaku-suite] Calling verify_request_detailed()');
         return ConnectorAuth::verify_request_detailed($request);
     }
 
@@ -292,6 +336,12 @@ class ConnectorApiController
      */
     public static function verify_connection(\WP_REST_Request $request): \WP_REST_Response
     {
+        // Debug log that the endpoint was reached
+        error_log('[minpaku-suite] verify_connection() endpoint reached - authentication passed');
+        $debug_file = ABSPATH . 'wp-content/minpaku-debug.log';
+        $debug_message = '[' . date('Y-m-d H:i:s') . '] verify_connection() endpoint reached - authentication passed' . PHP_EOL;
+        file_put_contents($debug_file, $debug_message, FILE_APPEND | LOCK_EX);
+
         // If we reach here, HMAC authentication has already passed
         // Return 204 No Content for successful verification
         return new \WP_REST_Response(null, 204);
@@ -356,14 +406,27 @@ class ConnectorApiController
      */
     public static function get_availability(\WP_REST_Request $request): \WP_REST_Response
     {
+        // Force logging for debugging
+        $debug_file = ABSPATH . 'wp-content/minpaku-debug.log';
+        $debug_message = '[' . date('Y-m-d H:i:s') . '] get_availability() called' . PHP_EOL;
+        file_put_contents($debug_file, $debug_message, FILE_APPEND | LOCK_EX);
+
         $property_id = $request->get_param('property_id');
         $months = $request->get_param('months');
         $start_date = $request->get_param('start_date');
 
+        $debug_message = '[' . date('Y-m-d H:i:s') . '] Parameters - property_id: ' . $property_id . ', months: ' . $months . ', start_date: ' . ($start_date ?: 'null') . PHP_EOL;
+        file_put_contents($debug_file, $debug_message, FILE_APPEND | LOCK_EX);
+
         try {
             // Verify property exists
             $property = get_post($property_id);
+            $debug_message = '[' . date('Y-m-d H:i:s') . '] Property check - Found: ' . ($property ? 'yes' : 'no') . ', Type: ' . ($property ? $property->post_type : 'none') . PHP_EOL;
+            file_put_contents($debug_file, $debug_message, FILE_APPEND | LOCK_EX);
+
             if (!$property || $property->post_type !== 'mcs_property') {
+                $debug_message = '[' . date('Y-m-d H:i:s') . '] Property not found - returning 404' . PHP_EOL;
+                file_put_contents($debug_file, $debug_message, FILE_APPEND | LOCK_EX);
                 return new \WP_REST_Response([
                     'success' => false,
                     'message' => __('Property not found.', 'minpaku-suite'),
@@ -372,22 +435,61 @@ class ConnectorApiController
             }
 
             // Calculate date range
+            $debug_message = '[' . date('Y-m-d H:i:s') . '] Calculating date range' . PHP_EOL;
+            file_put_contents($debug_file, $debug_message, FILE_APPEND | LOCK_EX);
             $start = $start_date ? new \DateTime($start_date) : new \DateTime();
             $end = clone $start;
             $end->add(new \DateInterval('P' . $months . 'M'));
 
             // Get availability data
+            $debug_message = '[' . date('Y-m-d H:i:s') . '] Date range calculated - Start: ' . $start->format('Y-m-d') . ', End: ' . $end->format('Y-m-d') . PHP_EOL;
+            file_put_contents($debug_file, $debug_message, FILE_APPEND | LOCK_EX);
+
             $availability = [];
-            if (class_exists('MinpakuSuite\Availability\AvailabilityService')) {
-                $availability = AvailabilityService::get_availability_range(
-                    $property_id,
-                    $start->format('Y-m-d'),
-                    $end->format('Y-m-d')
-                );
+            // Temporarily disable AvailabilityService to test with fallback
+            if (false && class_exists('MinpakuSuite\Availability\AvailabilityService')) {
+                $debug_message = '[' . date('Y-m-d H:i:s') . '] Using AvailabilityService' . PHP_EOL;
+                file_put_contents($debug_file, $debug_message, FILE_APPEND | LOCK_EX);
+
+                try {
+                    $debug_message = '[' . date('Y-m-d H:i:s') . '] About to call AvailabilityService::get_availability_range()' . PHP_EOL;
+                    file_put_contents($debug_file, $debug_message, FILE_APPEND | LOCK_EX);
+
+                    $availability = \MinpakuSuite\Availability\AvailabilityService::get_availability_range(
+                        $property_id,
+                        $start->format('Y-m-d'),
+                        $end->format('Y-m-d')
+                    );
+
+                    $debug_message = '[' . date('Y-m-d H:i:s') . '] AvailabilityService call completed' . PHP_EOL;
+                    file_put_contents($debug_file, $debug_message, FILE_APPEND | LOCK_EX);
+
+                    $debug_message = '[' . date('Y-m-d H:i:s') . '] AvailabilityService returned ' . count($availability) . ' items' . PHP_EOL;
+                    file_put_contents($debug_file, $debug_message, FILE_APPEND | LOCK_EX);
+                } catch (\Exception $as_error) {
+                    $debug_message = '[' . date('Y-m-d H:i:s') . '] AvailabilityService ERROR: ' . $as_error->getMessage() . PHP_EOL;
+                    $debug_message .= 'File: ' . $as_error->getFile() . ':' . $as_error->getLine() . PHP_EOL;
+                    file_put_contents($debug_file, $debug_message, FILE_APPEND | LOCK_EX);
+
+                    // Fallback to basic availability when AvailabilityService fails
+                    $availability = self::generate_basic_availability($property_id, $start, $end);
+
+                    $debug_message = '[' . date('Y-m-d H:i:s') . '] Using fallback after AvailabilityService error, generated ' . count($availability) . ' items' . PHP_EOL;
+                    file_put_contents($debug_file, $debug_message, FILE_APPEND | LOCK_EX);
+                }
             } else {
+                $debug_message = '[' . date('Y-m-d H:i:s') . '] AvailabilityService not found, using fallback' . PHP_EOL;
+                file_put_contents($debug_file, $debug_message, FILE_APPEND | LOCK_EX);
+
                 // Fallback: generate basic availability data
                 $availability = self::generate_basic_availability($property_id, $start, $end);
+
+                $debug_message = '[' . date('Y-m-d H:i:s') . '] Fallback generated ' . count($availability) . ' items' . PHP_EOL;
+                file_put_contents($debug_file, $debug_message, FILE_APPEND | LOCK_EX);
             }
+
+            $debug_message = '[' . date('Y-m-d H:i:s') . '] Returning successful response with ' . count($availability) . ' availability items' . PHP_EOL;
+            file_put_contents($debug_file, $debug_message, FILE_APPEND | LOCK_EX);
 
             return new \WP_REST_Response([
                 'success' => true,
@@ -403,6 +505,11 @@ class ConnectorApiController
         } catch (\Exception $e) {
             error_log('Minpaku Connector API Error: ' . $e->getMessage());
 
+            $debug_message = '[' . date('Y-m-d H:i:s') . '] EXCEPTION in get_availability: ' . $e->getMessage() . PHP_EOL;
+            $debug_message .= 'File: ' . $e->getFile() . ':' . $e->getLine() . PHP_EOL;
+            $debug_message .= 'Stack trace: ' . $e->getTraceAsString() . PHP_EOL;
+            file_put_contents($debug_file, $debug_message, FILE_APPEND | LOCK_EX);
+
             return new \WP_REST_Response([
                 'success' => false,
                 'message' => __('Unable to fetch availability.', 'minpaku-suite'),
@@ -412,16 +519,30 @@ class ConnectorApiController
     }
 
     /**
-     * Get quote endpoint (skeleton implementation)
+     * Get quote endpoint with full pricing engine
      */
     public static function get_quote(\WP_REST_Request $request): \WP_REST_Response
     {
-        $property_id = $request->get_param('property_id');
-        $check_in = $request->get_param('check_in');
-        $check_out = $request->get_param('check_out');
-        $guests = $request->get_param('guests');
+        $start_time = microtime(true);
+        $debug_file = ABSPATH . 'wp-content/minpaku-debug.log';
 
         try {
+            // Extract and validate parameters
+            $property_id = $request->get_param('property_id');
+            $checkin = $request->get_param('checkin');
+            $checkout = $request->get_param('checkout');
+            $adults = $request->get_param('adults');
+            $children = $request->get_param('children');
+            $infants = $request->get_param('infants');
+            $currency = $request->get_param('currency');
+
+            // Debug logging
+            $debug_message = '[' . date('Y-m-d H:i:s') . '] Quote request: property_id=' . $property_id .
+                ', checkin=' . $checkin . ', checkout=' . $checkout .
+                ', adults=' . $adults . ', children=' . $children . ', infants=' . $infants .
+                ', currency=' . $currency . PHP_EOL;
+            file_put_contents($debug_file, $debug_message, FILE_APPEND | LOCK_EX);
+
             // Verify property exists
             $property = get_post($property_id);
             if (!$property || $property->post_type !== 'mcs_property') {
@@ -432,53 +553,83 @@ class ConnectorApiController
                 ], 404);
             }
 
-            // Basic date validation
-            $check_in_date = new \DateTime($check_in);
-            $check_out_date = new \DateTime($check_out);
+            // Check cache first
+            $context = new \MinpakuSuite\Pricing\RateContext(
+                $property_id, $checkin, $checkout, $adults, $children, $infants, $currency
+            );
 
-            if ($check_in_date >= $check_out_date) {
-                return new \WP_REST_Response([
-                    'success' => false,
-                    'message' => __('Check-out date must be after check-in date.', 'minpaku-suite'),
-                    'code' => 'invalid_dates'
-                ], 400);
+            $cache_key = $context->getCacheKey();
+            $cached_quote = get_transient($cache_key);
+
+            if ($cached_quote !== false && defined('WP_DEBUG') && !WP_DEBUG) {
+                $debug_message = '[' . date('Y-m-d H:i:s') . '] Quote served from cache: ' . $cache_key . PHP_EOL;
+                file_put_contents($debug_file, $debug_message, FILE_APPEND | LOCK_EX);
+
+                return new \WP_REST_Response($cached_quote, 200);
             }
 
-            $nights = $check_in_date->diff($check_out_date)->days;
+            // Create pricing engine and calculate quote
+            $engine = new \MinpakuSuite\Pricing\PricingEngine($context);
+            $quote = $engine->calculateQuote();
 
-            // Skeleton quote calculation
-            $base_price = floatval(get_post_meta($property_id, 'base_price', true)) ?: 100;
-            $subtotal = $base_price * $nights;
-            $tax_rate = 0.1; // 10% tax
-            $tax = $subtotal * $tax_rate;
-            $total = $subtotal + $tax;
+            // Transform to API response format
+            $response = [
+                'currency' => $quote['currency'],
+                'nights' => $quote['nights'],
+                'guests' => $quote['guests'],
+                'dates' => $quote['dates'],
+                'line_items' => $quote['line_items'],
+                'taxes' => $quote['taxes'],
+                'total_excl_tax' => $quote['totals']['total_excl_tax'],
+                'total_incl_tax' => $quote['totals']['total_incl_tax'],
+                'constraints' => $quote['constraints']
+            ];
 
-            return new \WP_REST_Response([
-                'success' => true,
-                'data' => [
-                    'property_id' => $property_id,
-                    'property_title' => $property->post_title,
-                    'check_in' => $check_in,
-                    'check_out' => $check_out,
-                    'guests' => $guests,
-                    'nights' => $nights,
-                    'pricing' => [
-                        'base_price' => $base_price,
-                        'subtotal' => $subtotal,
-                        'tax' => $tax,
-                        'total' => $total,
-                        'currency' => 'JPY'
-                    ],
-                    'note' => __('This is a preliminary quote. Final pricing may vary.', 'minpaku-suite')
-                ]
-            ], 200);
+            // Cache the response for 60 seconds (only for stays <= 31 days)
+            if ($context->nights <= 31) {
+                set_transient($cache_key, $response, 60);
+            }
 
-        } catch (\Exception $e) {
-            error_log('Minpaku Connector API Error: ' . $e->getMessage());
+            // Log performance
+            $execution_time = microtime(true) - $start_time;
+            $debug_message = '[' . date('Y-m-d H:i:s') . '] Quote calculated successfully in ' .
+                number_format($execution_time * 1000, 2) . 'ms' . PHP_EOL;
+            file_put_contents($debug_file, $debug_message, FILE_APPEND | LOCK_EX);
+
+            return new \WP_REST_Response($response, 200);
+
+        } catch (\InvalidArgumentException $e) {
+            // Validation errors (400)
+            $debug_message = '[' . date('Y-m-d H:i:s') . '] Quote validation error: ' . $e->getMessage() . PHP_EOL;
+            file_put_contents($debug_file, $debug_message, FILE_APPEND | LOCK_EX);
 
             return new \WP_REST_Response([
                 'success' => false,
-                'message' => __('Unable to generate quote.', 'minpaku-suite'),
+                'message' => $e->getMessage(),
+                'code' => 'validation_error'
+            ], 400);
+
+        } catch (\DomainException $e) {
+            // Business logic errors - constraints/availability (409)
+            $debug_message = '[' . date('Y-m-d H:i:s') . '] Quote constraint error: ' . $e->getMessage() . PHP_EOL;
+            file_put_contents($debug_file, $debug_message, FILE_APPEND | LOCK_EX);
+
+            return new \WP_REST_Response([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'code' => 'constraint_violation'
+            ], 409);
+
+        } catch (\Exception $e) {
+            // System errors (500)
+            error_log('Minpaku Connector Quote API Error: ' . $e->getMessage());
+            $debug_message = '[' . date('Y-m-d H:i:s') . '] Quote system error: ' . $e->getMessage() . PHP_EOL;
+            $debug_message .= 'File: ' . $e->getFile() . ':' . $e->getLine() . PHP_EOL;
+            file_put_contents($debug_file, $debug_message, FILE_APPEND | LOCK_EX);
+
+            return new \WP_REST_Response([
+                'success' => false,
+                'message' => __('Unable to generate quote. Please try again later.', 'minpaku-suite'),
                 'code' => 'quote_generation_error'
             ], 500);
         }
@@ -515,8 +666,8 @@ class ConnectorApiController
         return [
             'id' => $property_id,
             'title' => $property->post_title,
-            'content' => $property->post_content,
-            'excerpt' => $property->post_excerpt ?: wp_trim_words($property->post_content, 20),
+            'content' => self::process_property_shortcodes($property->post_content, $property_id),
+            'excerpt' => $property->post_excerpt ?: wp_trim_words(self::process_property_shortcodes($property->post_content, $property_id), 20),
             'status' => $property->post_status,
             'thumbnail' => $thumbnail ?: '',
             'gallery' => $gallery,
@@ -534,6 +685,33 @@ class ConnectorApiController
                 'country' => get_post_meta($property_id, 'country', true) ?: 'Japan'
             ]
         ];
+    }
+
+    /**
+     * Process property shortcodes with property context
+     */
+    private static function process_property_shortcodes(string $content, int $property_id): string
+    {
+        // Replace [mcs_availability] with [mcs_availability id="property_id"]
+        $content = preg_replace_callback(
+            '/\[mcs_availability([^\]]*)\]/',
+            function ($matches) use ($property_id) {
+                $attributes = $matches[1];
+
+                // Check if id parameter is already set
+                if (strpos($attributes, 'id=') !== false) {
+                    return $matches[0]; // Return unchanged if id is already set
+                }
+
+                // Add the property id to the shortcode
+                $new_attributes = trim($attributes . ' id="' . $property_id . '"');
+                return '[mcs_availability' . ($new_attributes ? ' ' . $new_attributes : ' id="' . $property_id . '"') . ']';
+            },
+            $content
+        );
+
+        // Process all shortcodes
+        return do_shortcode($content);
     }
 
     /**

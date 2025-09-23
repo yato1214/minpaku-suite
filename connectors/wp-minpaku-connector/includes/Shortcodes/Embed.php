@@ -15,6 +15,8 @@ class MPC_Shortcodes_Embed {
 
     public static function init() {
         add_shortcode('minpaku_connector', array(__CLASS__, 'render_shortcode'));
+        add_action('wp_enqueue_scripts', array(__CLASS__, 'enqueue_styles'));
+        add_action('wp_footer', array(__CLASS__, 'add_calendar_scripts'));
     }
 
     /**
@@ -463,12 +465,12 @@ class MPC_Shortcodes_Embed {
             return '';
         }
 
-        $output = '<div class="wmc-calendar">';
+        $output = '<div class="mcs-availability-calendar">';
 
         // Group by month
         $months = array();
         foreach ($availability as $day) {
-            $date = new DateTime($day['date']);
+            $date = new \DateTime($day['date']);
             $month_key = $date->format('Y-m');
             if (!isset($months[$month_key])) {
                 $months[$month_key] = array(
@@ -480,30 +482,31 @@ class MPC_Shortcodes_Embed {
         }
 
         foreach ($months as $month) {
-            $output .= '<div class="wmc-calendar-month">';
-            $output .= '<h4 class="wmc-month-title">' . esc_html($month['name']) . '</h4>';
-            $output .= '<div class="wmc-calendar-grid">';
+            $output .= '<div class="mcs-calendar-month">';
+            $output .= '<h3 class="mcs-month-title">' . esc_html($month['name']) . '</h3>';
+            $output .= '<div class="mcs-calendar-grid">';
 
             // Day headers
             $day_names = array(__('Sun', 'wp-minpaku-connector'), __('Mon', 'wp-minpaku-connector'), __('Tue', 'wp-minpaku-connector'), __('Wed', 'wp-minpaku-connector'), __('Thu', 'wp-minpaku-connector'), __('Fri', 'wp-minpaku-connector'), __('Sat', 'wp-minpaku-connector'));
             foreach ($day_names as $day_name) {
-                $output .= '<div class="wmc-day-header">' . esc_html($day_name) . '</div>';
+                $output .= '<div class="mcs-day-header">' . esc_html($day_name) . '</div>';
             }
 
             // Calendar days
             foreach ($month['days'] as $day) {
-                $date = new DateTime($day['date']);
-                $status_class = $day['available'] ? 'available' : 'unavailable';
+                $date = new \DateTime($day['date']);
+                $status_class = $day['available'] ? 'vacant' : 'full';
                 $price_text = '';
 
                 if ($day['available'] && isset($day['price']) && $day['price'] > 0) {
                     $price_text = '¥' . number_format($day['price']);
                 }
 
-                $output .= '<div class="wmc-calendar-day wmc-day-' . esc_attr($status_class) . '" data-date="' . esc_attr($day['date']) . '">';
-                $output .= '<span class="wmc-day-number">' . esc_html($date->format('j')) . '</span>';
+                $status_label = $day['available'] ? __('Available', 'wp-minpaku-connector') : __('Unavailable', 'wp-minpaku-connector');
+                $output .= '<div class="mcs-day mcs-day--' . esc_attr($status_class) . '" data-date="' . esc_attr($day['date']) . '" title="' . esc_attr($status_label) . '">';
+                $output .= esc_html($date->format('j'));
                 if ($price_text) {
-                    $output .= '<span class="wmc-day-price">' . esc_html($price_text) . '</span>';
+                    $output .= '<br><small>' . esc_html($price_text) . '</small>';
                 }
                 $output .= '</div>';
             }
@@ -513,19 +516,417 @@ class MPC_Shortcodes_Embed {
         }
 
         // Legend
-        $output .= '<div class="wmc-calendar-legend">';
-        $output .= '<span class="wmc-legend-item">';
-        $output .= '<span class="wmc-legend-color wmc-available"></span>';
-        $output .= '<span class="wmc-legend-text">' . esc_html__('Available', 'wp-minpaku-connector') . '</span>';
-        $output .= '</span>';
-        $output .= '<span class="wmc-legend-item">';
-        $output .= '<span class="wmc-legend-color wmc-unavailable"></span>';
-        $output .= '<span class="wmc-legend-text">' . esc_html__('Unavailable', 'wp-minpaku-connector') . '</span>';
-        $output .= '</span>';
+        $output .= '<div class="mcs-calendar-legend">';
+        $output .= '<h4>' . __('Legend', 'wp-minpaku-connector') . '</h4>';
+        $output .= '<div class="mcs-legend-items">';
+        $output .= '<div class="mcs-legend-item">';
+        $output .= '<span class="mcs-legend-color mcs-day---vacant"></span> ';
+        $output .= esc_html__('Available', 'wp-minpaku-connector');
+        $output .= '</div>';
+        $output .= '<div class="mcs-legend-item">';
+        $output .= '<span class="mcs-legend-color mcs-day---full"></span> ';
+        $output .= esc_html__('Unavailable', 'wp-minpaku-connector');
+        $output .= '</div>';
+        $output .= '</div>';
         $output .= '</div>';
 
         $output .= '</div>';
 
         return $output;
+    }
+
+    /**
+     * Enqueue calendar styles
+     */
+    public static function enqueue_styles() {
+        global $post;
+
+        // Only enqueue if shortcode is present
+        if (!$post || !has_shortcode($post->post_content, 'minpaku_connector')) {
+            return;
+        }
+
+        wp_add_inline_style('wp-block-library', self::get_calendar_css());
+    }
+
+    /**
+     * Add calendar JavaScript for interactivity
+     */
+    public static function add_calendar_scripts() {
+        global $post;
+
+        // Only add if shortcode is present
+        if (!$post || !has_shortcode($post->post_content, 'minpaku_connector')) {
+            return;
+        }
+
+        echo '<script type="text/javascript">';
+        echo self::get_calendar_javascript();
+        echo '</script>';
+    }
+
+    /**
+     * Get compact calendar CSS with popup functionality
+     */
+    private static function get_calendar_css() {
+        return '
+            /* Minpaku Connector Calendar Styles */
+            .mcs-availability-calendar {
+                max-width: 100%;
+                margin: 15px 0;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            }
+
+            /* Compact calendar button */
+            .mcs-calendar-toggle {
+                display: inline-block;
+                background: #0073aa;
+                color: white;
+                padding: 8px 16px;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 14px;
+                margin: 5px 0;
+                transition: background-color 0.2s;
+            }
+
+            .mcs-calendar-toggle:hover {
+                background: #005a87;
+            }
+
+            /* Calendar container - hidden by default in compact mode */
+            .mcs-calendar-container {
+                position: relative;
+            }
+
+            /* Popup overlay */
+            .mcs-calendar-popup {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.7);
+                z-index: 999999;
+                justify-content: center;
+                align-items: center;
+            }
+
+            .mcs-calendar-popup.active {
+                display: flex;
+            }
+
+            .mcs-calendar-popup-content {
+                background: white;
+                border-radius: 8px;
+                padding: 20px;
+                max-width: 90vw;
+                max-height: 90vh;
+                overflow-y: auto;
+                position: relative;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            }
+
+            .mcs-calendar-close {
+                position: absolute;
+                top: 10px;
+                right: 15px;
+                background: none;
+                border: none;
+                font-size: 24px;
+                cursor: pointer;
+                color: #666;
+                line-height: 1;
+                padding: 5px;
+            }
+
+            .mcs-calendar-close:hover {
+                color: #000;
+            }
+
+            /* Calendar months - compact layout */
+            .mcs-calendar-month {
+                margin-bottom: 20px;
+                border: 1px solid #ddd;
+                border-radius: 6px;
+                overflow: hidden;
+                background: white;
+            }
+
+            .mcs-month-title {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                margin: 0;
+                padding: 12px 15px;
+                text-align: center;
+                font-size: 16px;
+                font-weight: 600;
+            }
+
+            .mcs-calendar-grid {
+                display: grid;
+                grid-template-columns: repeat(7, 1fr);
+                gap: 1px;
+                background: #e9ecef;
+            }
+
+            .mcs-day-header {
+                background: #495057;
+                color: white;
+                padding: 8px 4px;
+                text-align: center;
+                font-weight: 600;
+                font-size: 11px;
+                text-transform: uppercase;
+            }
+
+            .mcs-day {
+                background: white;
+                padding: 8px 4px;
+                text-align: center;
+                min-height: 32px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 13px;
+                transition: all 0.2s ease;
+                position: relative;
+                cursor: pointer;
+            }
+
+            .mcs-day:hover {
+                transform: scale(1.1);
+                z-index: 10;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            }
+
+            .mcs-day--empty {
+                background: #f8f9fa;
+                cursor: default;
+            }
+
+            .mcs-day--empty:hover {
+                transform: none;
+                box-shadow: none;
+            }
+
+            .mcs-day--vacant {
+                background: #d4edda;
+                color: #155724;
+            }
+
+            .mcs-day--partial {
+                background: #fff3cd;
+                color: #856404;
+            }
+
+            .mcs-day--full {
+                background: #f8d7da;
+                color: #721c24;
+            }
+
+            .mcs-day--past {
+                opacity: 0.5;
+                cursor: not-allowed;
+            }
+
+            .mcs-day--past:hover {
+                transform: none;
+                box-shadow: none;
+            }
+
+            /* Compact legend */
+            .mcs-calendar-legend {
+                margin-top: 15px;
+                padding: 10px;
+                background: #f8f9fa;
+                border-radius: 4px;
+                border: 1px solid #dee2e6;
+            }
+
+            .mcs-calendar-legend h4 {
+                margin: 0 0 8px 0;
+                font-size: 13px;
+                font-weight: 600;
+                color: #495057;
+            }
+
+            .mcs-legend-items {
+                display: flex;
+                gap: 15px;
+                flex-wrap: wrap;
+            }
+
+            .mcs-legend-item {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                font-size: 12px;
+            }
+
+            .mcs-legend-color {
+                width: 14px;
+                height: 14px;
+                border-radius: 2px;
+                border: 1px solid #ccc;
+            }
+
+            .mcs-legend-color.mcs-day---vacant {
+                background: #d4edda;
+            }
+
+            .mcs-legend-color.mcs-day---partial {
+                background: #fff3cd;
+            }
+
+            .mcs-legend-color.mcs-day---full {
+                background: #f8d7da;
+            }
+
+            /* Property list layout adjustments */
+            .wmc-properties .mcs-availability-calendar {
+                margin-top: 10px;
+            }
+
+            .wmc-property-card .mcs-calendar-toggle {
+                font-size: 12px;
+                padding: 6px 12px;
+            }
+
+            /* Error and notice styles */
+            .mcs-error {
+                color: #d63384;
+                background: #f8d7da;
+                padding: 8px 12px;
+                border-radius: 4px;
+                border: 1px solid #f5c6cb;
+                font-size: 13px;
+                margin: 10px 0;
+            }
+
+            .mcs-calendar-notice {
+                color: #856404;
+                background: #fff3cd;
+                padding: 8px 12px;
+                border-radius: 4px;
+                border: 1px solid #ffeaa7;
+                margin-bottom: 10px;
+                font-size: 13px;
+            }
+
+            /* Mobile responsive */
+            @media (max-width: 768px) {
+                .mcs-calendar-popup-content {
+                    margin: 10px;
+                    padding: 15px;
+                }
+
+                .mcs-day-header, .mcs-day {
+                    padding: 6px 2px;
+                    font-size: 11px;
+                    min-height: 28px;
+                }
+
+                .mcs-legend-items {
+                    flex-direction: column;
+                    gap: 8px;
+                }
+
+                .mcs-month-title {
+                    font-size: 14px;
+                    padding: 10px;
+                }
+            }
+
+            @media (max-width: 480px) {
+                .mcs-calendar-popup-content {
+                    max-width: 95vw;
+                }
+
+                .mcs-day {
+                    min-height: 24px;
+                    font-size: 10px;
+                }
+            }
+        ';
+    }
+
+    /**
+     * Get calendar JavaScript for popup functionality
+     */
+    private static function get_calendar_javascript() {
+        return '
+            document.addEventListener("DOMContentLoaded", function() {
+                // Convert calendar displays to compact popup mode
+                const calendars = document.querySelectorAll(".mcs-availability-calendar");
+
+                calendars.forEach(function(calendar) {
+                    // Skip if already processed
+                    if (calendar.classList.contains("mcs-processed")) {
+                        return;
+                    }
+                    calendar.classList.add("mcs-processed");
+
+                    // Create toggle button
+                    const toggleButton = document.createElement("button");
+                    toggleButton.className = "mcs-calendar-toggle";
+                    toggleButton.innerHTML = "📅 空室カレンダーを表示";
+
+                    // Create popup structure
+                    const popup = document.createElement("div");
+                    popup.className = "mcs-calendar-popup";
+
+                    const popupContent = document.createElement("div");
+                    popupContent.className = "mcs-calendar-popup-content";
+
+                    const closeButton = document.createElement("button");
+                    closeButton.className = "mcs-calendar-close";
+                    closeButton.innerHTML = "×";
+                    closeButton.setAttribute("aria-label", "閉じる");
+
+                    // Move calendar content to popup
+                    const calendarContent = calendar.cloneNode(true);
+                    calendarContent.classList.remove("mcs-processed");
+
+                    popupContent.appendChild(closeButton);
+                    popupContent.appendChild(calendarContent);
+                    popup.appendChild(popupContent);
+
+                    // Replace calendar with toggle button
+                    calendar.parentNode.insertBefore(toggleButton, calendar);
+                    calendar.parentNode.insertBefore(popup, calendar);
+                    calendar.style.display = "none";
+
+                    // Event listeners
+                    toggleButton.addEventListener("click", function(e) {
+                        e.preventDefault();
+                        popup.classList.add("active");
+                        document.body.style.overflow = "hidden";
+                    });
+
+                    closeButton.addEventListener("click", function() {
+                        popup.classList.remove("active");
+                        document.body.style.overflow = "";
+                    });
+
+                    popup.addEventListener("click", function(e) {
+                        if (e.target === popup) {
+                            popup.classList.remove("active");
+                            document.body.style.overflow = "";
+                        }
+                    });
+
+                    // ESC key to close
+                    document.addEventListener("keydown", function(e) {
+                        if (e.key === "Escape" && popup.classList.contains("active")) {
+                            popup.classList.remove("active");
+                            document.body.style.overflow = "";
+                        }
+                    });
+                });
+            });
+        ';
     }
 }

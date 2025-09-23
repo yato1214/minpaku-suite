@@ -1,0 +1,668 @@
+/* MinPaku Connector - Price Manager Styles */
+
+/* Calendar Styles */
+.mpc-calendar-container {
+    max-width: 100%;
+    margin: 20px 0;
+}
+
+.mpc-calendar-month {
+    margin-bottom: 30px;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.mpc-calendar-month-title {
+    background: #667eea;
+    color: white;
+    margin: 0;
+    padding: 16px 20px;
+    font-size: 18px;
+    font-weight: 600;
+    text-align: center;
+}
+
+.mpc-calendar-grid {
+    display: flex;
+    flex-direction: column;
+}
+
+.mpc-calendar-header {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    background: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.mpc-calendar-day-header {
+    padding: 12px 8px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 12px;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.mpc-calendar-week {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.mpc-calendar-week:last-child {
+    border-bottom: none;
+}
+
+.mpc-calendar-day {
+    position: relative;
+    min-height: 60px;
+    padding: 8px;
+    border-right: 1px solid #f0f0f0;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: flex-start;
+}
+
+.mpc-calendar-day:last-child {
+    border-right: none;
+}
+
+.mpc-calendar-day:hover {
+    background-color: #f8f9fa;
+}
+
+.mpc-calendar-day.other-month {
+    color: #ccc;
+    background-color: #fafafa;
+}
+
+.mpc-calendar-day.past-date {
+    color: #999;
+    background-color: #f5f5f5;
+    cursor: not-allowed;
+}
+
+.mpc-calendar-day.past-date:hover {
+    background-color: #f5f5f5;
+}
+
+.mpc-calendar-day-number {
+    font-weight: 500;
+    font-size: 14px;
+    line-height: 1;
+    z-index: 5;
+}
+
+@media (max-width: 768px) {
+    .mpc-calendar-day {
+        min-height: 50px;
+        padding: 6px;
+    }
+
+    .mpc-calendar-day-header {
+        padding: 8px 4px;
+        font-size: 11px;
+    }
+
+    .mpc-calendar-day-number {
+        font-size: 13px;
+    }
+
+    .mpc-calendar-month-title {
+        padding: 12px 16px;
+        font-size: 16px;
+    }
+}
+
+/* Price Badges */
+.mpc-price-badge {
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 8px;
+    white-space: nowrap;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    z-index: 10;
+    line-height: 1.2;
+    min-width: 20px;
+    text-align: center;
+    opacity: 0;
+    transform: scale(0.8);
+    transition: all 0.2s ease;
+}
+
+.mpc-price-badge.loaded {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.mpc-price-badge.error {
+    background: #ff6b6b;
+    font-size: 8px;
+    padding: 1px 3px;
+}
+
+.mpc-price-badge.loading {
+    background: #e0e0e0;
+    color: #999;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 0.6; }
+    50% { opacity: 1; }
+    100% { opacity: 0.6; }
+}
+
+/* Calendar cell positioning */
+.calendar-cell {
+    position: relative;
+}
+
+.calendar-cell:hover .mpc-price-badge {
+    transform: scale(1.1);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+/* Quote Modal */
+.mpc-quote-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.mpc-quote-modal.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.mpc-quote-modal-content {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    max-width: 400px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+    transform: translateY(20px);
+    transition: transform 0.3s ease;
+}
+
+.mpc-quote-modal.active .mpc-quote-modal-content {
+    transform: translateY(0);
+}
+
+.mpc-quote-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #eee;
+}
+
+.mpc-quote-modal-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #333;
+    margin: 0;
+}
+
+.mpc-quote-modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #999;
+    cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+}
+
+.mpc-quote-modal-close:hover {
+    background: #f0f0f0;
+    color: #666;
+}
+
+.mpc-quote-dates {
+    background: #f8f9fa;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.mpc-quote-dates-text {
+    font-size: 14px;
+    color: #666;
+    margin: 0;
+}
+
+.mpc-quote-breakdown {
+    margin-bottom: 20px;
+}
+
+.mpc-quote-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.mpc-quote-line:last-child {
+    border-bottom: none;
+    padding-top: 12px;
+    margin-top: 8px;
+    border-top: 2px solid #eee;
+    font-weight: 600;
+    font-size: 16px;
+}
+
+.mpc-quote-label {
+    color: #666;
+    font-size: 14px;
+}
+
+.mpc-quote-amount {
+    color: #333;
+    font-weight: 500;
+    font-size: 14px;
+}
+
+.mpc-quote-line:last-child .mpc-quote-amount {
+    color: #667eea;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.mpc-quote-loading {
+    text-align: center;
+    padding: 40px 20px;
+    color: #666;
+}
+
+.mpc-quote-error {
+    text-align: center;
+    padding: 20px;
+    color: #e74c3c;
+    background: #fdf2f2;
+    border-radius: 8px;
+    margin-bottom: 16px;
+}
+
+.mpc-quote-retry {
+    background: #667eea;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.mpc-quote-retry:hover {
+    background: #5a6fd8;
+}
+
+/* Property Card Styles */
+.mpc-property-card {
+    position: relative;
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    margin-bottom: 24px;
+}
+
+.mpc-property-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+}
+
+.mpc-property-image {
+    position: relative;
+    height: 200px;
+    overflow: hidden;
+    background: #f8f9fa;
+}
+
+.mpc-property-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.2s ease;
+}
+
+.mpc-property-card:hover .mpc-property-image img {
+    transform: scale(1.05);
+}
+
+.mpc-property-quick-price {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: rgba(255, 255, 255, 0.95);
+    color: #333;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255,255,255,0.2);
+    z-index: 10;
+}
+
+.mpc-property-quick-price.loading {
+    background: rgba(240, 240, 240, 0.95);
+    color: #999;
+}
+
+.mpc-property-quick-price.error {
+    background: rgba(255, 107, 107, 0.95);
+    color: white;
+}
+
+.mpc-property-details {
+    padding: 20px;
+}
+
+.mpc-property-title {
+    margin: 0 0 8px 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #333;
+    line-height: 1.3;
+}
+
+.mpc-property-address {
+    margin: 0 0 12px 0;
+    color: #666;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.mpc-property-address .dashicons {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+}
+
+.mpc-property-specs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.mpc-property-spec {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
+    color: #666;
+}
+
+.mpc-property-spec .dashicons {
+    font-size: 13px;
+    width: 13px;
+    height: 13px;
+    color: #999;
+}
+
+.mpc-property-amenities {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.mpc-amenity-tag {
+    background: #f1f3f4;
+    color: #5f6368;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.mpc-amenity-more {
+    background: #e8f0fe;
+    color: #1a73e8;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.mpc-property-description {
+    color: #666;
+    font-size: 14px;
+    line-height: 1.4;
+    margin: 0 0 16px 0;
+}
+
+.mpc-property-actions {
+    padding: 0 20px 20px 20px;
+}
+
+.mpc-property-link {
+    display: inline-block;
+    background: #667eea;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 14px;
+    transition: background 0.2s ease;
+}
+
+.mpc-property-link:hover {
+    background: #5a6fd8;
+    color: white;
+    text-decoration: none;
+}
+
+/* Property Grid Layout */
+.mpc-property-grid {
+    display: grid;
+    gap: 24px;
+    margin: 20px 0;
+}
+
+.mpc-columns-1 { grid-template-columns: 1fr; }
+.mpc-columns-2 { grid-template-columns: repeat(2, 1fr); }
+.mpc-columns-3 { grid-template-columns: repeat(3, 1fr); }
+.mpc-columns-4 { grid-template-columns: repeat(4, 1fr); }
+.mpc-columns-5 { grid-template-columns: repeat(5, 1fr); }
+.mpc-columns-6 { grid-template-columns: repeat(6, 1fr); }
+
+/* Grid item adjustments */
+.mpc-property-card.mpc-property-card-grid-item {
+    margin-bottom: 0;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .mpc-quote-modal-content {
+        padding: 20px;
+        margin: 16px;
+        border-radius: 8px;
+    }
+
+    .mpc-quote-modal-title {
+        font-size: 16px;
+    }
+
+    .mpc-price-badge {
+        font-size: 9px;
+        padding: 1px 4px;
+        border-radius: 6px;
+    }
+
+    .mpc-property-quick-price {
+        font-size: 11px;
+        padding: 4px 8px;
+        top: 8px;
+        right: 8px;
+    }
+
+    /* Property grid responsive */
+    .mpc-columns-3,
+    .mpc-columns-4,
+    .mpc-columns-5,
+    .mpc-columns-6 {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .mpc-property-image {
+        height: 160px;
+    }
+
+    .mpc-property-details {
+        padding: 16px;
+    }
+
+    .mpc-property-title {
+        font-size: 16px;
+    }
+
+    .mpc-property-actions {
+        padding: 0 16px 16px 16px;
+    }
+}
+
+@media (max-width: 480px) {
+    .mpc-quote-modal-content {
+        width: 95%;
+        margin: 8px;
+        padding: 16px;
+    }
+
+    .mpc-price-badge {
+        font-size: 8px;
+        padding: 1px 3px;
+        min-width: 16px;
+    }
+
+    /* Single column on mobile */
+    .mpc-columns-2,
+    .mpc-columns-3,
+    .mpc-columns-4,
+    .mpc-columns-5,
+    .mpc-columns-6 {
+        grid-template-columns: 1fr;
+    }
+
+    .mpc-property-grid {
+        gap: 16px;
+    }
+}
+
+/* Accessibility */
+.mpc-price-badge:focus,
+.mpc-quote-modal-close:focus,
+.mpc-quote-retry:focus {
+    outline: 2px solid #667eea;
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .mpc-price-badge,
+    .mpc-quote-modal,
+    .mpc-quote-modal-content {
+        transition: none;
+    }
+
+    .mpc-price-badge.loading {
+        animation: none;
+    }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+    .mpc-price-badge {
+        background: #000;
+        border: 1px solid #fff;
+    }
+
+    .mpc-quote-modal-content {
+        border: 2px solid #000;
+    }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .mpc-quote-modal-content {
+        background: #2a2a2a;
+        color: #e0e0e0;
+    }
+
+    .mpc-quote-modal-header {
+        border-bottom-color: #444;
+    }
+
+    .mpc-quote-dates {
+        background: #333;
+    }
+
+    .mpc-quote-line {
+        border-bottom-color: #444;
+    }
+
+    .mpc-quote-line:last-child {
+        border-top-color: #444;
+    }
+
+    .mpc-quote-label {
+        color: #ccc;
+    }
+
+    .mpc-quote-amount {
+        color: #e0e0e0;
+    }
+
+    .mpc-quote-error {
+        background: #4a2a2a;
+        color: #ff9999;
+    }
+
+    .mpc-property-quick-price {
+        background: rgba(42, 42, 42, 0.95);
+        color: #e0e0e0;
+        border-color: rgba(255,255,255,0.1);
+    }
+}
