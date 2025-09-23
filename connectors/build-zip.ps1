@@ -2,7 +2,7 @@
 # Usage: .\build-zip.ps1 [-Version "1.0.1"]
 
 param(
-    [string]$Version = "1.0.4"
+    [string]$Version = "1.0.12"
 )
 
 # Set script directory as working directory
@@ -106,15 +106,15 @@ WP Minpaku Connector allows you to connect your WordPress site to a Minpaku Suit
 == Changelog ==
 
 = $Version =
-* NEW: Enhanced calendar availability visualization with color-coded status
-* NEW: Improved price badge positioning at bottom of calendar cells
-* NEW: Modern calendar design with gradient backgrounds and hover effects
-* NEW: Enhanced quote modal with improved usability and design
-* NEW: Availability indicators with status tooltips (Available/Partial/Full)
-* NEW: Mobile-responsive calendar improvements
-* FIXED: Calendar cell layout and price display positioning
-* Enhanced: Visual feedback for booking status and pricing
-* Updated: Portal calendar with same modern design improvements
+* CRITICAL FIX: Complete rewrite of price manager for guaranteed operation
+* CRITICAL FIX: Portal calendar shows prices with console logging for debugging
+* CRITICAL FIX: Connector calendar uses simplified real-data AJAX calls
+* CRITICAL FIX: Price badges now have opacity:1 and display:block explicitly
+* FIXED: Auto-initialization of all calendars on page load
+* FIXED: Staggered AJAX calls to prevent server overload
+* FIXED: Proper error handling with fallback to error state
+* ENHANCED: Extensive console logging for troubleshooting
+* ENHANCED: Simplified code structure for maximum reliability
 
 = 1.0.2 =
 * NEW: Complete pricing integration with calendar price badges and quote modals

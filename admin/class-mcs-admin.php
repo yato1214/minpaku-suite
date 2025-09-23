@@ -542,21 +542,30 @@ class MCS_Admin {
         }
 
         $plugin_url = plugin_dir_url(dirname(__FILE__));
+        $plugin_path = plugin_dir_path(dirname(__FILE__));
 
-        wp_enqueue_script(
-            'mcs-admin',
-            $plugin_url . 'assets/admin.js',
-            ['jquery'],
-            '1.0.0',
-            true
-        );
+        // Admin JavaScript with cache-busting
+        $js_path = $plugin_path . 'assets/admin.js';
+        if (file_exists($js_path)) {
+            wp_enqueue_script(
+                'mcs-admin',
+                $plugin_url . 'assets/admin.js',
+                ['jquery'],
+                filemtime($js_path),
+                true
+            );
+        }
 
-        wp_enqueue_style(
-            'mcs-admin',
-            $plugin_url . 'assets/admin.css',
-            [],
-            '1.0.0'
-        );
+        // Admin CSS with cache-busting
+        $css_path = $plugin_path . 'assets/admin.css';
+        if (file_exists($css_path)) {
+            wp_enqueue_style(
+                'mcs-admin',
+                $plugin_url . 'assets/admin.css',
+                [],
+                filemtime($css_path)
+            );
+        }
 
         wp_localize_script('mcs-admin', 'mcsAdmin', [
             'ajaxUrl' => admin_url('admin-ajax.php'),

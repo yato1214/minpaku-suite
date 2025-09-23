@@ -71,25 +71,6 @@ class MPC_Shortcodes_Calendar {
 
         ob_start();
         ?>
-        <!-- Calendar Legend -->
-        <div class="mpc-calendar-legend">
-            <h4><?php _e('空室状況の見方', 'wp-minpaku-connector'); ?></h4>
-            <div class="mpc-legend-items">
-                <div class="mpc-legend-item">
-                    <span class="mpc-legend-color mpc-legend-color--vacant"></span>
-                    <span class="mpc-legend-label"><?php _e('空き', 'wp-minpaku-connector'); ?></span>
-                </div>
-                <div class="mpc-legend-item">
-                    <span class="mpc-legend-color mpc-legend-color--partial"></span>
-                    <span class="mpc-legend-label"><?php _e('一部予約あり', 'wp-minpaku-connector'); ?></span>
-                </div>
-                <div class="mpc-legend-item">
-                    <span class="mpc-legend-color mpc-legend-color--full"></span>
-                    <span class="mpc-legend-label"><?php _e('満室', 'wp-minpaku-connector'); ?></span>
-                </div>
-            </div>
-        </div>
-
         <div id="<?php echo esc_attr($calendar_id); ?>" class="mpc-calendar-container"
              data-property-id="<?php echo esc_attr($property_id); ?>"
              data-show-prices="<?php echo $show_prices ? '1' : '0'; ?>"
@@ -128,6 +109,15 @@ class MPC_Shortcodes_Calendar {
             <?php endfor; ?>
         </div>
 
+        <script>
+        jQuery(document).ready(function($) {
+            // Initialize connector calendar with live data
+            if (typeof MPCConnectorCalendar !== 'undefined') {
+                const calendar = new MPCConnectorCalendar();
+                calendar.initCalendar('#<?php echo esc_js($calendar_id); ?>');
+            }
+        });
+        </script>
         <?php
         return ob_get_clean();
     }
@@ -192,8 +182,8 @@ class MPC_Shortcodes_Calendar {
 
                 $output .= '<span class="mcs-day-number">' . $current_date->format('j') . '</span>';
 
-                // Add price badge for available days only when vacant and not past
-                if ($show_prices && $is_current_month && $availability_status === 'vacant' && !$is_past) {
+                // Add price badge for available days
+                if ($show_prices && $is_current_month && $is_available) {
                     $price_text = self::get_price_for_day($date_string, $availability_data);
                     $output .= '<span class="mcs-day-price">' . esc_html($price_text) . '</span>';
                 }
@@ -215,22 +205,7 @@ class MPC_Shortcodes_Calendar {
         if (isset($availability_data['availability']) && is_array($availability_data['availability'])) {
             foreach ($availability_data['availability'] as $day_data) {
                 if (isset($day_data['date']) && $day_data['date'] === $date_string) {
-                    $status = $day_data['status'] ?? 'available';
-
-                    // Map API statuses to CSS class names
-                    switch ($status) {
-                        case 'available':
-                        case 'VACANT':
-                            return 'vacant';
-                        case 'booked':
-                        case 'FULL':
-                            return 'full';
-                        case 'partial':
-                        case 'PARTIAL':
-                            return 'partial';
-                        default:
-                            return 'vacant';
-                    }
+                    return $day_data['status'] ?? 'vacant';
                 }
             }
         }

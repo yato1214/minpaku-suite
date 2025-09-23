@@ -1,0 +1,247 @@
+/**
+ * Admin Calendar CSS - Portal Side
+ * Minimal calendar with price badges only, no legacy elements
+ */
+
+.mcs-calendar-legend {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 16px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.mcs-calendar-legend h4 {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+}
+
+.mcs-legend-items {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.mcs-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.mcs-legend-color {
+    width: 24px;
+    height: 20px;
+    border-radius: 4px;
+    border: 1px solid rgba(0,0,0,0.15);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.mcs-legend-color--vacant {
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    border-left: 4px solid #28a745;
+}
+
+.mcs-legend-color--partial {
+    background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+    border-left: 4px solid #ffc107;
+}
+
+.mcs-legend-color--full {
+    background: #dc3545;
+    border: 1px solid #dc3545;
+}
+
+.mcs-legend-label {
+    font-size: 13px;
+    color: #555;
+    font-weight: 500;
+}
+
+.mcs-availability-calendar {
+    max-width: 100%;
+    margin: 20px 0;
+}
+
+.mcs-calendar-month {
+    margin-bottom: 30px;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.mcs-month-title {
+    background: #667eea;
+    color: white;
+    margin: 0;
+    padding: 16px 20px;
+    text-align: center;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.mcs-calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    background: #f0f0f0;
+}
+
+.mcs-day-header {
+    background: #f8f9fa;
+    color: #666;
+    padding: 12px 8px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.mcs-day {
+    position: relative;
+    min-height: 80px;
+    padding: 8px;
+    border-right: 1px solid #f0f0f0;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: white;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+}
+
+.mcs-day:last-child {
+    border-right: none;
+}
+
+.mcs-day--vacant:hover:not(.mcs-day--disabled):not(.mcs-day--empty):not(.mcs-day--past) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    cursor: pointer;
+}
+
+.mcs-day--empty {
+    background: #fafafa;
+    cursor: default;
+}
+
+.mcs-day--vacant {
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%) !important;
+    border-left: 4px solid #28a745 !important;
+    cursor: pointer !important;
+}
+
+.mcs-day--partial {
+    background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%) !important;
+    border-left: 4px solid #ffc107 !important;
+    cursor: not-allowed !important;
+}
+
+.mcs-day--full {
+    background: #dc3545 !important;
+    color: white !important;
+    border-left: 4px solid #a71e2a !important;
+    cursor: not-allowed !important;
+}
+
+.mcs-day--full .mcs-day-number {
+    color: white !important;
+    font-weight: 700 !important;
+}
+
+.mcs-day--past,
+.mcs-day--disabled {
+    background: #f5f5f5;
+    color: #999;
+    cursor: not-allowed;
+}
+
+.mcs-day-number {
+    font-weight: 600;
+    font-size: 14px;
+    line-height: 1;
+    color: #333;
+}
+
+.mcs-day-price {
+    font-size: 11px;
+    padding: 2px 4px;
+    border-radius: 3px;
+    background: rgba(0,0,0,0.06);
+    color: #333;
+    font-weight: 500;
+    white-space: nowrap;
+    margin-top: 4px;
+    align-self: flex-start;
+    line-height: 1.2;
+}
+
+/* Complete legacy UI removal */
+.slot, .status-dot, .legend, .availability-slot,
+.mcs-day .slot, .mcs-day .status-dot, .mcs-day .legend,
+.mcs-day .availability-slot, .mcs-availability-indicator,
+.legend-mark, .slot-bar {
+    display: none !important;
+    content: none !important;
+}
+
+.mcs-day::before, .mcs-day::after,
+.mcs-day *::before, .mcs-day *::after {
+    display: none !important;
+    content: none !important;
+}
+
+.mcs-error {
+    color: #d63384;
+    background: #f8d7da;
+    padding: 10px;
+    border-radius: 4px;
+    border: 1px solid #f5c6cb;
+}
+
+.mcs-calendar-notice {
+    color: #856404;
+    background: #fff3cd;
+    padding: 10px;
+    border-radius: 4px;
+    border: 1px solid #ffeaa7;
+    margin-bottom: 15px;
+}
+
+.mcs-calendar-skeleton .mcs-day--skeleton {
+    background: #f8f9fa;
+    opacity: 0.7;
+    cursor: default;
+}
+
+@media (max-width: 600px) {
+    .mcs-day {
+        min-height: 60px;
+        padding: 6px 4px;
+        font-size: 12px;
+    }
+
+    .mcs-day-number {
+        font-size: 12px;
+    }
+
+    .mcs-day-price {
+        font-size: 10px;
+        padding: 1px 3px;
+        margin-top: 3px;
+    }
+
+    .mcs-legend-items {
+        gap: 12px;
+    }
+
+    .mcs-legend-color {
+        width: 20px;
+        height: 16px;
+    }
+}

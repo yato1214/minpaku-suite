@@ -538,3 +538,228 @@
     outline: 2px solid #2271b1;
     outline-offset: 2px;
 }
+
+/**
+ * Admin Calendar Styles - Clean price badge display only
+ * All legacy slot/dot UI completely removed
+ */
+
+/* Calendar container */
+.mcs-availability-calendar {
+    max-width: 100%;
+    margin: 20px 0;
+}
+
+.mcs-calendar-month {
+    margin-bottom: 30px;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.mcs-month-title {
+    background: #667eea;
+    color: white;
+    margin: 0;
+    padding: 16px 20px;
+    text-align: center;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.mcs-calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    background: #f0f0f0;
+}
+
+.mcs-day-header {
+    background: #f8f9fa;
+    color: #666;
+    padding: 12px 8px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+/* Day cells */
+.mcs-day {
+    position: relative;
+    min-height: 70px;
+    padding: 0;
+    border-right: 1px solid #f0f0f0;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: white;
+}
+
+.mcs-day:last-child {
+    border-right: none;
+}
+
+.mcs-day:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.mcs-day--empty {
+    background: #fafafa;
+    cursor: default;
+}
+
+.mcs-day--empty:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+.mcs-day--vacant {
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    border-left: 4px solid #28a745;
+}
+
+.mcs-day--partial {
+    background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+    border-left: 4px solid #ffc107;
+}
+
+.mcs-day--full {
+    background: linear-gradient(135deg, #f8d7da 0%, #f5c2c7 100%);
+    border-left: 4px solid #dc3545;
+}
+
+.mcs-day--past {
+    background: #f5f5f5;
+    color: #999;
+    cursor: not-allowed;
+}
+
+.mcs-day--past:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+.mcs-day-content {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.mcs-day-number {
+    font-weight: 600;
+    font-size: 14px;
+    line-height: 1;
+    color: #333;
+    align-self: flex-start;
+}
+
+/* Price badge - positioned in top-right corner */
+.mcs-day-price {
+    position: absolute;
+    top: 4px;
+    right: 6px;
+    font-size: 11px;
+    line-height: 1;
+    opacity: 0.9;
+    background: rgba(0,0,0,0.05);
+    padding: 2px 6px;
+    border-radius: 4px;
+    white-space: nowrap;
+    z-index: 10;
+    color: #333;
+    font-weight: 500;
+}
+
+.mcs-day-price.is-empty {
+    opacity: 0.6;
+    color: #999;
+}
+
+/* Legacy UI removal - hide all old slot/dot elements */
+.slot, .slot-bar, .status-dot, .availability-slot, .legend-mark,
+.mcs-day .slot, .mcs-day .slot-bar, .mcs-day .status-dot,
+.mcs-day .availability-slot, .mcs-day .legend, .mcs-day .legend-mark,
+.mcs-availability-indicator {
+    display: none !important;
+}
+
+/* Remove all pseudo-elements that might be legacy UI */
+.mcs-day::before, .mcs-day::after,
+.mcs-day *::before, .mcs-day *::after {
+    content: none !important;
+}
+
+/* Calendar legend */
+.mcs-calendar-legend {
+    margin-top: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+}
+
+.mcs-calendar-legend h4 {
+    margin: 0 0 10px 0;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.mcs-legend-items {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.mcs-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+}
+
+.mcs-legend-color {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+    border: 1px solid #ddd;
+}
+
+.mcs-legend-color.mcs-day---vacant {
+    background: #d4edda;
+}
+
+.mcs-legend-color.mcs-day---partial {
+    background: #fff3cd;
+}
+
+.mcs-legend-color.mcs-day---full {
+    background: #f8d7da;
+}
+
+/* Mobile responsive */
+@media (max-width: 600px) {
+    .mcs-day-header, .mcs-day {
+        padding: 8px 4px;
+        font-size: 12px;
+    }
+
+    .mcs-day-price {
+        font-size: 10px;
+        padding: 1px 4px;
+    }
+
+    .mcs-legend-items {
+        flex-direction: column;
+        gap: 8px;
+    }
+}

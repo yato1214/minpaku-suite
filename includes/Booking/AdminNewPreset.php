@@ -14,6 +14,9 @@ if (!defined('ABSPATH')) {
 class AdminNewPreset
 {
     private static $preset_property_id = null;
+    private static $preset_checkin = null;
+    private static $preset_checkout = null;
+    private static $preset_guests = null;
 
     public static function init(): void
     {
@@ -46,8 +49,31 @@ class AdminNewPreset
             return;
         }
 
-        // Store for later use
+        // Store preset values
         self::$preset_property_id = $property_id;
+
+        // Handle date presets
+        if (isset($_GET['checkin'])) {
+            $checkin = sanitize_text_field($_GET['checkin']);
+            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $checkin)) {
+                self::$preset_checkin = $checkin;
+            }
+        }
+
+        if (isset($_GET['checkout'])) {
+            $checkout = sanitize_text_field($_GET['checkout']);
+            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $checkout)) {
+                self::$preset_checkout = $checkout;
+            }
+        }
+
+        // Handle guests preset
+        if (isset($_GET['guests'])) {
+            $guests = absint($_GET['guests']);
+            if ($guests > 0 && $guests <= 50) {
+                self::$preset_guests = $guests;
+            }
+        }
 
         // Add action to preset the form values
         add_action('add_meta_boxes', [__CLASS__, 'modify_metabox_callback'], 20);
@@ -103,8 +129,18 @@ class AdminNewPreset
             $property = get_post(self::$preset_property_id);
             if ($property) {
                 echo '<div class="notice notice-info is-dismissible">';
-                echo '<p><strong>' . __('Creating booking for property:', 'minpaku-suite') . '</strong> ';
-                echo esc_html($property->post_title) . ' (ID: ' . self::$preset_property_id . ')';
+                echo '<p><strong>' . __('Creating booking from calendar selection:', 'minpaku-suite') . '</strong><br>';
+                echo '<strong>' . __('Property:', 'minpaku-suite') . '</strong> ' . esc_html($property->post_title) . ' (ID: ' . self::$preset_property_id . ')';
+
+                if (self::$preset_checkin && self::$preset_checkout) {
+                    echo '<br><strong>' . __('Dates:', 'minpaku-suite') . '</strong> ' .
+                         esc_html(self::$preset_checkin) . ' → ' . esc_html(self::$preset_checkout);
+                }
+
+                if (self::$preset_guests) {
+                    echo '<br><strong>' . __('Guests:', 'minpaku-suite') . '</strong> ' . esc_html(self::$preset_guests);
+                }
+
                 echo '</p>';
                 echo '</div>';
             }
@@ -125,7 +161,22 @@ class AdminNewPreset
                 // Set the property dropdown to the preset value
                 $('#mcs_property_id').val('<?php echo esc_js(self::$preset_property_id); ?>').trigger('change');
 
-                // Add a hidden field to preserve the property_id
+                <?php if (self::$preset_checkin): ?>
+                // Set check-in date
+                $('#mcs_check_in_date, input[name="mcs_check_in_date"]').val('<?php echo esc_js(self::$preset_checkin); ?>');
+                <?php endif; ?>
+
+                <?php if (self::$preset_checkout): ?>
+                // Set check-out date
+                $('#mcs_check_out_date, input[name="mcs_check_out_date"]').val('<?php echo esc_js(self::$preset_checkout); ?>');
+                <?php endif; ?>
+
+                <?php if (self::$preset_guests): ?>
+                // Set number of guests
+                $('#mcs_guests, input[name="mcs_guests"], #mcs_adults, input[name="mcs_adults"]').val('<?php echo esc_js(self::$preset_guests); ?>');
+                <?php endif; ?>
+
+                // Add hidden fields to preserve the preset values
                 if (!$('input[name="_mcs_property_id"]').length) {
                     $('<input>').attr({
                         type: 'hidden',
@@ -141,7 +192,15 @@ class AdminNewPreset
                 });
 
                 // Add a note about the preset property
-                $('#mcs_property_id').after('<p class="description" style="color: #135e96; font-style: italic;"><?php echo esc_js(__('Property has been pre-selected and cannot be changed.', 'minpaku-suite')); ?></p>');
+                $('#mcs_property_id').after('<p class="description" style="color: #135e96; font-style: italic;"><?php echo esc_js(__('Property and booking details have been pre-filled from calendar selection.', 'minpaku-suite')); ?></p>');
+
+                <?php if (self::$preset_checkin && self::$preset_checkout): ?>
+                // Make date fields readonly if preset
+                $('#mcs_check_in_date, input[name="mcs_check_in_date"], #mcs_check_out_date, input[name="mcs_check_out_date"]').attr('readonly', true).css({
+                    'background-color': '#f0f0f1',
+                    'border': '1px solid #c3c4c7'
+                });
+                <?php endif; ?>
 
                 // Focus on the first editable field (guest name)
                 $('#mcs_guest_name').focus();
@@ -157,5 +216,29 @@ class AdminNewPreset
     public static function getPresetPropertyId(): ?int
     {
         return self::$preset_property_id;
+    }
+
+    /**
+     * Get preset check-in date
+     */
+    public static function getPresetCheckin(): ?string
+    {
+        return self::$preset_checkin;
+    }
+
+    /**
+     * Get preset check-out date
+     */
+    public static function getPresetCheckout(): ?string
+    {
+        return self::$preset_checkout;
+    }
+
+    /**
+     * Get preset number of guests
+     */
+    public static function getPresetGuests(): ?int
+    {
+        return self::$preset_guests;
     }
 }

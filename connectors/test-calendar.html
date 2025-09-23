@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>カレンダーテスト</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        /* コネクタのCSSをコピー */
+        .mpc-calendar-container {
+            max-width: 100%;
+            margin: 20px 0;
+        }
+
+        .mpc-calendar-month {
+            margin-bottom: 30px;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .mpc-calendar-month-title {
+            background: #667eea;
+            color: white;
+            margin: 0;
+            padding: 16px 20px;
+            font-size: 18px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .mpc-calendar-grid {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .mpc-calendar-header {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .mpc-calendar-day-header {
+            padding: 12px 8px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .mpc-calendar-week {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .mpc-calendar-day {
+            position: relative;
+            min-height: 70px;
+            padding: 0;
+            border-right: 1px solid #f0f0f0;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background: white;
+        }
+
+        .mpc-calendar-day:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .mpc-calendar-day-content {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .mpc-calendar-day-number {
+            font-weight: 600;
+            font-size: 14px;
+            line-height: 1;
+            z-index: 5;
+            color: #333;
+            align-self: flex-start;
+        }
+
+        .mpc-price-badge {
+            position: relative;
+            align-self: flex-end;
+            background: rgba(102, 126, 234, 0.9);
+            color: white;
+            font-size: 9px;
+            font-weight: 600;
+            padding: 2px 4px;
+            border-radius: 4px;
+            white-space: nowrap;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+            z-index: 10;
+            line-height: 1.1;
+            min-width: 18px;
+            text-align: center;
+            margin-top: auto;
+            backdrop-filter: blur(4px);
+        }
+
+        .mpc-price-badge.loading {
+            background: #e0e0e0;
+            color: #999;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; }
+            100% { opacity: 0.6; }
+        }
+
+        /* ポータル側のCSSも追加 */
+        .mcs-availability-calendar {
+            max-width: 100%;
+            margin: 20px 0;
+        }
+
+        .mcs-calendar-month {
+            margin-bottom: 30px;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .mcs-month-title {
+            background: #667eea;
+            color: white;
+            margin: 0;
+            padding: 16px 20px;
+            font-size: 18px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .mcs-calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1px;
+            background: #f0f0f0;
+        }
+
+        .mcs-day-header {
+            padding: 12px 8px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            background: #f8f9fa;
+        }
+
+        .mcs-day {
+            position: relative;
+            min-height: 70px;
+            padding: 0;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: white;
+        }
+
+        .mcs-day:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .mcs-day-content {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .mcs-day-number {
+            font-weight: 600;
+            font-size: 14px;
+            line-height: 1;
+            color: #333;
+            align-self: flex-start;
+        }
+
+        .mcs-price-badge {
+            position: relative;
+            align-self: flex-end;
+            background: rgba(102, 126, 234, 0.9);
+            color: white;
+            font-size: 9px;
+            font-weight: 600;
+            padding: 2px 4px;
+            border-radius: 4px;
+            white-space: nowrap;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+            line-height: 1.1;
+            min-width: 18px;
+            text-align: center;
+            margin-top: auto;
+            backdrop-filter: blur(4px);
+            z-index: 5;
+        }
+
+        .mcs-price-badge.loading {
+            background: #e0e0e0;
+            color: #999;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body>
+    <h1>カレンダーテスト</h1>
+
+    <h2>コネクタ側カレンダー（テスト）</h2>
+    <div class="mpc-calendar-container" data-property-id="123" data-show-prices="1">
+        <div class="mpc-calendar-month">
+            <h3 class="mpc-calendar-month-title">December 2024</h3>
+            <div class="mpc-calendar-grid">
+                <div class="mpc-calendar-header">
+                    <div class="mpc-calendar-day-header">日</div>
+                    <div class="mpc-calendar-day-header">月</div>
+                    <div class="mpc-calendar-day-header">火</div>
+                    <div class="mpc-calendar-day-header">水</div>
+                    <div class="mpc-calendar-day-header">木</div>
+                    <div class="mpc-calendar-day-header">金</div>
+                    <div class="mpc-calendar-day-header">土</div>
+                </div>
+                <div class="mpc-calendar-week">
+                    <div class="mpc-calendar-day calendar-cell" data-date="2024-12-01" data-property-id="123">
+                        <div class="mpc-calendar-day-content">
+                            <span class="mpc-calendar-day-number">1</span>
+                            <div class="mpc-price-badge loading" data-date="2024-12-01">...</div>
+                        </div>
+                    </div>
+                    <div class="mpc-calendar-day calendar-cell" data-date="2024-12-02" data-property-id="123">
+                        <div class="mpc-calendar-day-content">
+                            <span class="mpc-calendar-day-number">2</span>
+                            <div class="mpc-price-badge loading" data-date="2024-12-02">...</div>
+                        </div>
+                    </div>
+                    <div class="mpc-calendar-day calendar-cell" data-date="2024-12-03" data-property-id="123">
+                        <div class="mpc-calendar-day-content">
+                            <span class="mpc-calendar-day-number">3</span>
+                            <div class="mpc-price-badge loading" data-date="2024-12-03">...</div>
+                        </div>
+                    </div>
+                    <div class="mpc-calendar-day calendar-cell" data-date="2024-12-04" data-property-id="123">
+                        <div class="mpc-calendar-day-content">
+                            <span class="mpc-calendar-day-number">4</span>
+                            <div class="mpc-price-badge loading" data-date="2024-12-04">...</div>
+                        </div>
+                    </div>
+                    <div class="mpc-calendar-day calendar-cell" data-date="2024-12-05" data-property-id="123">
+                        <div class="mpc-calendar-day-content">
+                            <span class="mpc-calendar-day-number">5</span>
+                            <div class="mpc-price-badge loading" data-date="2024-12-05">...</div>
+                        </div>
+                    </div>
+                    <div class="mpc-calendar-day calendar-cell" data-date="2024-12-06" data-property-id="123">
+                        <div class="mpc-calendar-day-content">
+                            <span class="mpc-calendar-day-number">6</span>
+                            <div class="mpc-price-badge loading" data-date="2024-12-06">...</div>
+                        </div>
+                    </div>
+                    <div class="mpc-calendar-day calendar-cell" data-date="2024-12-07" data-property-id="123">
+                        <div class="mpc-calendar-day-content">
+                            <span class="mpc-calendar-day-number">7</span>
+                            <div class="mpc-price-badge loading" data-date="2024-12-07">...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <h2>ポータル側カレンダー（テスト）</h2>
+    <div class="mcs-availability-calendar" data-property-id="123" data-show-prices="1">
+        <div class="mcs-calendar-month">
+            <h3 class="mcs-month-title">December 2024</h3>
+            <div class="mcs-calendar-grid">
+                <div class="mcs-day-header">日</div>
+                <div class="mcs-day-header">月</div>
+                <div class="mcs-day-header">火</div>
+                <div class="mcs-day-header">水</div>
+                <div class="mcs-day-header">木</div>
+                <div class="mcs-day-header">金</div>
+                <div class="mcs-day-header">土</div>
+
+                <div class="mcs-day" data-date="2024-12-01" data-property-id="123">
+                    <div class="mcs-day-content">
+                        <span class="mcs-day-number">1</span>
+                        <div class="mcs-price-badge loading" data-date="2024-12-01">...</div>
+                    </div>
+                </div>
+                <div class="mcs-day" data-date="2024-12-02" data-property-id="123">
+                    <div class="mcs-day-content">
+                        <span class="mcs-day-number">2</span>
+                        <div class="mcs-price-badge loading" data-date="2024-12-02">...</div>
+                    </div>
+                </div>
+                <div class="mcs-day" data-date="2024-12-03" data-property-id="123">
+                    <div class="mcs-day-content">
+                        <span class="mcs-day-number">3</span>
+                        <div class="mcs-price-badge loading" data-date="2024-12-03">...</div>
+                    </div>
+                </div>
+                <div class="mcs-day" data-date="2024-12-04" data-property-id="123">
+                    <div class="mcs-day-content">
+                        <span class="mcs-day-number">4</span>
+                        <div class="mcs-price-badge loading" data-date="2024-12-04">...</div>
+                    </div>
+                </div>
+                <div class="mcs-day" data-date="2024-12-05" data-property-id="123">
+                    <div class="mcs-day-content">
+                        <span class="mcs-day-number">5</span>
+                        <div class="mcs-price-badge loading" data-date="2024-12-05">...</div>
+                    </div>
+                </div>
+                <div class="mcs-day" data-date="2024-12-06" data-property-id="123">
+                    <div class="mcs-day-content">
+                        <span class="mcs-day-number">6</span>
+                        <div class="mcs-price-badge loading" data-date="2024-12-06">...</div>
+                    </div>
+                </div>
+                <div class="mcs-day" data-date="2024-12-07" data-property-id="123">
+                    <div class="mcs-day-content">
+                        <span class="mcs-day-number">7</span>
+                        <div class="mcs-price-badge loading" data-date="2024-12-07">...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // 簡易テスト用JavaScript
+    jQuery(document).ready(function($) {
+        console.log('テストページ読み込み完了');
+
+        // 3秒後に価格バッジを更新
+        setTimeout(function() {
+            $('.mpc-price-badge.loading, .mcs-price-badge.loading').each(function() {
+                var price = 8000 + Math.floor(Math.random() * 7000);
+                var formattedPrice = '¥' + price.toLocaleString();
+                $(this).removeClass('loading').text(formattedPrice);
+            });
+            console.log('価格バッジを更新しました');
+        }, 3000);
+
+        // クリックイベント
+        $('.mpc-calendar-day, .mcs-day').click(function() {
+            var date = $(this).data('date');
+            alert('日付がクリックされました: ' + date);
+        });
+    });
+    </script>
+</body>
+</html>

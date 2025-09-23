@@ -213,7 +213,7 @@ class MPC_Client_Api {
         $args = array(
             'method' => 'GET',
             'headers' => $signature_data['headers'],
-            'timeout' => 30, // Increased timeout for debugging
+            'timeout' => 8,
             'redirection' => 2,
             'httpversion' => '1.1',
             'user-agent' => 'WPMC/1.0',
@@ -386,29 +386,14 @@ class MPC_Client_Api {
         $body = wp_remote_retrieve_body($response);
         $data = json_decode($body, true);
 
-        $response_code = wp_remote_retrieve_response_code($response);
-
-        // Enhanced debugging
-        if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
-            error_log('[minpaku-connector] Availability API response code: ' . $response_code);
-            error_log('[minpaku-connector] Availability API response body: ' . $body);
-            if ($data) {
-                error_log('[minpaku-connector] Availability API parsed data: ' . print_r($data, true));
-            }
-        }
-
-        if ($response_code === 200 && isset($data['success']) && $data['success']) {
+        if (wp_remote_retrieve_response_code($response) === 200 && isset($data['success']) && $data['success']) {
             // Cache for shorter duration since availability changes frequently
             set_transient($cache_key, $data, 60); // 1 minute cache
             return $data;
         } else {
-            $error_message = isset($data['message']) ? $data['message'] : __('Failed to fetch availability.', 'wp-minpaku-connector');
-            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
-                error_log('[minpaku-connector] Availability API error: ' . $error_message);
-            }
             return array(
                 'success' => false,
-                'message' => $error_message . ' (HTTP ' . $response_code . ')'
+                'message' => isset($data['message']) ? $data['message'] : __('Failed to fetch availability.', 'wp-minpaku-connector')
             );
         }
     }

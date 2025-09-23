@@ -277,9 +277,19 @@ class Bootstrap
         if ($is_our_page) {
             $css_file = MCS_URL . 'assets/admin.css';
             $css_path = MCS_PATH . 'assets/admin.css';
+            $js_file = MCS_URL . 'assets/admin.js';
+            $js_path = MCS_PATH . 'assets/admin.js';
+
+            // Admin calendar assets
+            $calendar_css_file = MCS_URL . 'assets/admin-calendar.css';
+            $calendar_css_path = MCS_PATH . 'assets/admin-calendar.css';
+            $calendar_js_file = MCS_URL . 'assets/admin-calendar.js';
+            $calendar_js_path = MCS_PATH . 'assets/admin-calendar.js';
 
             error_log("MCS Debug: CSS path = {$css_path}, exists = " . (file_exists($css_path) ? 'YES' : 'NO'));
+            error_log("MCS Debug: JS path = {$js_path}, exists = " . (file_exists($js_path) ? 'YES' : 'NO'));
 
+            // Enqueue main admin CSS with cache-busting
             if (file_exists($css_path)) {
                 wp_enqueue_style(
                     'minpaku-admin',
@@ -288,6 +298,46 @@ class Bootstrap
                     filemtime($css_path)
                 );
                 error_log("MCS Debug: CSS enqueued successfully");
+            }
+
+            // Enqueue admin calendar CSS with cache-busting
+            if (file_exists($calendar_css_path)) {
+                wp_enqueue_style(
+                    'minpaku-admin-calendar',
+                    $calendar_css_file,
+                    ['minpaku-admin'],
+                    filemtime($calendar_css_path)
+                );
+                error_log("MCS Debug: Calendar CSS enqueued successfully");
+            }
+
+            // Enqueue main admin JS with cache-busting
+            if (file_exists($js_path)) {
+                wp_enqueue_script(
+                    'minpaku-admin',
+                    $js_file,
+                    ['jquery'],
+                    filemtime($js_path),
+                    true
+                );
+            }
+
+            // Enqueue admin calendar JS with cache-busting
+            if (file_exists($calendar_js_path)) {
+                wp_enqueue_script(
+                    'minpaku-admin-calendar',
+                    $calendar_js_file,
+                    ['jquery', 'minpaku-admin'],
+                    filemtime($calendar_js_path),
+                    true
+                );
+
+                // Localize script with booking URL
+                wp_localize_script('minpaku-admin-calendar', 'minpakuAdmin', [
+                    'bookingUrl' => admin_url('post-new.php?post_type=mcs_booking')
+                ]);
+
+                error_log("MCS Debug: Calendar JS enqueued successfully");
             }
         }
     }

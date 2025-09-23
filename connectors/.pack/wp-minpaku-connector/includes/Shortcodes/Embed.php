@@ -203,20 +203,9 @@ class MPC_Shortcodes_Embed {
      * Render availability calendar
      */
     private static function render_availability($atts, $api) {
-        // Use the new Calendar class with proper attribute mapping
+        // Use the new Calendar class
         if (class_exists('MinpakuConnector\Shortcodes\MPC_Shortcodes_Calendar')) {
-            // Map attributes from main shortcode to calendar-specific format
-            $calendar_atts = array(
-                'property_id' => $atts['property_id'] ?? '',
-                'months' => $atts['months'] ?? 2,
-                'show_prices' => $atts['show_prices'] ?? 'true',
-                'adults' => $atts['adults'] ?? 2,
-                'children' => $atts['children'] ?? 0,
-                'infants' => $atts['infants'] ?? 0,
-                'currency' => $atts['currency'] ?? 'JPY'
-            );
-
-            return \MinpakuConnector\Shortcodes\MPC_Shortcodes_Calendar::render_calendar($calendar_atts);
+            return \MinpakuConnector\Shortcodes\MPC_Shortcodes_Calendar::render_calendar($atts);
         }
 
         // Fallback error
@@ -382,21 +371,6 @@ class MPC_Shortcodes_Embed {
                 $output .= '<li>' . esc_html($amenity) . '</li>';
             }
             $output .= '</ul>';
-            $output .= '</div>';
-        }
-
-        // Add availability calendar for property view
-        if (class_exists('MinpakuConnector\Shortcodes\MPC_Shortcodes_Calendar')) {
-            $output .= '<div class="wmc-property-calendar">';
-            $output .= '<h4>' . esc_html__('Availability Calendar', 'wp-minpaku-connector') . '</h4>';
-
-            $calendar_atts = array(
-                'property_id' => $property['id'],
-                'months' => 3,
-                'show_prices' => 'true'
-            );
-
-            $output .= \MinpakuConnector\Shortcodes\MPC_Shortcodes_Calendar::render_calendar($calendar_atts);
             $output .= '</div>';
         }
 

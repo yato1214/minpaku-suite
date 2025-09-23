@@ -1,0 +1,307 @@
+# WordPress Plugin Language File Template
+# Copyright (C) 2024 Yato1214
+msgid ""
+msgstr ""
+"Project-Id-Version: WP Minpaku Connector 1.0.0\n"
+"Report-Msgid-Bugs-To: https://github.com/yato1214/minpaku-suite\n"
+"POT-Creation-Date: 2025-09-22 12:00+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: WordPress\n"
+
+#: wp-minpaku-connector.php
+msgid "You do not have permission to perform this action."
+msgstr ""
+
+#: wp-minpaku-connector.php
+msgid "API client not available."
+msgstr ""
+
+#: wp-minpaku-connector.php
+msgid "Minpaku Connector"
+msgstr ""
+
+#: includes/Admin/Settings.php
+msgid "Portal Connection"
+msgstr ""
+
+#: includes/Admin/Settings.php
+msgid "Enter your Minpaku Suite portal connection details. You can get these from your portal admin under Minpaku › Settings › Connector."
+msgstr ""
+
+#: includes/Admin/Settings.php
+msgid "Portal Base URL"
+msgstr ""
+
+#: includes/Admin/Settings.php
+msgid "The base URL of your Minpaku Suite portal (e.g., https://yoursite.com)"
+msgstr ""
+
+#: includes/Admin/Settings.php
+msgid "Site ID"
+msgstr ""
+
+#: includes/Admin/Settings.php
+msgid "The Site ID generated in your portal connector settings."
+msgstr ""
+
+#: includes/Admin/Settings.php
+msgid "API Key"
+msgstr ""
+
+#: includes/Admin/Settings.php
+msgid "The API Key generated in your portal connector settings."
+msgstr ""
+
+#: includes/Admin/Settings.php
+msgid "Secret"
+msgstr ""
+
+#: includes/Admin/Settings.php
+msgid "The Secret key generated in your portal connector settings."
+msgstr ""
+
+#: includes/Admin/Settings.php
+msgid "You do not have permission to access this page."
+msgstr ""
+
+#: includes/Admin/Settings.php
+msgid "Minpaku Connector Settings"
+msgstr ""
+
+#: includes/Admin/Settings.php
+msgid "Connect your WordPress site to a Minpaku Suite portal to display property listings and availability calendars."
+msgstr ""
+
+#: includes/Admin/Settings.php
+msgid "Connection Test"
+msgstr ""
+
+#: includes/Admin/Settings.php
+msgid "Test your connection to the Minpaku Suite portal."
+msgstr ""
+
+#: includes/Admin/Settings.php
+msgid "Test Connection"
+msgstr ""
+
+#: includes/Admin/Settings.php
+msgid "Usage"
+msgstr ""
+
+#: includes/Admin/Settings.php
+msgid "Use these shortcodes to display content from your Minpaku Suite portal:"
+msgstr ""
+
+#: includes/Admin/Settings.php
+msgid "Property Listings"
+msgstr ""
+
+#: includes/Admin/Settings.php
+msgid "Display a grid of property listings. Parameters: limit (number of properties), columns (grid columns)."
+msgstr ""
+
+#: includes/Admin/Settings.php
+msgid "Availability Calendar"
+msgstr ""
+
+#: includes/Admin/Settings.php
+msgid "Display availability calendar for a specific property. Parameters: property_id (required), months (number of months to display)."
+msgstr ""
+
+#: includes/Admin/Settings.php
+msgid "Property Details"
+msgstr ""
+
+#: includes/Admin/Settings.php
+msgid "Display detailed information for a specific property. Parameters: property_id (required)."
+msgstr ""
+
+#: includes/Admin/Settings.php
+msgid "Please complete the connection settings above before using shortcodes."
+msgstr ""
+
+#: includes/Admin/Settings.php
+msgid "Setup Instructions"
+msgstr ""
+
+#: includes/Admin/Settings.php
+msgid "Log in to your Minpaku Suite portal admin area."
+msgstr ""
+
+#: includes/Admin/Settings.php
+msgid "Go to Minpaku › Settings › Connector."
+msgstr ""
+
+#: includes/Admin/Settings.php
+msgid "Enable the connector and add your WordPress site domain to the allowed domains list."
+msgstr ""
+
+#: includes/Admin/Settings.php
+msgid "Generate new API keys for this site."
+msgstr ""
+
+#: includes/Admin/Settings.php
+msgid "Copy the Portal Base URL, Site ID, API Key, and Secret to the form above."
+msgstr ""
+
+#: includes/Admin/Settings.php
+msgid "Save the settings and test the connection."
+msgstr ""
+
+#: includes/Admin/Settings.php
+msgid "Use the shortcodes on your pages and posts to display content."
+msgstr ""
+
+#: includes/Client/Api.php
+msgid "API credentials not configured."
+msgstr ""
+
+#: includes/Client/Api.php
+msgid "Connection failed: %s"
+msgstr ""
+
+#: includes/Client/Api.php
+msgid "Connected successfully to %s (v%s)"
+msgstr ""
+
+#: includes/Client/Api.php
+msgid "Unknown error occurred."
+msgstr ""
+
+#: includes/Client/Api.php
+msgid "Failed to fetch properties."
+msgstr ""
+
+#: includes/Client/Api.php
+msgid "Failed to fetch availability."
+msgstr ""
+
+#: includes/Client/Api.php
+msgid "Property not found."
+msgstr ""
+
+#: includes/Client/Api.php
+msgid "Failed to generate quote."
+msgstr ""
+
+#: includes/Shortcodes/Embed.php
+msgid "Minpaku Connector is not properly configured."
+msgstr ""
+
+#: includes/Shortcodes/Embed.php
+msgid "Invalid shortcode type specified."
+msgstr ""
+
+#: includes/Shortcodes/Embed.php
+msgid "No properties found."
+msgstr ""
+
+#: includes/Shortcodes/Embed.php
+msgid "Property ID is required for availability display."
+msgstr ""
+
+#: includes/Shortcodes/Embed.php
+msgid "No availability data found."
+msgstr ""
+
+#: includes/Shortcodes/Embed.php
+msgid "Property ID is required."
+msgstr ""
+
+#: includes/Shortcodes/Embed.php
+msgid "Availability from %s to %s"
+msgstr ""
+
+#: includes/Shortcodes/Embed.php
+msgid "Capacity:"
+msgstr ""
+
+#: includes/Shortcodes/Embed.php
+msgid "Bedrooms:"
+msgstr ""
+
+#: includes/Shortcodes/Embed.php
+msgid "From:"
+msgstr ""
+
+#: includes/Shortcodes/Embed.php
+msgid "Capacity"
+msgstr ""
+
+#: includes/Shortcodes/Embed.php
+msgid "Bedrooms"
+msgstr ""
+
+#: includes/Shortcodes/Embed.php
+msgid "Bathrooms"
+msgstr ""
+
+#: includes/Shortcodes/Embed.php
+msgid "Base Price:"
+msgstr ""
+
+#: includes/Shortcodes/Embed.php
+msgid "per night"
+msgstr ""
+
+#: includes/Shortcodes/Embed.php
+msgid "Location"
+msgstr ""
+
+#: includes/Shortcodes/Embed.php
+msgid "Amenities"
+msgstr ""
+
+#: includes/Shortcodes/Embed.php
+msgid "Sun"
+msgstr ""
+
+#: includes/Shortcodes/Embed.php
+msgid "Mon"
+msgstr ""
+
+#: includes/Shortcodes/Embed.php
+msgid "Tue"
+msgstr ""
+
+#: includes/Shortcodes/Embed.php
+msgid "Wed"
+msgstr ""
+
+#: includes/Shortcodes/Embed.php
+msgid "Thu"
+msgstr ""
+
+#: includes/Shortcodes/Embed.php
+msgid "Fri"
+msgstr ""
+
+#: includes/Shortcodes/Embed.php
+msgid "Sat"
+msgstr ""
+
+#: includes/Shortcodes/Embed.php
+msgid "Available"
+msgstr ""
+
+#: includes/Shortcodes/Embed.php
+msgid "Unavailable"
+msgstr ""
+
+#: assets/admin.js
+msgid "Testing connection..."
+msgstr ""
+
+#: assets/admin.js
+msgid "Connection successful!"
+msgstr ""
+
+#: assets/admin.js
+msgid "Connection failed. Please check your settings."
+msgstr ""

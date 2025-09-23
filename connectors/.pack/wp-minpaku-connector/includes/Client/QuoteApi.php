@@ -141,10 +141,10 @@ class MPC_Client_QuoteApi {
         // Add origin header
         $signed_data['headers']['X-MCS-Origin'] = home_url();
 
-        // Make request with increased timeout for stability
+        // Make request with 8 second timeout
         $response = wp_remote_get($url, [
             'headers' => $signed_data['headers'],
-            'timeout' => 30,
+            'timeout' => 8,
             'sslverify' => false // For development environments
         ]);
 

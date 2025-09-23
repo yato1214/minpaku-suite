@@ -269,4 +269,65 @@ class AvailabilityService
 
         return true;
     }
+
+    /**
+     * Get availability data for date range (for API)
+     */
+    public static function get_availability_range(int $property_id, string $start_date, string $end_date): array
+    {
+        error_log('[AvailabilityService] Starting get_availability_range for property ' . $property_id . ', dates: ' . $start_date . ' to ' . $end_date);
+
+        $start = \DateTime::createFromFormat('Y-m-d', $start_date);
+        $end = \DateTime::createFromFormat('Y-m-d', $end_date);
+
+        if (!$start || !$end || $start >= $end) {
+            error_log('[AvailabilityService] Invalid date range provided');
+            return [];
+        }
+
+        // Get occupancy map for the date range
+        error_log('[AvailabilityService] Getting occupancy map...');
+        $start_time = microtime(true);
+        $occupancy_map = self::getPropertyOccupancyMap($property_id, $start, $end);
+        $map_time = microtime(true) - $start_time;
+        error_log('[AvailabilityService] Occupancy map generated in ' . number_format($map_time, 4) . ' seconds');
+
+        $availability = [];
+        $current = clone $start;
+
+        error_log('[AvailabilityService] Starting to build availability array...');
+        $data_start_time = microtime(true);
+
+        // Get base price once to avoid repeated meta queries
+        $base_price = floatval(get_post_meta($property_id, '_mcs_base_price', true)) ?:
+                     floatval(get_post_meta($property_id, 'base_price', true)) ?: 100;
+
+        while ($current < $end) {
+            $date_string = $current->format('Y-m-d');
+            $status = $occupancy_map[$date_string] ?? self::STATUS_VACANT;
+
+            // Convert status to availability format
+            $is_available = ($status === self::STATUS_VACANT);
+            $status_string = match($status) {
+                self::STATUS_VACANT => 'available',
+                self::STATUS_PARTIAL => 'partial',
+                self::STATUS_FULL => 'booked',
+                default => 'available'
+            };
+
+            $availability[] = [
+                'date' => $date_string,
+                'available' => $is_available,
+                'status' => $status_string,
+                'price' => $is_available ? $base_price : null
+            ];
+
+            $current->add(new \DateInterval('P1D'));
+        }
+
+        $data_time = microtime(true) - $data_start_time;
+        error_log('[AvailabilityService] Availability array built in ' . number_format($data_time, 4) . ' seconds. Total items: ' . count($availability));
+
+        return $availability;
+    }
 }
