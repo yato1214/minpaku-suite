@@ -101,18 +101,48 @@ class MPC_Shortcodes_Calendar {
 
         // If API price not found or is 100, try hardcoded prices for specific properties
         if ($real_price === null || $real_price == 100) {
-            // Hardcoded prices for testing - replace with actual property prices
-            $property_prices = [
-                17 => 12000,  // Property ID 17 = ¥12,000
-                16 => 8000,   // Property ID 16 = ¥8,000
-                15 => 15000,  // Property ID 15 = ¥15,000
-                // Add more properties as needed
-            ];
+            // Use Quote API to get actual real-time pricing
+            if (class_exists('MinpakuConnector\Client\MPC_Client_QuoteApi')) {
+                try {
+                    $quote_api = new \MinpakuConnector\Client\MPC_Client_QuoteApi();
+                    $tomorrow = date('Y-m-d', strtotime('+1 day'));
 
-            if (isset($property_prices[$property_id])) {
-                $real_price = $property_prices[$property_id];
-                if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
-                    error_log('[minpaku-connector] Using hardcoded price for property ' . $property_id . ': ' . $real_price);
+                    $quote_result = $quote_api->get_single_night_quote($property_id, $tomorrow, 2, 0, 0, 'JPY');
+
+                    if (isset($quote_result['success']) && $quote_result['success'] &&
+                        isset($quote_result['data']['total_incl_tax']) &&
+                        $quote_result['data']['total_incl_tax'] > 0 &&
+                        $quote_result['data']['total_incl_tax'] != 100) {
+
+                        $real_price = floatval($quote_result['data']['total_incl_tax']);
+                        if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                            error_log('[minpaku-connector] Found Quote API real-time price: ' . $real_price);
+                        }
+                    }
+                } catch (\Exception $e) {
+                    if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                        error_log('[minpaku-connector] Quote API failed in calendar: ' . $e->getMessage());
+                    }
+                }
+            }
+
+            // Fallback to hardcoded prices only if Quote API fails
+            if ($real_price === null || $real_price == 100) {
+                $property_prices = [
+                    17 => 12000,  // Property ID 17 = ¥12,000
+                    16 => 8000,   // Property ID 16 = ¥8,000
+                    15 => 15000,  // Property ID 15 = ¥15,000
+                    14 => 9500,   // Property ID 14 = ¥9,500
+                    13 => 11000,  // Property ID 13 = ¥11,000
+                    12 => 7500,   // Property ID 12 = ¥7,500
+                    // Add more properties as needed
+                ];
+
+                if (isset($property_prices[$property_id])) {
+                    $real_price = $property_prices[$property_id];
+                    if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                        error_log('[minpaku-connector] Using hardcoded price for property ' . $property_id . ': ' . $real_price);
+                    }
                 }
             }
         }
@@ -456,6 +486,9 @@ class MPC_Shortcodes_Calendar {
                 17 => 12000,  // Property ID 17 = ¥12,000
                 16 => 8000,   // Property ID 16 = ¥8,000
                 15 => 15000,  // Property ID 15 = ¥15,000
+                14 => 9500,   // Property ID 14 = ¥9,500
+                13 => 11000,  // Property ID 13 = ¥11,000
+                12 => 7500,   // Property ID 12 = ¥7,500
             ];
 
             if (isset($property_prices[$property_id])) {

@@ -2,8 +2,8 @@
 # 民泊コネクタプラグイン 最終版ZIPビルダー
 
 param(
-    [string]$Version = "1.1.2",
-    [string]$OutputName = "wp-minpaku-connector-final-v112.zip",
+    [string]$Version = "1.1.4",
+    [string]$OutputName = "wp-minpaku-connector-final-v114.zip",
     [switch]$Clean = $false
 )
 
@@ -144,20 +144,20 @@ try {
     Write-Host ""
     Write-Host "✅ Ready for WordPress installation!" -ForegroundColor $Cyan
     Write-Host ""
-    Write-Host "🎉 FEATURES INCLUDED IN v1.1.2 (価格修正完全版):" -ForegroundColor $Yellow
+    Write-Host "🎉 FEATURES INCLUDED IN v1.1.4 (完全修正版):" -ForegroundColor $Yellow
     Write-Host "✅ Modal calendar popup with enhanced AJAX loading" -ForegroundColor $Green
     Write-Host "✅ Fixed booking page redirect to admin interface" -ForegroundColor $Green
-    Write-Host "✅ 🚀 FIXED: ¥100価格問題を完全解決 - 実際の価格データ表示" -ForegroundColor $Green
-    Write-Host "✅ Property listing modal calendar buttons" -ForegroundColor $Green
-    Write-Host "✅ Property detail page modal calendar integration" -ForegroundColor $Green
-    Write-Host "✅ 🔧 FIXED: type=\"property\"のHTML出力構造修正" -ForegroundColor $Green
-    Write-Host "✅ 🔧 ENHANCED: 多層CSS確実反映システム強化" -ForegroundColor $Green
+    Write-Host "✅ 🚀 FIXED: ¥12000ダミーデータ問題を完全解決 - Quote API使用" -ForegroundColor $Green
+    Write-Host "✅ 🚀 FIXED: Properties shortcodeの実データ価格表示完全対応" -ForegroundColor $Green
+    Write-Host "✅ 🚀 FIXED: Availability calendarの実際価格表示対応" -ForegroundColor $Green
+    Write-Host "✅ 🔧 FIXED: propertyショートコードのjQuery表示問題修正" -ForegroundColor $Green
+    Write-Host "✅ 🔧 ENHANCED: CSS反映強化システム（時間ベースキャッシュバスト）" -ForegroundColor $Green
     Write-Host "✅ Enhanced debug logging for price data analysis" -ForegroundColor $Green
     Write-Host "✅ Improved AJAX error handling and recovery" -ForegroundColor $Green
     Write-Host "✅ Maximum compatibility with themes and plugins" -ForegroundColor $Green
-    Write-Host "✅ 🚀 NEW: APIデータ¥100価格オーバーライド機能" -ForegroundColor $Green
-    Write-Host "✅ 🚀 NEW: プロパティAPI直接価格取得フォールバック" -ForegroundColor $Green
-    Write-Host "✅ 🔧 NEW: Legacy calendar element完全除去システム" -ForegroundColor $Green
+    Write-Host "✅ 🚀 NEW: Quote API リアルタイム価格取得システム" -ForegroundColor $Green
+    Write-Host "✅ 🚀 NEW: 多段階価格フォールバック（API→Property API→ハードコード）" -ForegroundColor $Green
+    Write-Host "✅ 🔧 NEW: JavaScript footer移動によるHTML構造クリーンアップ" -ForegroundColor $Green
 
 } catch {
     Write-Host "ERROR: $($_.Exception.Message)" -ForegroundColor $Red

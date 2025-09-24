@@ -237,14 +237,16 @@ class AvailabilityCalendar
 
         $output .= '</div>';
 
-        // Add JavaScript initialization
-        $output .= '<script>
-        jQuery(document).ready(function($) {
-            if (typeof window.mcsCalendarInit !== "undefined") {
-                window.mcsCalendarInit("#' . esc_js($calendar_id) . '");
-            }
-        });
-        </script>';
+        // Add JavaScript initialization via footer to avoid content display
+        add_action('wp_footer', function() use ($calendar_id) {
+            echo '<script type="text/javascript">';
+            echo 'jQuery(document).ready(function($) {';
+            echo '    if (typeof window.mcsCalendarInit !== "undefined") {';
+            echo '        window.mcsCalendarInit("#' . esc_js($calendar_id) . '");';
+            echo '    }';
+            echo '});';
+            echo '</script>';
+        }, 100);
 
         return $output;
     }
