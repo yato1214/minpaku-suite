@@ -67,6 +67,11 @@ class MPC_Shortcodes_Calendar {
         }
 
         $availability_data = $availability_result['data'] ?? array();
+
+        // Ensure property_id is available for price lookup
+        if (!isset($availability_data['property_id'])) {
+            $availability_data['property_id'] = $property_id;
+        }
         $calendar_id = 'mpc-calendar-' . uniqid();
 
         ob_start();
@@ -250,81 +255,104 @@ class MPC_Shortcodes_Calendar {
      * Get price for a specific date
      */
     private static function get_price_for_day($date_string, $availability_data) {
-        // Debug logging for price data structure
+        // Enhanced debug logging for price data structure
         if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+            error_log('[minpaku-connector] === PRICE DEBUG START ===');
             error_log('[minpaku-connector] Price lookup for date: ' . $date_string);
-            error_log('[minpaku-connector] Availability data structure: ' . print_r($availability_data, true));
+            error_log('[minpaku-connector] Availability data structure keys: ' . print_r(array_keys($availability_data), true));
         }
 
-        // First check availability array for price data
+        // First check availability array for price data (PRIMARY SOURCE)
         if (isset($availability_data['availability']) && is_array($availability_data['availability'])) {
-            foreach ($availability_data['availability'] as $day_data) {
+            foreach ($availability_data['availability'] as $idx => $day_data) {
                 if (isset($day_data['date']) && $day_data['date'] === $date_string) {
-                    // Check multiple possible price fields
-                    $price = 0;
-
-                    // Try different price field names
-                    if (isset($day_data['price']) && is_numeric($day_data['price'])) {
-                        $price = floatval($day_data['price']);
-                    } elseif (isset($day_data['rate']) && is_numeric($day_data['rate'])) {
-                        $price = floatval($day_data['rate']);
-                    } elseif (isset($day_data['base_price']) && is_numeric($day_data['base_price'])) {
-                        $price = floatval($day_data['base_price']);
-                    } elseif (isset($day_data['total_price']) && is_numeric($day_data['total_price'])) {
-                        $price = floatval($day_data['total_price']);
-                    } elseif (isset($day_data['nightly_rate']) && is_numeric($day_data['nightly_rate'])) {
-                        $price = floatval($day_data['nightly_rate']);
-                    }
-
                     if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
-                        error_log('[minpaku-connector] Found price for ' . $date_string . ': ' . $price);
-                        error_log('[minpaku-connector] Day data: ' . print_r($day_data, true));
+                        error_log('[minpaku-connector] EXACT MATCH found at index ' . $idx . ': ' . print_r($day_data, true));
                     }
 
-                    if ($price > 0) {
-                        return '¥' . number_format($price);
+                    // Try different price field names in order of priority
+                    $price_fields = ['price', 'rate', 'base_price', 'nightly_rate', 'total_price'];
+
+                    foreach ($price_fields as $field) {
+                        if (isset($day_data[$field]) && is_numeric($day_data[$field]) && $day_data[$field] > 0) {
+                            $price = floatval($day_data[$field]);
+                            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                                error_log('[minpaku-connector] Found valid price in field "' . $field . '": ' . $price);
+                            }
+                            return '¥' . number_format($price);
+                        }
                     }
                 }
             }
         }
 
-        // Fallback to pricing array if available
+        // Check separate pricing array (SECONDARY SOURCE)
         if (isset($availability_data['pricing']) && is_array($availability_data['pricing'])) {
-            foreach ($availability_data['pricing'] as $day_data) {
-                if (isset($day_data['date']) && $day_data['date'] === $date_string) {
-                    $price = 0;
+            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                error_log('[minpaku-connector] Checking pricing array: ' . print_r($availability_data['pricing'], true));
+            }
 
-                    if (isset($day_data['price']) && is_numeric($day_data['price'])) {
-                        $price = floatval($day_data['price']);
-                    } elseif (isset($day_data['rate']) && is_numeric($day_data['rate'])) {
-                        $price = floatval($day_data['rate']);
-                    } elseif (isset($day_data['base_price']) && is_numeric($day_data['base_price'])) {
-                        $price = floatval($day_data['base_price']);
-                    }
+            foreach ($availability_data['pricing'] as $pricing_data) {
+                if (isset($pricing_data['date']) && $pricing_data['date'] === $date_string) {
+                    $price_fields = ['price', 'rate', 'base_price'];
 
-                    if ($price > 0) {
-                        return '¥' . number_format($price);
+                    foreach ($price_fields as $field) {
+                        if (isset($pricing_data[$field]) && is_numeric($pricing_data[$field]) && $pricing_data[$field] > 0) {
+                            $price = floatval($pricing_data[$field]);
+                            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                                error_log('[minpaku-connector] Found price in pricing array: ' . $price);
+                            }
+                            return '¥' . number_format($price);
+                        }
                     }
                 }
             }
         }
 
-        // Check if there's a rates array with date-indexed prices
+        // Check indexed rates array (TERTIARY SOURCE)
         if (isset($availability_data['rates']) && is_array($availability_data['rates'])) {
-            if (isset($availability_data['rates'][$date_string]) && is_numeric($availability_data['rates'][$date_string])) {
+            if (isset($availability_data['rates'][$date_string]) && is_numeric($availability_data['rates'][$date_string]) && $availability_data['rates'][$date_string] > 0) {
                 $price = floatval($availability_data['rates'][$date_string]);
-                if ($price > 0) {
-                    return '¥' . number_format($price);
+                if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                    error_log('[minpaku-connector] Found price in rates array: ' . $price);
                 }
+                return '¥' . number_format($price);
             }
         }
 
-        // Check for property base price as ultimate fallback
-        if (isset($availability_data['property']['base_price']) && is_numeric($availability_data['property']['base_price'])) {
-            $base_price = floatval($availability_data['property']['base_price']);
-            if ($base_price > 0) {
-                return '¥' . number_format($base_price);
+        // FINAL FALLBACK - Use property meta instead of hardcoded 100
+        if (isset($availability_data['property_id'])) {
+            $property_id = intval($availability_data['property_id']);
+
+            // Try to get actual property price from WordPress meta
+            $property_base_price = get_post_meta($property_id, '_mcs_base_price', true);
+            if (!$property_base_price) {
+                $property_base_price = get_post_meta($property_id, 'base_price', true);
             }
+
+            if ($property_base_price && is_numeric($property_base_price) && $property_base_price > 0) {
+                $price = floatval($property_base_price);
+                if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                    error_log('[minpaku-connector] Using property meta base_price: ' . $price);
+                }
+                return '¥' . number_format($price);
+            }
+        }
+
+        // Check property data within availability response
+        if (isset($availability_data['property']['base_price']) && is_numeric($availability_data['property']['base_price']) && $availability_data['property']['base_price'] > 0) {
+            $base_price = floatval($availability_data['property']['base_price']);
+            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                error_log('[minpaku-connector] Using availability data property base_price: ' . $base_price);
+            }
+            return '¥' . number_format($base_price);
+        }
+
+        // If no price found, return empty instead of showing misleading price
+        if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+            error_log('[minpaku-connector] NO PRICE FOUND for ' . $date_string . ' - returning dash');
+            error_log('[minpaku-connector] Full availability data: ' . print_r($availability_data, true));
+            error_log('[minpaku-connector] === PRICE DEBUG END ===');
         }
 
         return __('—', 'wp-minpaku-connector');

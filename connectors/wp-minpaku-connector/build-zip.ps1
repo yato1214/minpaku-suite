@@ -2,8 +2,8 @@
 # 民泊コネクタプラグイン 最終版ZIPビルダー
 
 param(
-    [string]$Version = "1.0.3",
-    [string]$OutputName = "wp-minpaku-connector-final.zip",
+    [string]$Version = "1.1.1",
+    [string]$OutputName = "wp-minpaku-connector-final-v111.zip",
     [switch]$Clean = $false
 )
 
@@ -144,13 +144,19 @@ try {
     Write-Host ""
     Write-Host "✅ Ready for WordPress installation!" -ForegroundColor $Cyan
     Write-Host ""
-    Write-Host "FEATURES INCLUDED:" -ForegroundColor $Yellow
-    Write-Host "✅ Modal calendar popup with AJAX loading" -ForegroundColor $Green
-    Write-Host "✅ Correct admin booking page redirect" -ForegroundColor $Green
-    Write-Host "✅ Enhanced price display debugging" -ForegroundColor $Green
-    Write-Host "✅ Property listing modal buttons" -ForegroundColor $Green
-    Write-Host "✅ Property detail modal calendar" -ForegroundColor $Green
-    Write-Host "✅ Improved CSS loading with !important rules" -ForegroundColor $Green
+    Write-Host "🎉 FEATURES INCLUDED IN v1.1.1 (最終修正版):" -ForegroundColor $Yellow
+    Write-Host "✅ Modal calendar popup with enhanced AJAX loading" -ForegroundColor $Green
+    Write-Host "✅ Fixed booking page redirect to admin interface" -ForegroundColor $Green
+    Write-Host "✅ 🔧 FIXED: Price display now shows actual data instead of ¥100" -ForegroundColor $Green
+    Write-Host "✅ Property listing modal calendar buttons" -ForegroundColor $Green
+    Write-Host "✅ Property detail page modal calendar integration" -ForegroundColor $Green
+    Write-Host "✅ 🔧 FIXED: Completely removed all legacy calendar remnants" -ForegroundColor $Green
+    Write-Host "✅ 🔧 ENHANCED: Multi-layer CSS with aggressive loading and fallbacks" -ForegroundColor $Green
+    Write-Host "✅ Enhanced debug logging for price data analysis" -ForegroundColor $Green
+    Write-Host "✅ Improved AJAX error handling and recovery" -ForegroundColor $Green
+    Write-Host "✅ Maximum compatibility with themes and plugins" -ForegroundColor $Green
+    Write-Host "✅ 🔧 NEW: Property meta fallback for accurate pricing" -ForegroundColor $Green
+    Write-Host "✅ 🔧 NEW: Legacy calendar element suppression system" -ForegroundColor $Green
 
 } catch {
     Write-Host "ERROR: $($_.Exception.Message)" -ForegroundColor $Red
