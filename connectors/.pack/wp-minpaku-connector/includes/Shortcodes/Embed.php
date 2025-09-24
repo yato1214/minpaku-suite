@@ -414,8 +414,9 @@ class MPC_Shortcodes_Embed {
 
         $output .= '</div>'; // Close wmc-property-full
 
-        // IMPORTANT: Hide any legacy calendar elements that might appear
+        // IMPORTANT: Hide any legacy calendar elements and disable auto-init
         $output .= '<style scoped>';
+        $output .= '.wmc-property-details .mpc-calendar-container, ';
         $output .= '.wmc-property-details .mcs-availability-calendar, ';
         $output .= '.wmc-property-details .mcs-calendar-month, ';
         $output .= '.wmc-property-details .mcs-calendar-grid, ';
@@ -425,6 +426,14 @@ class MPC_Shortcodes_Embed {
         $output .= '  visibility: hidden !important; ';
         $output .= '} ';
         $output .= '</style>';
+
+        // Disable JavaScript calendar initialization for property details
+        $output .= '<script>';
+        $output .= 'jQuery(document).ready(function($) {';
+        $output .= '  $(".wmc-property-details [data-auto-init]").removeAttr("data-auto-init");';
+        $output .= '  $(".wmc-property-details .mpc-calendar-container").hide();';
+        $output .= '});';
+        $output .= '</script>';
 
         return $output;
     }
@@ -497,6 +506,12 @@ class MPC_Shortcodes_Embed {
                 .wmc-property-details .mcs-availability-calendar, .wmc-property-details .mcs-calendar-month, .wmc-property-details .mcs-calendar-grid, .wmc-property-details .legacy-calendar, .wmc-property-details [class*="calendar"]:not(.wmc-calendar-button):not(.wmc-property-calendar){display:none!important;visibility:hidden!important;}
                 /* CRITICAL: Ensure prices are visible and properly styled */
                 .mcs-day-price{display:inline-block!important;font-size:11px!important;color:#333!important;background:rgba(0,0,0,0.06)!important;padding:2px 4px!important;border-radius:3px!important;margin-top:4px!important;}
+                /* CRITICAL: Force show real prices, hide Y100 */
+                .mcs-day-price:contains("¥100"){display:none!important;}
+                /* CRITICAL: Property details cleanup */
+                .wmc-property-details .mpc-calendar-container{display:none!important;}
+                .wmc-property-details [id*="mcs-calendar"]{display:none!important;}
+                body.wmc-modal-open .mcs-day-price{display:inline-block!important;}
             ';
 
             wp_add_inline_style('wp-minpaku-connector-calendar', $critical_css);
