@@ -1,5 +1,5 @@
-# WordPress Minpaku Connector Plugin - Final ZIP Builder
-# 民泊コネクタプラグイン 最終版ZIPビルダー
+# WordPress Minpaku Connector Plugin - Final ZIP Builder v1.1.2
+# 民泊コネクタプラグイン 価格修正完全版
 
 param(
     [string]$Version = "1.1.2",
@@ -16,7 +16,7 @@ $Red = "Red"
 $Cyan = "Cyan"
 $Blue = "Blue"
 
-Write-Host "=== Minpaku Connector Plugin FINAL ZIP Builder ===" -ForegroundColor $Cyan
+Write-Host "=== Minpaku Connector Plugin FINAL ZIP Builder v1.1.2 ===" -ForegroundColor $Cyan
 Write-Host "Version: $Version" -ForegroundColor $Yellow
 Write-Host "Output: $OutputName" -ForegroundColor $Yellow
 Write-Host ""
@@ -50,7 +50,7 @@ $ExcludePatterns = @(
     "composer.*", "package*.json", "yarn.lock", "webpack.config.js",
     "gulpfile.js", "Gruntfile.js", ".eslintrc*", ".stylelintrc*",
     "phpcs.xml*", "phpunit.xml*", "tests", "test", "spec", "docs",
-    "documentation", "build-zip.ps1", "*.zip"
+    "documentation", "build-zip*.ps1", "*.zip"
 )
 
 # Create temp build directory
@@ -121,7 +121,7 @@ try {
     if (Test-Path $mainPluginFile) {
         $content = Get-Content $mainPluginFile -Raw -Encoding UTF8
         $content = $content -replace "Version:\s*[\d\.]+", "Version: $Version"
-        $content = $content -replace "define\s*\(\s*['\`"]WP_MINPAKU_CONNECTOR_VERSION['\`"],\s*['\`"][\d\.]+['\`"]\s*\)", "define('WP_MINPAKU_CONNECTOR_VERSION', '$Version')"
+        $content = $content -replace "define\s*\(\s*['`"]WP_MINPAKU_CONNECTOR_VERSION['`"],\s*['`"][\d\.]+['`"]\s*\)", "define('WP_MINPAKU_CONNECTOR_VERSION', '$Version')"
         Set-Content $mainPluginFile $content -Encoding UTF8
         Write-Host "Plugin version updated!" -ForegroundColor $Green
     }
@@ -142,22 +142,22 @@ try {
     Write-Host "Size: $fileSizeKB KB ($fileSizeMB MB)" -ForegroundColor $Green
     Write-Host "Path: $OutputPath" -ForegroundColor $Green
     Write-Host ""
-    Write-Host "✅ Ready for WordPress installation!" -ForegroundColor $Cyan
+    Write-Host "Ready for WordPress installation!" -ForegroundColor $Cyan
     Write-Host ""
-    Write-Host "🎉 FEATURES INCLUDED IN v1.1.2 (価格修正完全版):" -ForegroundColor $Yellow
-    Write-Host "✅ Modal calendar popup with enhanced AJAX loading" -ForegroundColor $Green
-    Write-Host "✅ Fixed booking page redirect to admin interface" -ForegroundColor $Green
-    Write-Host "✅ 🚀 FIXED: ¥100価格問題を完全解決 - 実際の価格データ表示" -ForegroundColor $Green
-    Write-Host "✅ Property listing modal calendar buttons" -ForegroundColor $Green
-    Write-Host "✅ Property detail page modal calendar integration" -ForegroundColor $Green
-    Write-Host "✅ 🔧 FIXED: type=\"property\"のHTML出力構造修正" -ForegroundColor $Green
-    Write-Host "✅ 🔧 ENHANCED: 多層CSS確実反映システム強化" -ForegroundColor $Green
-    Write-Host "✅ Enhanced debug logging for price data analysis" -ForegroundColor $Green
-    Write-Host "✅ Improved AJAX error handling and recovery" -ForegroundColor $Green
-    Write-Host "✅ Maximum compatibility with themes and plugins" -ForegroundColor $Green
-    Write-Host "✅ 🚀 NEW: APIデータ¥100価格オーバーライド機能" -ForegroundColor $Green
-    Write-Host "✅ 🚀 NEW: プロパティAPI直接価格取得フォールバック" -ForegroundColor $Green
-    Write-Host "✅ 🔧 NEW: Legacy calendar element完全除去システム" -ForegroundColor $Green
+    Write-Host "FEATURES INCLUDED IN v1.1.2 (価格修正完全版):" -ForegroundColor $Yellow
+    Write-Host "Modal calendar popup with enhanced AJAX loading" -ForegroundColor $Green
+    Write-Host "Fixed booking page redirect to admin interface" -ForegroundColor $Green
+    Write-Host "FIXED: Y100価格問題を完全解決 - 実際の価格データ表示" -ForegroundColor $Green
+    Write-Host "Property listing modal calendar buttons" -ForegroundColor $Green
+    Write-Host "Property detail page modal calendar integration" -ForegroundColor $Green
+    Write-Host "FIXED: type=property のHTML出力構造修正" -ForegroundColor $Green
+    Write-Host "ENHANCED: 多層CSS確実反映システム強化" -ForegroundColor $Green
+    Write-Host "Enhanced debug logging for price data analysis" -ForegroundColor $Green
+    Write-Host "Improved AJAX error handling and recovery" -ForegroundColor $Green
+    Write-Host "Maximum compatibility with themes and plugins" -ForegroundColor $Green
+    Write-Host "NEW: APIデータY100価格オーバーライド機能" -ForegroundColor $Green
+    Write-Host "NEW: プロパティAPI直接価格取得フォールバック" -ForegroundColor $Green
+    Write-Host "NEW: Legacy calendar element完全除去システム" -ForegroundColor $Green
 
 } catch {
     Write-Host "ERROR: $($_.Exception.Message)" -ForegroundColor $Red
@@ -170,5 +170,5 @@ try {
 }
 
 Write-Host ""
-Write-Host "🎉 FINAL PLUGIN ZIP CREATED!" -ForegroundColor $Cyan
+Write-Host "FINAL PLUGIN ZIP CREATED!" -ForegroundColor $Cyan
 Write-Host "Location: $OutputPath" -ForegroundColor $Green

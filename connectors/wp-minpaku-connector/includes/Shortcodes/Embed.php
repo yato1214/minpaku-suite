@@ -412,8 +412,10 @@ class MPC_Shortcodes_Embed {
         $output .= '</div>';
         $output .= '</div>';
 
+        $output .= '</div>'; // Close wmc-property-full
+
         // IMPORTANT: Hide any legacy calendar elements that might appear
-        $output .= '<style>';
+        $output .= '<style scoped>';
         $output .= '.wmc-property-details .mcs-availability-calendar, ';
         $output .= '.wmc-property-details .mcs-calendar-month, ';
         $output .= '.wmc-property-details .mcs-calendar-grid, ';
@@ -423,8 +425,6 @@ class MPC_Shortcodes_Embed {
         $output .= '  visibility: hidden !important; ';
         $output .= '} ';
         $output .= '</style>';
-
-        $output .= '</div>';
 
         return $output;
     }
@@ -477,7 +477,7 @@ class MPC_Shortcodes_Embed {
             // Force highest priority loading
             wp_style_add_data('wp-minpaku-connector-calendar', 'priority', 'high');
 
-            // Enhanced critical CSS with maximum specificity
+            // Enhanced critical CSS with maximum specificity and price fix awareness
             $critical_css = '
                 /* CRITICAL: Modal overlay styles with maximum priority */
                 .wmc-modal-overlay{position:fixed!important;top:0!important;left:0!important;right:0!important;bottom:0!important;width:100vw!important;height:100vh!important;background:rgba(0,0,0,0.8)!important;z-index:999999!important;display:flex!important;align-items:center!important;justify-content:center!important;opacity:0!important;visibility:hidden!important;transition:all 0.3s ease!important;}
@@ -493,6 +493,10 @@ class MPC_Shortcodes_Embed {
                 .wmc-calendar-button--large{padding:14px 20px!important;font-size:16px!important;font-weight:600!important;}
                 /* CRITICAL: Body scroll prevention */
                 body.wmc-modal-open{overflow:hidden!important;}
+                /* CRITICAL: Property detail page cleanup */
+                .wmc-property-details .mcs-availability-calendar, .wmc-property-details .mcs-calendar-month, .wmc-property-details .mcs-calendar-grid, .wmc-property-details .legacy-calendar, .wmc-property-details [class*="calendar"]:not(.wmc-calendar-button):not(.wmc-property-calendar){display:none!important;visibility:hidden!important;}
+                /* CRITICAL: Ensure prices are visible and properly styled */
+                .mcs-day-price{display:inline-block!important;font-size:11px!important;color:#333!important;background:rgba(0,0,0,0.06)!important;padding:2px 4px!important;border-radius:3px!important;margin-top:4px!important;}
             ';
 
             wp_add_inline_style('wp-minpaku-connector-calendar', $critical_css);

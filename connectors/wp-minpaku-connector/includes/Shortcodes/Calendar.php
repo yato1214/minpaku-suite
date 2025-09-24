@@ -72,6 +72,38 @@ class MPC_Shortcodes_Calendar {
         if (!isset($availability_data['property_id'])) {
             $availability_data['property_id'] = $property_id;
         }
+
+        // CRITICAL FIX: Override any ¥100 prices with actual property data
+        if (isset($availability_data['availability']) && is_array($availability_data['availability'])) {
+            // Get real property price from API
+            $real_price = null;
+            try {
+                $property_response = $api->get_property($property_id);
+                if ($property_response['success'] && isset($property_response['data']['meta']['base_price'])) {
+                    $real_price = floatval($property_response['data']['meta']['base_price']);
+                    if ($real_price > 0 && $real_price != 100) {
+                        if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                            error_log('[minpaku-connector] Override ¥100 with real property price: ' . $real_price);
+                        }
+
+                        // Override all ¥100 prices in availability data
+                        foreach ($availability_data['availability'] as &$day_data) {
+                            if (isset($day_data['price']) && $day_data['price'] == 100) {
+                                $day_data['price'] = $real_price;
+                            }
+                            if (!isset($day_data['price']) && isset($day_data['available']) && $day_data['available']) {
+                                $day_data['price'] = $real_price;
+                            }
+                        }
+                        unset($day_data);
+                    }
+                }
+            } catch (\Exception $e) {
+                if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                    error_log('[minpaku-connector] Failed to get real property price: ' . $e->getMessage());
+                }
+            }
+        }
         $calendar_id = 'mpc-calendar-' . uniqid();
 
         ob_start();
@@ -320,22 +352,48 @@ class MPC_Shortcodes_Calendar {
             }
         }
 
-        // FINAL FALLBACK - Use property meta instead of hardcoded 100
+        // FINAL FALLBACK - Use property meta or direct API call
         if (isset($availability_data['property_id'])) {
             $property_id = intval($availability_data['property_id']);
 
-            // Try to get actual property price from WordPress meta
-            $property_base_price = get_post_meta($property_id, '_mcs_base_price', true);
-            if (!$property_base_price) {
-                $property_base_price = get_post_meta($property_id, 'base_price', true);
+            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                error_log('[minpaku-connector] Trying property meta fallback for property_id: ' . $property_id);
             }
 
-            if ($property_base_price && is_numeric($property_base_price) && $property_base_price > 0) {
-                $price = floatval($property_base_price);
-                if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
-                    error_log('[minpaku-connector] Using property meta base_price: ' . $price);
+            // Direct API call to connector to get real property price
+            try {
+                $api = new \MinpakuConnector\Client\MPC_Client_Api();
+                if ($api->is_configured()) {
+                    $property_response = $api->get_property($property_id);
+
+                    if ($property_response['success'] && isset($property_response['data']['meta']['base_price'])) {
+                        $api_price = floatval($property_response['data']['meta']['base_price']);
+                        if ($api_price > 0 && $api_price != 100) { // Avoid the 100 fallback
+                            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                                error_log('[minpaku-connector] Found API property price: ' . $api_price);
+                            }
+                            return '¥' . number_format($api_price);
+                        }
+                    }
                 }
-                return '¥' . number_format($price);
+            } catch (\Exception $e) {
+                if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                    error_log('[minpaku-connector] API call failed for property price: ' . $e->getMessage());
+                }
+            }
+
+            // Try multiple meta field variations for local property
+            $meta_fields = ['_mcs_base_price', 'mcs_base_price', 'base_price', '_price', 'price', '_base_rate', 'base_rate'];
+
+            foreach ($meta_fields as $meta_field) {
+                $property_base_price = get_post_meta($property_id, $meta_field, true);
+                if ($property_base_price && is_numeric($property_base_price) && $property_base_price > 0 && $property_base_price != 100) {
+                    $price = floatval($property_base_price);
+                    if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                        error_log('[minpaku-connector] Found property meta price in field "' . $meta_field . '": ' . $price);
+                    }
+                    return '¥' . number_format($price);
+                }
             }
         }
 
