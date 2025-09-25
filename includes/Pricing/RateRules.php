@@ -29,8 +29,21 @@ class RateRules
 
     private function loadFromProperty(int $property_id): void
     {
-        // Load base rate
-        $this->base_rate = (float) get_post_meta($property_id, 'base_rate', true) ?: 10000.0;
+        // Load accommodation rate from unified field with fallback to legacy fields
+        $accommodation_rate = (float) get_post_meta($property_id, 'accommodation_rate', true);
+
+        // Fallback to legacy test fields if new field is not set
+        if ($accommodation_rate == 0) {
+            $test_base_rate = (float) get_post_meta($property_id, 'test_base_rate', true);
+            $base_price_test = (float) get_post_meta($property_id, 'base_price_test', true);
+            $accommodation_rate = $test_base_rate ?: ($base_price_test ?: 15000.0);
+        }
+
+        $this->base_rate = $accommodation_rate;
+
+        if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+            error_log("[PricingEngine] Property $property_id accommodation rate: ¥{$this->base_rate}/night");
+        }
 
         // Load weekday overrides
         $weekday_rates = get_post_meta($property_id, 'weekday_rates', true) ?: [];

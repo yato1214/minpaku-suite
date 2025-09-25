@@ -126,23 +126,70 @@ class MPC_Shortcodes_Calendar {
                 }
             }
 
-            // Fallback to hardcoded prices only if Quote API fails
+            // Try to get real pricing from Properties API (unified approach)
             if ($real_price === null || $real_price == 100) {
-                $property_prices = [
-                    17 => 12000,  // Property ID 17 = ¥12,000
-                    16 => 8000,   // Property ID 16 = ¥8,000
-                    15 => 15000,  // Property ID 15 = ¥15,000
-                    14 => 9500,   // Property ID 14 = ¥9,500
-                    13 => 11000,  // Property ID 13 = ¥11,000
-                    12 => 7500,   // Property ID 12 = ¥7,500
-                    // Add more properties as needed
-                ];
+                if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                    error_log('[minpaku-connector] Quote API failed, attempting to get unified pricing');
+                }
 
-                if (isset($property_prices[$property_id])) {
-                    $real_price = $property_prices[$property_id];
-                    if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
-                        error_log('[minpaku-connector] Using hardcoded price for property ' . $property_id . ': ' . $real_price);
+                // Try to get pricing from Properties API (preferred method)
+                if (class_exists('MinpakuConnector\Client\MPC_Client_Api')) {
+                    try {
+                        $api = new \MinpakuConnector\Client\MPC_Client_Api();
+                        if ($api->is_configured()) {
+                            $property_response = $api->get_property($property_id);
+
+                            if ($property_response['success'] && isset($property_response['data']['meta'])) {
+                                $meta = $property_response['data']['meta'];
+
+                                // Get unified accommodation rate
+                                $accommodation_rate = 0;
+                                if (isset($meta['test_base_rate']) && $meta['test_base_rate'] > 0) {
+                                    $accommodation_rate = floatval($meta['test_base_rate']);
+                                } elseif (isset($meta['base_price_test']) && $meta['base_price_test'] > 0) {
+                                    $accommodation_rate = floatval($meta['base_price_test']);
+                                }
+
+                                // Get cleaning fee
+                                $cleaning_fee = isset($meta['test_cleaning_fee']) ? floatval($meta['test_cleaning_fee']) : 0;
+
+                                // Use total display price (accommodation + cleaning fee)
+                                if ($accommodation_rate > 0) {
+                                    $real_price = $accommodation_rate + $cleaning_fee;
+                                    if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                                        error_log('[minpaku-connector] Calendar using unified pricing: ¥' . $real_price . ' (accommodation: ¥' . $accommodation_rate . ', cleaning: ¥' . $cleaning_fee . ')');
+                                    }
+                                }
+                            }
+                        }
+                    } catch (\Exception $e) {
+                        if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                            error_log('[minpaku-connector] Calendar Properties API failed: ' . $e->getMessage());
+                        }
                     }
+                }
+
+                // Fallback: extract from availability data if Properties API failed
+                if ($real_price === null) {
+                    if (isset($availability_data['availability']) && is_array($availability_data['availability'])) {
+                        foreach ($availability_data['availability'] as $day_data) {
+                            if (isset($day_data['price']) && $day_data['price'] > 100) {
+                                $real_price = floatval($day_data['price']);
+                                if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                                    error_log('[minpaku-connector] Calendar fallback to availability data: ¥' . $real_price);
+                                }
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // Final warning if no price found
+                if ($real_price === null || $real_price == 100) {
+                    if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                        error_log('[minpaku-connector] WARNING: No real pricing found for property ' . $property_id . ' in calendar');
+                    }
+                    $real_price = null;
                 }
             }
         }

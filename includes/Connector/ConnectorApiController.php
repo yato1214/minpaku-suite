@@ -720,7 +720,24 @@ class ConnectorApiController
         $capacity = get_post_meta($property_id, 'capacity', true) ?: 0;
         $bedrooms = get_post_meta($property_id, 'bedrooms', true) ?: 0;
         $bathrooms = get_post_meta($property_id, 'bathrooms', true) ?: 0;
-        $base_price = get_post_meta($property_id, 'base_price', true) ?: 0;
+
+        // Get unified pricing fields with legacy fallbacks
+        $accommodation_rate = get_post_meta($property_id, 'accommodation_rate', true) ?: 0;
+        $cleaning_fee = get_post_meta($property_id, 'cleaning_fee', true) ?: 0;
+
+        // Legacy fallbacks
+        if ($accommodation_rate == 0) {
+            $test_base_rate = get_post_meta($property_id, 'test_base_rate', true) ?: 0;
+            $base_price_test = get_post_meta($property_id, 'base_price_test', true) ?: 0;
+            $accommodation_rate = $test_base_rate ?: ($base_price_test ?: 0);
+        }
+
+        if ($cleaning_fee == 0) {
+            $cleaning_fee = get_post_meta($property_id, 'test_cleaning_fee', true) ?: 0;
+        }
+
+        // Primary price for backward compatibility
+        $primary_price = $accommodation_rate;
 
         // Get gallery images
         $gallery_ids = get_post_meta($property_id, 'gallery', true);
@@ -748,7 +765,12 @@ class ConnectorApiController
                 'capacity' => intval($capacity),
                 'bedrooms' => intval($bedrooms),
                 'bathrooms' => intval($bathrooms),
-                'base_price' => floatval($base_price)
+                'base_price' => floatval($primary_price),
+                'accommodation_rate' => floatval($accommodation_rate),
+                'cleaning_fee' => floatval($cleaning_fee),
+                // Legacy fields for backward compatibility
+                'test_base_rate' => floatval($accommodation_rate),
+                'test_cleaning_fee' => floatval($cleaning_fee)
             ],
             'amenities' => get_post_meta($property_id, 'amenities', true) ?: [],
             'location' => [

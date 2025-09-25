@@ -28,8 +28,19 @@ class Fees
 
     private function loadFromProperty(int $property_id): void
     {
-        // Load cleaning fee
-        $this->cleaning_fee = (float) get_post_meta($property_id, 'cleaning_fee', true) ?: 0.0;
+        // Load cleaning fee from unified field with fallback to legacy field
+        $cleaning_fee = (float) get_post_meta($property_id, 'cleaning_fee', true);
+
+        // Fallback to legacy test field if new field is not set
+        if ($cleaning_fee == 0) {
+            $cleaning_fee = (float) get_post_meta($property_id, 'test_cleaning_fee', true) ?: 5000.0;
+        }
+
+        $this->cleaning_fee = $cleaning_fee;
+
+        if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+            error_log("[PricingEngine] Property $property_id cleaning fee: ¥{$this->cleaning_fee}");
+        }
 
         // Load service fee
         $this->service_fee_percent = (float) get_post_meta($property_id, 'service_fee_percent', true) ?: 0.0;

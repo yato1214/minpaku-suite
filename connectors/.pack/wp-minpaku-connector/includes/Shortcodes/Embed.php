@@ -748,15 +748,30 @@ class MPC_Shortcodes_Embed {
                 if ($api->is_configured()) {
                     $property_response = $api->get_property($property_id);
 
-                    if ($property_response['success'] &&
-                        isset($property_response['data']['meta']['base_price'])) {
+                    if ($property_response['success'] && isset($property_response['data']['meta'])) {
+                        $meta = $property_response['data']['meta'];
 
-                        $api_price = floatval($property_response['data']['meta']['base_price']);
-                        if ($api_price > 0 && $api_price != 100) {
+                        // Get unified accommodation rate
+                        $accommodation_rate = 0;
+                        if (isset($meta['test_base_rate']) && $meta['test_base_rate'] > 0) {
+                            $accommodation_rate = floatval($meta['test_base_rate']);
+                        } elseif (isset($meta['base_price_test']) && $meta['base_price_test'] > 0) {
+                            $accommodation_rate = floatval($meta['base_price_test']);
+                        } elseif (isset($meta['base_price']) && $meta['base_price'] > 0) {
+                            $accommodation_rate = floatval($meta['base_price']);
+                        }
+
+                        // Get cleaning fee
+                        $cleaning_fee = isset($meta['test_cleaning_fee']) ? floatval($meta['test_cleaning_fee']) : 0;
+
+                        // Calculate total display price (accommodation + cleaning fee)
+                        $total_display_price = $accommodation_rate + $cleaning_fee;
+
+                        if ($total_display_price > 0 && $accommodation_rate != 100) {
                             if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
-                                error_log('[minpaku-connector] Found API property price: ¥' . $api_price);
+                                error_log('[minpaku-connector] Found API total price: ¥' . $total_display_price . ' (accommodation: ¥' . $accommodation_rate . ', cleaning: ¥' . $cleaning_fee . ')');
                             }
-                            return $api_price;
+                            return $total_display_price;
                         }
                     }
                 }
@@ -767,21 +782,9 @@ class MPC_Shortcodes_Embed {
             }
         }
 
-        // Fallback to hardcoded prices for specific properties
-        $property_prices = [
-            17 => 12000,  // Property ID 17 = ¥12,000
-            16 => 8000,   // Property ID 16 = ¥8,000
-            15 => 15000,  // Property ID 15 = ¥15,000
-            14 => 9500,   // Property ID 14 = ¥9,500
-            13 => 11000,  // Property ID 13 = ¥11,000
-            12 => 7500,   // Property ID 12 = ¥7,500
-        ];
-
-        if (isset($property_prices[$property_id])) {
-            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
-                error_log('[minpaku-connector] Using hardcoded price for property ' . $property_id . ': ¥' . $property_prices[$property_id]);
-            }
-            return $property_prices[$property_id];
+        // Log that we couldn't get real pricing and return 0 (don't show price badge)
+        if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+            error_log('[minpaku-connector] WARNING: No real pricing available for property ' . $property_id . ' - price badge will be hidden');
         }
 
         // If no price found, return 0

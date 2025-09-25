@@ -51,6 +51,29 @@ class MPC_Client_Api {
     }
 
     /**
+     * Get the portal URL
+     */
+    public function get_portal_url() {
+        return rtrim($this->portal_url, '/');
+    }
+
+    /**
+     * Get the API key
+     */
+    public function get_api_key() {
+        $settings = \WP_Minpaku_Connector::get_settings();
+        return $settings['api_key'] ?? '';
+    }
+
+    /**
+     * Get the API secret
+     */
+    public function get_secret() {
+        $settings = \WP_Minpaku_Connector::get_settings();
+        return $settings['secret'] ?? '';
+    }
+
+    /**
      * Check if API is properly configured
      */
     public function is_configured() {
