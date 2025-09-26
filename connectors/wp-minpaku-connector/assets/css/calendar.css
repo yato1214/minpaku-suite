@@ -139,9 +139,32 @@
     cursor: default;
 }
 
+/* Day type backgrounds (NEW COLOR SCHEME) */
+
+/* Available days - base styling */
+.mcs-day--available {
+    cursor: pointer !important;
+}
+
+/* Holidays and Sundays - Pink */
+.mcs-day--holiday,
+.mcs-day--sun {
+    background: #FFE7EC !important;
+}
+
+/* Saturdays - Light Blue */
+.mcs-day--sat {
+    background: #E7F2FF !important;
+}
+
+/* Weekdays - Light Green */
+.mcs-day--weekday {
+    background: #F0F9F0 !important;
+}
+
+/* Legacy vacant support (fallback to weekday green) */
 .mcs-day--vacant {
-    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%) !important;
-    border-left: 4px solid #28a745 !important;
+    background: #F0F9F0 !important;
     cursor: pointer !important;
 }
 
@@ -151,11 +174,25 @@
     cursor: not-allowed !important;
 }
 
-.mcs-day--full {
-    background: #dc3545 !important;
-    color: white !important;
-    border-left: 4px solid #a71e2a !important;
+/* Availability status overrides */
+
+/* Full/Unavailable and Blackout - Gray (overrides day type) */
+.mcs-day--full,
+.mcs-day--blackout {
+    background: #CFD4DA !important;
     cursor: not-allowed !important;
+    pointer-events: none !important;
+    opacity: 0.8;
+}
+
+.mcs-day--full .mcs-day-price,
+.mcs-day--blackout .mcs-day-price {
+    display: none !important;
+}
+
+/* Pending/Partial - Yellow (overrides day type) */
+.mcs-day--pending {
+    background: #FFF3CD !important;
 }
 
 .mcs-day--full .mcs-day-number {
@@ -178,16 +215,21 @@
 }
 
 .mcs-day-price {
+    position: absolute;
+    top: 4px;
+    right: 6px;
     font-size: 11px;
-    padding: 2px 4px;
-    border-radius: 3px;
-    background: rgba(0,0,0,0.06);
+    line-height: 1;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.06);
     color: #333;
     font-weight: 500;
     white-space: nowrap;
-    margin-top: 4px;
-    align-self: flex-start;
-    line-height: 1.2;
+    z-index: 5;
+    display: inline-block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
 }
 
 /* Error styles */

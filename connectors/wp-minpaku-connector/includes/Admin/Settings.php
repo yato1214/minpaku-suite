@@ -31,6 +31,12 @@ class MPC_Admin_Settings {
             array(__CLASS__, 'sanitize_settings')
         );
 
+        register_setting(
+            'wp_minpaku_connector_pricing_settings',
+            'wp_minpaku_connector_pricing_settings',
+            array(__CLASS__, 'sanitize_pricing_settings')
+        );
+
         add_settings_section(
             'mpc_connection_section',
             __('Portal Connection', 'wp-minpaku-connector'),
@@ -69,6 +75,54 @@ class MPC_Admin_Settings {
             'wp-minpaku-connector',
             'mpc_connection_section'
         );
+
+        // Pricing settings section
+        add_settings_section(
+            'mpc_pricing_section',
+            __('料金設定', 'wp-minpaku-connector'),
+            array(__CLASS__, 'pricing_section_callback'),
+            'wp-minpaku-connector-pricing'
+        );
+
+        add_settings_field(
+            'base_nightly_price',
+            __('ベース1泊料金', 'wp-minpaku-connector'),
+            array(__CLASS__, 'base_nightly_price_callback'),
+            'wp-minpaku-connector-pricing',
+            'mpc_pricing_section'
+        );
+
+        add_settings_field(
+            'cleaning_fee_per_booking',
+            __('清掃費（予約あたり）', 'wp-minpaku-connector'),
+            array(__CLASS__, 'cleaning_fee_callback'),
+            'wp-minpaku-connector-pricing',
+            'mpc_pricing_section'
+        );
+
+        add_settings_field(
+            'eve_surcharges',
+            __('前日割増料金', 'wp-minpaku-connector'),
+            array(__CLASS__, 'eve_surcharges_callback'),
+            'wp-minpaku-connector-pricing',
+            'mpc_pricing_section'
+        );
+
+        add_settings_field(
+            'seasonal_rules',
+            __('季節料金ルール', 'wp-minpaku-connector'),
+            array(__CLASS__, 'seasonal_rules_callback'),
+            'wp-minpaku-connector-pricing',
+            'mpc_pricing_section'
+        );
+
+        add_settings_field(
+            'blackout_ranges',
+            __('ブラックアウト期間', 'wp-minpaku-connector'),
+            array(__CLASS__, 'blackout_ranges_callback'),
+            'wp-minpaku-connector-pricing',
+            'mpc_pricing_section'
+        );
     }
 
     /**
@@ -103,6 +157,69 @@ class MPC_Admin_Settings {
 
         if (isset($input['secret'])) {
             $sanitized['secret'] = sanitize_text_field(trim($input['secret']));
+        }
+
+        return $sanitized;
+    }
+
+    /**
+     * Sanitize pricing settings
+     */
+    public static function sanitize_pricing_settings($input) {
+        $sanitized = array();
+
+        if (isset($input['base_nightly_price'])) {
+            $sanitized['base_nightly_price'] = max(0, floatval($input['base_nightly_price']));
+        }
+
+        if (isset($input['cleaning_fee_per_booking'])) {
+            $sanitized['cleaning_fee_per_booking'] = max(0, floatval($input['cleaning_fee_per_booking']));
+        }
+
+        if (isset($input['eve_surcharge_sat'])) {
+            $sanitized['eve_surcharge_sat'] = max(0, floatval($input['eve_surcharge_sat']));
+        }
+
+        if (isset($input['eve_surcharge_sun'])) {
+            $sanitized['eve_surcharge_sun'] = max(0, floatval($input['eve_surcharge_sun']));
+        }
+
+        if (isset($input['eve_surcharge_holiday'])) {
+            $sanitized['eve_surcharge_holiday'] = max(0, floatval($input['eve_surcharge_holiday']));
+        }
+
+        // Sanitize seasonal rules
+        if (isset($input['seasonal_rules']) && is_array($input['seasonal_rules'])) {
+            $sanitized['seasonal_rules'] = array();
+            foreach ($input['seasonal_rules'] as $rule) {
+                if (!empty($rule['date_from']) && !empty($rule['date_to']) && !empty($rule['mode']) && isset($rule['amount'])) {
+                    $sanitized_rule = array(
+                        'date_from' => sanitize_text_field($rule['date_from']),
+                        'date_to' => sanitize_text_field($rule['date_to']),
+                        'mode' => in_array($rule['mode'], ['override', 'add']) ? $rule['mode'] : 'override',
+                        'amount' => max(0, floatval($rule['amount']))
+                    );
+                    if (strtotime($sanitized_rule['date_from']) && strtotime($sanitized_rule['date_to'])) {
+                        $sanitized['seasonal_rules'][] = $sanitized_rule;
+                    }
+                }
+            }
+        }
+
+        // Sanitize blackout ranges
+        if (isset($input['blackout_ranges']) && is_array($input['blackout_ranges'])) {
+            $sanitized['blackout_ranges'] = array();
+            foreach ($input['blackout_ranges'] as $range) {
+                if (!empty($range['date_from']) && !empty($range['date_to'])) {
+                    $sanitized_range = array(
+                        'date_from' => sanitize_text_field($range['date_from']),
+                        'date_to' => sanitize_text_field($range['date_to'])
+                    );
+                    if (strtotime($sanitized_range['date_from']) && strtotime($sanitized_range['date_to'])) {
+                        $sanitized['blackout_ranges'][] = $sanitized_range;
+                    }
+                }
+            }
         }
 
         return $sanitized;
@@ -626,6 +743,154 @@ class MPC_Admin_Settings {
     }
 
     /**
+     * Pricing section callback
+     */
+    public static function pricing_section_callback() {
+        echo '<p>' . esc_html__('カレンダー表示の価格計算とルール設定を行います。これらの設定はローカル計算に使用され、ポータルAPIで価格が取得できない場合のフォールバックとして機能します。', 'wp-minpaku-connector') . '</p>';
+    }
+
+    /**
+     * Base nightly price field callback
+     */
+    public static function base_nightly_price_callback() {
+        $settings = self::get_pricing_settings();
+        echo '<input type="number" id="base_nightly_price" name="wp_minpaku_connector_pricing_settings[base_nightly_price]" value="' . esc_attr($settings['base_nightly_price']) . '" class="regular-text" min="0" step="100" />';
+        echo '<p class="description">' . esc_html__('ベースとなる1泊あたりの料金（円）。季節料金や前日割増の基準となります。', 'wp-minpaku-connector') . '</p>';
+    }
+
+    /**
+     * Cleaning fee field callback
+     */
+    public static function cleaning_fee_callback() {
+        $settings = self::get_pricing_settings();
+        echo '<input type="number" id="cleaning_fee_per_booking" name="wp_minpaku_connector_pricing_settings[cleaning_fee_per_booking]" value="' . esc_attr($settings['cleaning_fee_per_booking']) . '" class="regular-text" min="0" step="100" />';
+        echo '<p class="description">' . esc_html__('予約あたりの清掃費（円）。カレンダーには表示されず、予約時のみ加算されます。', 'wp-minpaku-connector') . '</p>';
+    }
+
+    /**
+     * Eve surcharges field callback
+     */
+    public static function eve_surcharges_callback() {
+        $settings = self::get_pricing_settings();
+        echo '<table class="form-table">';
+        echo '<tr>';
+        echo '<th scope="row">' . esc_html__('土曜前夜', 'wp-minpaku-connector') . '</th>';
+        echo '<td><input type="number" name="wp_minpaku_connector_pricing_settings[eve_surcharge_sat]" value="' . esc_attr($settings['eve_surcharge_sat']) . '" min="0" step="100" /> ' . esc_html__('円', 'wp-minpaku-connector') . '</td>';
+        echo '</tr>';
+        echo '<tr>';
+        echo '<th scope="row">' . esc_html__('日曜前夜', 'wp-minpaku-connector') . '</th>';
+        echo '<td><input type="number" name="wp_minpaku_connector_pricing_settings[eve_surcharge_sun]" value="' . esc_attr($settings['eve_surcharge_sun']) . '" min="0" step="100" /> ' . esc_html__('円', 'wp-minpaku-connector') . '</td>';
+        echo '</tr>';
+        echo '<tr>';
+        echo '<th scope="row">' . esc_html__('祝日前夜', 'wp-minpaku-connector') . '</th>';
+        echo '<td><input type="number" name="wp_minpaku_connector_pricing_settings[eve_surcharge_holiday]" value="' . esc_attr($settings['eve_surcharge_holiday']) . '" min="0" step="100" /> ' . esc_html__('円', 'wp-minpaku-connector') . '</td>';
+        echo '</tr>';
+        echo '</table>';
+        echo '<p class="description">' . esc_html__('翌日が土曜・日曜・祝日の場合の追加料金。季節料金が適用される場合は重複加算されません。', 'wp-minpaku-connector') . '</p>';
+    }
+
+    /**
+     * Seasonal rules field callback
+     */
+    public static function seasonal_rules_callback() {
+        $settings = self::get_pricing_settings();
+        $rules = $settings['seasonal_rules'];
+
+        echo '<div id="seasonal-rules-container">';
+        if (!empty($rules)) {
+            foreach ($rules as $index => $rule) {
+                self::render_seasonal_rule_row($index, $rule);
+            }
+        } else {
+            self::render_seasonal_rule_row(0, array());
+        }
+        echo '</div>';
+
+        echo '<button type="button" id="add-seasonal-rule" class="button">' . esc_html__('ルールを追加', 'wp-minpaku-connector') . '</button>';
+        echo '<p class="description">' . esc_html__('特定期間の料金設定。「上書き」は基本料金を置き換え、「加算」は基本料金に追加されます。', 'wp-minpaku-connector') . '</p>';
+    }
+
+    /**
+     * Render seasonal rule row
+     */
+    private static function render_seasonal_rule_row($index, $rule = array()) {
+        $rule = array_merge(array(
+            'date_from' => '',
+            'date_to' => '',
+            'mode' => 'override',
+            'amount' => 0
+        ), $rule);
+
+        echo '<div class="seasonal-rule-row" style="margin-bottom: 10px; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">';
+        echo '<input type="date" name="wp_minpaku_connector_pricing_settings[seasonal_rules][' . $index . '][date_from]" value="' . esc_attr($rule['date_from']) . '" placeholder="' . esc_attr__('開始日', 'wp-minpaku-connector') . '" />';
+        echo ' - ';
+        echo '<input type="date" name="wp_minpaku_connector_pricing_settings[seasonal_rules][' . $index . '][date_to]" value="' . esc_attr($rule['date_to']) . '" placeholder="' . esc_attr__('終了日', 'wp-minpaku-connector') . '" />';
+        echo ' ';
+        echo '<select name="wp_minpaku_connector_pricing_settings[seasonal_rules][' . $index . '][mode]">';
+        echo '<option value="override"' . selected($rule['mode'], 'override', false) . '>' . esc_html__('上書き', 'wp-minpaku-connector') . '</option>';
+        echo '<option value="add"' . selected($rule['mode'], 'add', false) . '>' . esc_html__('加算', 'wp-minpaku-connector') . '</option>';
+        echo '</select>';
+        echo ' ';
+        echo '<input type="number" name="wp_minpaku_connector_pricing_settings[seasonal_rules][' . $index . '][amount]" value="' . esc_attr($rule['amount']) . '" min="0" step="100" placeholder="' . esc_attr__('金額', 'wp-minpaku-connector') . '" />';
+        echo ' ' . esc_html__('円', 'wp-minpaku-connector');
+        echo ' <button type="button" class="button remove-seasonal-rule">' . esc_html__('削除', 'wp-minpaku-connector') . '</button>';
+        echo '</div>';
+    }
+
+    /**
+     * Blackout ranges field callback
+     */
+    public static function blackout_ranges_callback() {
+        $settings = self::get_pricing_settings();
+        $ranges = $settings['blackout_ranges'];
+
+        echo '<div id="blackout-ranges-container">';
+        if (!empty($ranges)) {
+            foreach ($ranges as $index => $range) {
+                self::render_blackout_range_row($index, $range);
+            }
+        } else {
+            self::render_blackout_range_row(0, array());
+        }
+        echo '</div>';
+
+        echo '<button type="button" id="add-blackout-range" class="button">' . esc_html__('期間を追加', 'wp-minpaku-connector') . '</button>';
+        echo '<p class="description">' . esc_html__('予約を受け付けない期間を設定します。この期間の日付はグレー表示され、クリックできません。', 'wp-minpaku-connector') . '</p>';
+    }
+
+    /**
+     * Render blackout range row
+     */
+    private static function render_blackout_range_row($index, $range = array()) {
+        $range = array_merge(array(
+            'date_from' => '',
+            'date_to' => ''
+        ), $range);
+
+        echo '<div class="blackout-range-row" style="margin-bottom: 10px; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">';
+        echo '<input type="date" name="wp_minpaku_connector_pricing_settings[blackout_ranges][' . $index . '][date_from]" value="' . esc_attr($range['date_from']) . '" placeholder="' . esc_attr__('開始日', 'wp-minpaku-connector') . '" />';
+        echo ' - ';
+        echo '<input type="date" name="wp_minpaku_connector_pricing_settings[blackout_ranges][' . $index . '][date_to]" value="' . esc_attr($range['date_to']) . '" placeholder="' . esc_attr__('終了日', 'wp-minpaku-connector') . '" />';
+        echo ' <button type="button" class="button remove-blackout-range">' . esc_html__('削除', 'wp-minpaku-connector') . '</button>';
+        echo '</div>';
+    }
+
+    /**
+     * Get pricing settings
+     */
+    public static function get_pricing_settings() {
+        return \get_option('wp_minpaku_connector_pricing_settings', array(
+            'base_nightly_price' => 15000,
+            'cleaning_fee_per_booking' => 3000,
+            'eve_surcharge_sat' => 2000,
+            'eve_surcharge_sun' => 1000,
+            'eve_surcharge_holiday' => 1500,
+            'seasonal_rules' => array(),
+            'blackout_ranges' => array()
+        ));
+    }
+
+    /**
      * Render admin page
      */
     public static function render_page() {
@@ -648,6 +913,16 @@ class MPC_Admin_Settings {
                 settings_fields('wp_minpaku_connector_settings');
                 do_settings_sections('wp-minpaku-connector');
                 submit_button();
+                ?>
+            </form>
+
+            <hr>
+            <h2><?php echo esc_html__('料金設定', 'wp-minpaku-connector'); ?></h2>
+            <form method="post" action="options.php">
+                <?php
+                settings_fields('wp_minpaku_connector_pricing_settings');
+                do_settings_sections('wp-minpaku-connector-pricing');
+                submit_button(__('料金設定を保存', 'wp-minpaku-connector'));
                 ?>
             </form>
 
@@ -709,11 +984,20 @@ class MPC_Admin_Settings {
 
                 <h3><?php echo esc_html__('空室カレンダー', 'wp-minpaku-connector'); ?></h3>
                 <code>[minpaku_connector type="availability" property_id="123" months="2"]</code>
-                <p class="description"><?php echo esc_html__('指定した物件の空室カレンダーを表示します。パラメータ: property_id（必須）、months（表示月数）', 'wp-minpaku-connector'); ?></p>
+                <p class="description"><?php echo esc_html__('指定した物件の空室カレンダーを表示します。1泊ごとの価格表示、2クリック選択でリアルタイム見積。パラメータ: property_id（必須）、months（表示月数）', 'wp-minpaku-connector'); ?></p>
+                <p class="description" style="color: #666; font-style: italic;"><?php echo esc_html__('※ カレンダー価格は1泊分のみ表示（清掃費は含まず）。選択完了後に清掃費を含む合計見積が表示されます。', 'wp-minpaku-connector'); ?></p>
 
                 <h3><?php echo esc_html__('物件詳細', 'wp-minpaku-connector'); ?></h3>
                 <code>[minpaku_connector type="property" property_id="123"]</code>
                 <p class="description"><?php echo esc_html__('指定した物件の詳細情報を表示します。パラメータ: property_id（必須）', 'wp-minpaku-connector'); ?></p>
+
+                <h4><?php echo esc_html__('カレンダー機能詳細', 'wp-minpaku-connector'); ?></h4>
+                <ul>
+                    <li><strong><?php echo esc_html__('価格表示', 'wp-minpaku-connector'); ?></strong>: <?php echo esc_html__('各日付に1泊分の料金を表示（季節料金、前日割増対応）', 'wp-minpaku-connector'); ?></li>
+                    <li><strong><?php echo esc_html__('色分け表示', 'wp-minpaku-connector'); ?></strong>: <?php echo esc_html__('祝日・日曜（ピンク）、土曜（水色）、平日（緑）、満室（グレー）', 'wp-minpaku-connector'); ?></li>
+                    <li><strong><?php echo esc_html__('2クリック選択', 'wp-minpaku-connector'); ?></strong>: <?php echo esc_html__('1クリック目でチェックイン、2クリック目でチェックアウトを選択', 'wp-minpaku-connector'); ?></li>
+                    <li><strong><?php echo esc_html__('リアルタイム見積', 'wp-minpaku-connector'); ?></strong>: <?php echo esc_html__('選択完了後に宿泊料金・清掃費・合計金額を自動計算して表示', 'wp-minpaku-connector'); ?></li>
+                </ul>
 
                 <h4><?php echo esc_html__('追加オプション', 'wp-minpaku-connector'); ?></h4>
                 <ul>
@@ -748,6 +1032,53 @@ class MPC_Admin_Settings {
 
         <script>
         jQuery(document).ready(function($) {
+            // Pricing settings JavaScript
+
+            // Add seasonal rule
+            $('#add-seasonal-rule').on('click', function() {
+                var container = $('#seasonal-rules-container');
+                var index = container.find('.seasonal-rule-row').length;
+                var newRow = '<div class="seasonal-rule-row" style="margin-bottom: 10px; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">' +
+                    '<input type="date" name="wp_minpaku_connector_pricing_settings[seasonal_rules][' + index + '][date_from]" value="" placeholder="<?php echo esc_attr__('開始日', 'wp-minpaku-connector'); ?>" />' +
+                    ' - ' +
+                    '<input type="date" name="wp_minpaku_connector_pricing_settings[seasonal_rules][' + index + '][date_to]" value="" placeholder="<?php echo esc_attr__('終了日', 'wp-minpaku-connector'); ?>" />' +
+                    ' ' +
+                    '<select name="wp_minpaku_connector_pricing_settings[seasonal_rules][' + index + '][mode]">' +
+                    '<option value="override"><?php echo esc_html__('上書き', 'wp-minpaku-connector'); ?></option>' +
+                    '<option value="add"><?php echo esc_html__('加算', 'wp-minpaku-connector'); ?></option>' +
+                    '</select>' +
+                    ' ' +
+                    '<input type="number" name="wp_minpaku_connector_pricing_settings[seasonal_rules][' + index + '][amount]" value="" min="0" step="100" placeholder="<?php echo esc_attr__('金額', 'wp-minpaku-connector'); ?>" />' +
+                    ' <?php echo esc_html__('円', 'wp-minpaku-connector'); ?>' +
+                    ' <button type="button" class="button remove-seasonal-rule"><?php echo esc_html__('削除', 'wp-minpaku-connector'); ?></button>' +
+                    '</div>';
+                container.append(newRow);
+            });
+
+            // Remove seasonal rule
+            $(document).on('click', '.remove-seasonal-rule', function() {
+                $(this).closest('.seasonal-rule-row').remove();
+            });
+
+            // Add blackout range
+            $('#add-blackout-range').on('click', function() {
+                var container = $('#blackout-ranges-container');
+                var index = container.find('.blackout-range-row').length;
+                var newRow = '<div class="blackout-range-row" style="margin-bottom: 10px; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">' +
+                    '<input type="date" name="wp_minpaku_connector_pricing_settings[blackout_ranges][' + index + '][date_from]" value="" placeholder="<?php echo esc_attr__('開始日', 'wp-minpaku-connector'); ?>" />' +
+                    ' - ' +
+                    '<input type="date" name="wp_minpaku_connector_pricing_settings[blackout_ranges][' + index + '][date_to]" value="" placeholder="<?php echo esc_attr__('終了日', 'wp-minpaku-connector'); ?>" />' +
+                    ' <button type="button" class="button remove-blackout-range"><?php echo esc_html__('削除', 'wp-minpaku-connector'); ?></button>' +
+                    '</div>';
+                container.append(newRow);
+            });
+
+            // Remove blackout range
+            $(document).on('click', '.remove-blackout-range', function() {
+                $(this).closest('.blackout-range-row').remove();
+            });
+
+            // Connection test JavaScript
             $('#test-connection').on('click', function() {
                 var button = $(this);
                 var result = $('#test-result');

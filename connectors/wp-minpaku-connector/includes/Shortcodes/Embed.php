@@ -760,6 +760,11 @@ class MPC_Shortcodes_Embed {
             add_action('wp_ajax_mpc_get_calendar', array(__CLASS__, 'ajax_get_calendar'));
             add_action('wp_ajax_nopriv_mpc_get_calendar', array(__CLASS__, 'ajax_get_calendar'));
         }
+
+        if (!has_action('wp_ajax_mpc_get_quote')) {
+            add_action('wp_ajax_mpc_get_quote', array(__CLASS__, 'ajax_get_quote'));
+            add_action('wp_ajax_nopriv_mpc_get_quote', array(__CLASS__, 'ajax_get_quote'));
+        }
     }
 
     /**
@@ -837,6 +842,222 @@ class MPC_Shortcodes_Embed {
             }
             wp_send_json_error('Fatal error loading calendar: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * AJAX handler for getting live quote
+     */
+    public static function ajax_get_quote() {
+        // Debug logging
+        if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+            error_log('[minpaku-connector] AJAX quote request received');
+            error_log('[minpaku-connector] POST data: ' . print_r($_POST, true));
+        }
+
+        // Check nonce
+        $nonce = $_POST['nonce'] ?? '';
+        if (!wp_verify_nonce($nonce, 'mpc_calendar_nonce')) {
+            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                error_log('[minpaku-connector] Quote nonce verification failed: ' . $nonce);
+            }
+            wp_send_json_error('Invalid nonce');
+            return;
+        }
+
+        $property_id = intval($_POST['property_id'] ?? 0);
+        $checkin = sanitize_text_field($_POST['checkin'] ?? '');
+        $checkout = sanitize_text_field($_POST['checkout'] ?? '');
+        $adults = intval($_POST['adults'] ?? 2);
+        $children = intval($_POST['children'] ?? 0);
+        $infants = intval($_POST['infants'] ?? 0);
+
+        if (!$property_id || !$checkin || !$checkout) {
+            wp_send_json_error('Missing required parameters');
+            return;
+        }
+
+        // Validate dates
+        if (strtotime($checkin) === false || strtotime($checkout) === false) {
+            wp_send_json_error('Invalid date format');
+            return;
+        }
+
+        if ($checkin >= $checkout) {
+            wp_send_json_error('Checkout date must be after checkin date');
+            return;
+        }
+
+        try {
+            $api = new \MinpakuConnector\Client\MPC_Client_Api();
+            if (!$api->is_configured()) {
+                wp_send_json_error('API not configured');
+                return;
+            }
+
+            // Get quote from portal API
+            $quote_response = $api->get_quote($property_id, $checkin, $checkout, $adults + $children + $infants);
+
+            if (!$quote_response['success']) {
+                if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                    error_log('[minpaku-connector] Quote API failed: ' . $quote_response['message']);
+                }
+                wp_send_json_error($quote_response['message'] ?? 'Failed to get quote');
+                return;
+            }
+
+            $quote_data = $quote_response['data'];
+
+            // Add nightly breakdown calculation if not provided by API
+            if (!isset($quote_data['nightly_breakdown']) || empty($quote_data['nightly_breakdown'])) {
+                $quote_data['nightly_breakdown'] = self::calculate_nightly_breakdown($property_id, $checkin, $checkout);
+            }
+
+            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                error_log('[minpaku-connector] Quote generated successfully: ' . print_r($quote_data, true));
+            }
+
+            wp_send_json_success($quote_data);
+
+        } catch (Exception $e) {
+            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                error_log('[minpaku-connector] Quote AJAX error: ' . $e->getMessage());
+            }
+            wp_send_json_error('Error generating quote: ' . $e->getMessage());
+        } catch (Error $e) {
+            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                error_log('[minpaku-connector] Quote AJAX fatal error: ' . $e->getMessage());
+            }
+            wp_send_json_error('Fatal error generating quote: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Calculate nightly breakdown for quote
+     */
+    private static function calculate_nightly_breakdown($property_id, $checkin, $checkout) {
+        $breakdown = array();
+
+        // Load required classes
+        require_once WP_MINPAKU_CONNECTOR_PATH . 'includes/Calendar/JPHolidays.php';
+        require_once WP_MINPAKU_CONNECTOR_PATH . 'includes/Calendar/DayClassifier.php';
+
+        // Get pricing settings
+        $pricing_settings = self::get_pricing_settings();
+
+        $current_date = new DateTime($checkin);
+        $end_date = new DateTime($checkout);
+
+        while ($current_date < $end_date) {
+            $date_string = $current_date->format('Y-m-d');
+            $nightly_price = self::calculate_local_nightly_price($date_string, $pricing_settings);
+
+            $breakdown[] = array(
+                'date' => $date_string,
+                'price' => $nightly_price
+            );
+
+            $current_date->add(new DateInterval('P1D'));
+        }
+
+        return $breakdown;
+    }
+
+    /**
+     * Calculate local nightly price for a specific date (for breakdown)
+     */
+    private static function calculate_local_nightly_price($date, $pricing_settings) {
+        $base_price = floatval($pricing_settings['base_nightly_price']);
+
+        // Check for seasonal rules first (highest priority)
+        $seasonal_price = self::apply_seasonal_rules_to_price($date, $base_price, $pricing_settings['seasonal_rules']);
+
+        if ($seasonal_price !== $base_price) {
+            // Seasonal rule applied, don't add eve surcharges (to avoid double charging)
+            return $seasonal_price;
+        }
+
+        // Check for eve surcharges (second priority)
+        $eve_surcharge = self::calculate_eve_surcharge_for_price($date, $pricing_settings);
+
+        return $base_price + $eve_surcharge;
+    }
+
+    /**
+     * Apply seasonal rules to base price (for breakdown)
+     */
+    private static function apply_seasonal_rules_to_price($date, $base_price, $seasonal_rules) {
+        if (empty($seasonal_rules) || !is_array($seasonal_rules)) {
+            return $base_price;
+        }
+
+        foreach ($seasonal_rules as $rule) {
+            if (!isset($rule['date_from']) || !isset($rule['date_to']) || !isset($rule['mode']) || !isset($rule['amount'])) {
+                continue;
+            }
+
+            $date_from = $rule['date_from'];
+            $date_to = $rule['date_to'];
+
+            // Check if date falls within this rule's range
+            if ($date >= $date_from && $date <= $date_to) {
+                $amount = floatval($rule['amount']);
+
+                if ($rule['mode'] === 'override') {
+                    return $amount; // Replace base price
+                } elseif ($rule['mode'] === 'add') {
+                    return $base_price + $amount; // Add to base price
+                }
+            }
+        }
+
+        return $base_price; // No seasonal rule applied
+    }
+
+    /**
+     * Calculate eve surcharge for a date (for breakdown)
+     */
+    private static function calculate_eve_surcharge_for_price($date, $pricing_settings) {
+        // Load DayClassifier if not already loaded
+        if (!class_exists('\MinpakuConnector\Calendar\DayClassifier')) {
+            require_once WP_MINPAKU_CONNECTOR_PATH . 'includes/Calendar/DayClassifier.php';
+        }
+
+        $eve_info = \MinpakuConnector\Calendar\DayClassifier::checkEveSurcharges($date);
+
+        if (!$eve_info['has_surcharge']) {
+            return 0;
+        }
+
+        switch ($eve_info['surcharge_type']) {
+            case 'saturday_eve':
+                return floatval($pricing_settings['eve_surcharge_sat'] ?? 0);
+            case 'sunday_eve':
+                return floatval($pricing_settings['eve_surcharge_sun'] ?? 0);
+            case 'holiday_eve':
+                return floatval($pricing_settings['eve_surcharge_holiday'] ?? 0);
+            default:
+                return 0;
+        }
+    }
+
+    /**
+     * Get pricing settings (for breakdown)
+     */
+    private static function get_pricing_settings() {
+        if (class_exists('MinpakuConnector\Admin\MPC_Admin_Settings')) {
+            return \MinpakuConnector\Admin\MPC_Admin_Settings::get_pricing_settings();
+        }
+
+        // Fallback defaults
+        return array(
+            'base_nightly_price' => 15000,
+            'cleaning_fee_per_booking' => 3000,
+            'eve_surcharge_sat' => 2000,
+            'eve_surcharge_sun' => 1000,
+            'eve_surcharge_holiday' => 1500,
+            'seasonal_rules' => array(),
+            'blackout_ranges' => array()
+        );
     }
 
     /**
