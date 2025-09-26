@@ -1,0 +1,254 @@
+/**
+ * Calendar Modal Styles for MinPaku Suite
+ * Used with [mcs_availability modal="true"] shortcode
+ */
+
+/* Modal Button Styles */
+.mcs-calendar-button-wrapper {
+    margin: 15px 0;
+}
+
+.mcs-calendar-modal-button {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.mcs-calendar-modal-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    color: white;
+    text-decoration: none;
+}
+
+.mcs-calendar-modal-button:active {
+    transform: translateY(0);
+}
+
+.mcs-calendar-modal-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.mcs-calendar-icon {
+    font-size: 18px;
+}
+
+/* Modal Overlay */
+.mcs-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 999999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.mcs-modal-overlay.mcs-modal-show {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Modal Dialog */
+.mcs-modal-dialog {
+    background: white;
+    border-radius: 12px;
+    max-width: 90vw;
+    max-height: 90vh;
+    width: 900px;
+    overflow: hidden;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    transform: scale(0.9);
+    transition: transform 0.3s ease;
+    display: flex;
+    flex-direction: column;
+}
+
+.mcs-modal-show .mcs-modal-dialog {
+    transform: scale(1);
+}
+
+/* Modal Header */
+.mcs-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 12px 12px 0 0;
+}
+
+.mcs-modal-title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.mcs-modal-close {
+    background: none;
+    border: none;
+    font-size: 28px;
+    color: white;
+    cursor: pointer;
+    padding: 4px 8px;
+    line-height: 1;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+}
+
+.mcs-modal-close:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+/* Modal Body */
+.mcs-modal-body {
+    padding: 24px;
+    max-height: calc(90vh - 80px);
+    overflow-y: auto;
+    flex: 1;
+}
+
+/* Calendar inside modal adjustments */
+.mcs-modal-body .mcs-availability-calendar {
+    margin: 0;
+}
+
+.mcs-modal-body .mcs-calendar-legend {
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+}
+
+.mcs-modal-body .mcs-calendar-legend h4 {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #495057;
+}
+
+.mcs-modal-body .mcs-legend-items {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.mcs-modal-body .mcs-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+}
+
+.mcs-modal-body .mcs-legend-color {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+    border: 1px solid #ccc;
+}
+
+/* Calendar months in modal */
+.mcs-modal-body .mcs-calendar-month {
+    margin-bottom: 24px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    overflow: hidden;
+    background: white;
+}
+
+.mcs-modal-body .mcs-month-title {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    margin: 0;
+    padding: 15px;
+    text-align: center;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+/* Body scroll prevention when modal is open */
+body.mcs-modal-open {
+    overflow: hidden;
+    padding-right: 17px; /* Prevent layout shift from scrollbar disappearance */
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .mcs-modal-dialog {
+        margin: 15px;
+        width: calc(100vw - 30px);
+        max-height: calc(100vh - 30px);
+    }
+
+    .mcs-modal-header {
+        padding: 15px 20px;
+    }
+
+    .mcs-modal-title {
+        font-size: 16px;
+    }
+
+    .mcs-modal-body {
+        padding: 20px;
+    }
+
+    .mcs-calendar-modal-button {
+        width: 100%;
+        justify-content: center;
+        padding: 14px 20px;
+    }
+}
+
+@media (max-width: 480px) {
+    .mcs-modal-dialog {
+        margin: 10px;
+        width: calc(100vw - 20px);
+        max-height: calc(100vh - 20px);
+    }
+
+    .mcs-modal-header {
+        padding: 12px 16px;
+    }
+
+    .mcs-modal-body {
+        padding: 16px;
+    }
+
+    .mcs-modal-body .mcs-legend-items {
+        flex-direction: column;
+        gap: 10px;
+    }
+}
+
+/* Animation improvements */
+@media (prefers-reduced-motion: reduce) {
+    .mcs-modal-overlay,
+    .mcs-modal-dialog,
+    .mcs-calendar-modal-button {
+        transition: none;
+    }
+}

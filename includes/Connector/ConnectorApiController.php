@@ -279,13 +279,18 @@ class ConnectorApiController
         // Get current count
         $current_count = get_transient($rate_key);
 
-        // Set limits per endpoint per minute
+        // Development environment check
+        $is_dev = (defined('WP_DEBUG') && WP_DEBUG) ||
+                  strpos($_SERVER['HTTP_HOST'] ?? '', 'local') !== false ||
+                  strpos($_SERVER['HTTP_HOST'] ?? '', 'dev') !== false;
+
+        // Set limits per endpoint per minute (relaxed for dev)
         $limits = [
-            '/minpaku/v1/connector/ping' => 100,       // 100 per minute (diagnostic)
-            '/minpaku/v1/connector/verify' => 100,     // 100 per minute (increased for testing)
-            '/minpaku/v1/connector/properties' => 30,  // 30 per minute
-            '/minpaku/v1/connector/availability' => 60, // 60 per minute
-            '/minpaku/v1/connector/quote' => 20        // 20 per minute
+            '/minpaku/v1/connector/ping' => $is_dev ? 500 : 100,       // 500/100 per minute
+            '/minpaku/v1/connector/verify' => $is_dev ? 500 : 100,     // 500/100 per minute
+            '/minpaku/v1/connector/properties' => $is_dev ? 200 : 30,  // 200/30 per minute
+            '/minpaku/v1/connector/availability' => $is_dev ? 300 : 60, // 300/60 per minute
+            '/minpaku/v1/connector/quote' => $is_dev ? 100 : 20        // 100/20 per minute
         ];
 
         $limit = $limits[$endpoint] ?? 60; // Default 60 per minute
@@ -757,7 +762,7 @@ class ConnectorApiController
             'id' => $property_id,
             'title' => $property->post_title,
             'content' => self::process_property_shortcodes($property->post_content, $property_id),
-            'excerpt' => $property->post_excerpt ?: wp_trim_words(self::process_property_shortcodes($property->post_content, $property_id), 20),
+            'excerpt' => (function_exists('get_field') ? get_field('property_excerpt', $property_id) : '') ?: ($property->post_excerpt ?: wp_trim_words(self::process_property_shortcodes($property->post_content, $property_id), 20)),
             'status' => $property->post_status,
             'thumbnail' => $thumbnail ?: '',
             'gallery' => $gallery,
@@ -809,6 +814,7 @@ class ConnectorApiController
         return do_shortcode($content);
     }
 
+
     /**
      * Generate basic availability data (fallback)
      */
@@ -855,7 +861,7 @@ class ConnectorApiController
                 'date' => $date_string,
                 'available' => $is_available,
                 'status' => $is_available ? 'available' : 'booked',
-                'price' => $is_available ? floatval(get_post_meta($property_id, 'base_price', true)) ?: 100 : null
+                'price' => $is_available ? self::get_unified_display_price($property_id) : null
             ];
 
             $current->add(new \DateInterval('P1D'));
@@ -869,43 +875,40 @@ class ConnectorApiController
      */
     private static function get_price_for_date(int $property_id, string $date_str): int
     {
-        // Try to get price from pricing engine first (for future dates only)
-        $date = new \DateTime($date_str);
-        $today = new \DateTime('today');
+        return self::get_unified_display_price($property_id);
+    }
 
-        if ($date >= $today && class_exists('MinpakuSuite\Pricing\PricingEngine') && class_exists('MinpakuSuite\Pricing\RateContext')) {
-            try {
-                $checkin = new \DateTime($date_str);
-                $checkout = clone $checkin;
-                $checkout->add(new \DateInterval('P1D'));
+    /**
+     * Get unified display price (accommodation rate + cleaning fee)
+     */
+    private static function get_unified_display_price(int $property_id): int
+    {
+        // Get unified accommodation rate
+        $accommodation_rate = (float) get_post_meta($property_id, 'accommodation_rate', true);
 
-                $context = new \MinpakuSuite\Pricing\RateContext(
-                    $property_id,
-                    $checkin->format('Y-m-d'),
-                    $checkout->format('Y-m-d'),
-                    2, // adults
-                    0, // children
-                    0  // infants
-                );
-
-                $pricing_engine = new \MinpakuSuite\Pricing\PricingEngine($context);
-                $quote = $pricing_engine->calculateQuote();
-
-                if ($quote && isset($quote['total_incl_tax']) && $quote['total_incl_tax'] > 0) {
-                    return intval($quote['total_incl_tax']);
-                }
-            } catch (\Exception $e) {
-                error_log('Price calculation error: ' . $e->getMessage());
-            }
+        // Fallback to legacy test fields if new field is not set
+        if ($accommodation_rate == 0) {
+            $test_base_rate = (float) get_post_meta($property_id, 'test_base_rate', true);
+            $base_price_test = (float) get_post_meta($property_id, 'base_price_test', true);
+            $accommodation_rate = $test_base_rate ?: ($base_price_test ?: 15000.0);
         }
 
-        // Fallback to base price meta
-        $base_price = get_post_meta($property_id, 'mcs_base_price', true);
-        if ($base_price && is_numeric($base_price) && $base_price > 0) {
-            return intval($base_price);
+        // Get cleaning fee
+        $cleaning_fee = (float) get_post_meta($property_id, 'cleaning_fee', true);
+
+        // Fallback to legacy test field if new field is not set
+        if ($cleaning_fee == 0) {
+            $cleaning_fee = (float) get_post_meta($property_id, 'test_cleaning_fee', true) ?: 0.0;
         }
 
-        return 0;
+        // Calculate display price = accommodation rate + cleaning fee
+        $display_price = $accommodation_rate + $cleaning_fee;
+
+        if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+            error_log("[API] Property $property_id unified display price: ¥$display_price (accommodation: ¥$accommodation_rate + cleaning: ¥$cleaning_fee)");
+        }
+
+        return intval($display_price);
     }
 
     /**

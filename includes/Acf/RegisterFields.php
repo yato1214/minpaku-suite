@@ -207,6 +207,25 @@ class RegisterFields
                     'max' => '',
                     'step' => 100,
                 ],
+                [
+                    'key' => 'field_mcs_property_excerpt',
+                    'label' => __('Property Excerpt', 'minpaku-suite'),
+                    'name' => 'property_excerpt',
+                    'type' => 'textarea',
+                    'instructions' => __('Brief description shown in property listings and connector sites', 'minpaku-suite'),
+                    'required' => 0,
+                    'conditional_logic' => 0,
+                    'wrapper' => [
+                        'width' => '',
+                        'class' => '',
+                        'id' => '',
+                    ],
+                    'default_value' => '',
+                    'placeholder' => __('Enter a brief description for this property...', 'minpaku-suite'),
+                    'maxlength' => 300,
+                    'rows' => 4,
+                    'new_lines' => 'br',
+                ],
             ],
             'location' => [
                 [

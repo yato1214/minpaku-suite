@@ -3,7 +3,7 @@
  * Plugin Name: Minpaku Suite
  * Plugin URI: https://github.com/yato1214/minpaku-suite
  * Description: Comprehensive suite for managing minpaku (vacation rental) properties with channel sync capabilities.
- * Version: 0.4.1
+ * Version: 0.5.7
  * Author: Yato1214
  * Text Domain: minpaku-suite
  * Domain Path: /languages
@@ -16,7 +16,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('MINPAKU_SUITE_VERSION', '0.4.1');
+define('MINPAKU_SUITE_VERSION', '0.5.7');
 define('MINPAKU_SUITE_PLUGIN_FILE', __FILE__);
 define('MCS_PATH', plugin_dir_path(__FILE__));
 define('MCS_URL', plugin_dir_url(__FILE__));

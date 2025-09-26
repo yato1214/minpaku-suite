@@ -232,7 +232,7 @@
 }
 
 .wmc-calendar-button {
-    display: inline-flex;
+    display: inline-flex !important;
     align-items: center;
     gap: 8px;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -247,6 +247,9 @@
     text-decoration: none;
     width: 100%;
     justify-content: center;
+    z-index: 10;
+    position: relative;
+    overflow: visible;
 }
 
 .wmc-calendar-button:hover {
@@ -271,10 +274,18 @@
 
 .wmc-calendar-icon {
     font-size: 16px;
+    display: inline-block;
+    z-index: 1;
+    position: relative;
+    line-height: 1;
+    vertical-align: middle;
 }
 
 .wmc-calendar-text {
     font-weight: 500;
+    display: inline-block;
+    position: relative;
+    z-index: 1;
 }
 
 /* Modal styles */

@@ -18,6 +18,8 @@ class AvailabilityCalendar
         add_shortcode('mcs_availability', [__CLASS__, 'render_shortcode']);
         add_action('wp_enqueue_scripts', [__CLASS__, 'enqueue_styles']);
         add_action('wp_enqueue_scripts', [__CLASS__, 'enqueue_scripts']);
+        add_action('wp_ajax_mcs_get_calendar_modal', [__CLASS__, 'ajax_get_calendar_modal']);
+        add_action('wp_ajax_nopriv_mcs_get_calendar_modal', [__CLASS__, 'ajax_get_calendar_modal']);
     }
 
     /**
@@ -34,7 +36,8 @@ class AvailabilityCalendar
             'adults' => 2,
             'children' => 0,
             'infants' => 0,
-            'currency' => 'JPY'
+            'currency' => 'JPY',
+            'modal' => 'false'
         ], $atts);
 
         $months = max(1, min(12, intval($atts['months'])));
@@ -48,6 +51,11 @@ class AvailabilityCalendar
         $property = get_post($property_id);
         if (!$property || $property->post_type !== 'mcs_property') {
             return '<p class="mcs-error">' . __('Property not found.', 'minpaku-suite') . '</p>';
+        }
+
+        // Check if modal mode is requested
+        if ($atts['modal'] === 'true') {
+            return self::renderCalendarButton($property_id, $property->post_title, $atts);
         }
 
         try {
@@ -135,6 +143,127 @@ class AvailabilityCalendar
         }
 
         return "<!-- mcs_availability: resolved by {$method} to ID={$property_id} -->\n";
+    }
+
+    /**
+     * Render calendar modal button
+     */
+    private static function renderCalendarButton(int $property_id, string $property_title, array $atts = []): string
+    {
+        $button_text = $atts['button_text'] ?? __('空室カレンダーを見る', 'minpaku-suite');
+        $button_class = $atts['button_class'] ?? 'mcs-calendar-modal-button';
+        $modal_id = 'mcs-calendar-modal-' . $property_id . '-' . uniqid();
+
+        $output = '<div class="mcs-calendar-button-wrapper">';
+        $output .= '<button class="' . esc_attr($button_class) . '" ';
+        $output .= 'data-property-id="' . esc_attr($property_id) . '" ';
+        $output .= 'data-property-title="' . esc_attr($property_title) . '" ';
+        $output .= 'data-modal-id="' . esc_attr($modal_id) . '" ';
+        $output .= 'data-months="' . esc_attr($atts['months'] ?? 2) . '" ';
+        $output .= 'data-show-prices="' . esc_attr($atts['show_prices'] ?? 'true') . '" ';
+        $output .= 'data-adults="' . esc_attr($atts['adults'] ?? 2) . '" ';
+        $output .= 'data-children="' . esc_attr($atts['children'] ?? 0) . '" ';
+        $output .= 'data-infants="' . esc_attr($atts['infants'] ?? 0) . '" ';
+        $output .= 'data-currency="' . esc_attr($atts['currency'] ?? 'JPY') . '">';
+        $output .= '<span class="mcs-calendar-icon">📅</span>';
+        $output .= '<span class="mcs-calendar-text">' . esc_html($button_text) . '</span>';
+        $output .= '</button>';
+        $output .= '</div>';
+
+        // Add modal container with unique ID
+        $output .= '<div id="' . esc_attr($modal_id) . '" class="mcs-modal" style="display: none;">';
+        $output .= '<div class="mcs-modal-overlay"></div>';
+        $output .= '<div class="mcs-modal-content">';
+        $output .= '<div class="mcs-modal-header">';
+        $output .= '<h3 class="mcs-modal-title">' . esc_html($property_title) . ' - ' . __('空室カレンダー', 'minpaku-suite') . '</h3>';
+        $output .= '<button class="mcs-modal-close">&times;</button>';
+        $output .= '</div>';
+        $output .= '<div class="mcs-modal-body" id="' . esc_attr($modal_id) . '-content">';
+        $output .= '<div class="mcs-loading">カレンダーを読み込み中...</div>';
+        $output .= '</div>';
+        $output .= '</div>';
+        $output .= '</div>';
+
+        // Add JavaScript for modal functionality
+        add_action('wp_footer', function() {
+            // Localize script to provide AJAX URL
+            wp_localize_script('jquery', 'mcs_ajax', array(
+                'ajaxurl' => admin_url('admin-ajax.php')
+            ));
+
+            echo '<script type="text/javascript">';
+            echo 'jQuery(document).ready(function($) {';
+            echo '  $(".mcs-calendar-modal-button").click(function(e) {';
+            echo '    e.preventDefault();';
+            echo '    var button = $(this);';
+            echo '    var propertyId = button.data("property-id");';
+            echo '    var propertyTitle = button.data("property-title");';
+            echo '    var modalId = button.data("modal-id");';
+            echo '    var months = button.data("months");';
+            echo '    var showPrices = button.data("show-prices");';
+            echo '    ';
+            echo '    console.log("Modal button clicked", {propertyId: propertyId, modalId: modalId, months: months});';
+            echo '    ';
+            echo '    $("#" + modalId).show();';
+            echo '    $("body").addClass("mcs-modal-open");';
+            echo '    ';
+            echo '    // Load calendar content via AJAX';
+            echo '    var ajaxUrl = (typeof mcs_ajax !== "undefined") ? mcs_ajax.ajaxurl : (typeof ajaxurl !== "undefined" ? ajaxurl : "/wp-admin/admin-ajax.php");';
+            echo '    var params = {';
+            echo '      action: "mcs_get_calendar_modal",';
+            echo '      property_id: propertyId,';
+            echo '      months: months,';
+            echo '      show_prices: showPrices';
+            echo '    };';
+            echo '    ';
+            echo '    console.log("Sending AJAX request to", ajaxUrl, params);';
+            echo '    ';
+            echo '    $.post(ajaxUrl, params, function(response) {';
+            echo '      console.log("AJAX response", response);';
+            echo '      if (response.success) {';
+            echo '        $("#" + modalId + "-content").html(response.data);';
+            echo '      } else {';
+            echo '        $("#" + modalId + "-content").html("<p>カレンダーの読み込みに失敗しました。</p>");';
+            echo '      }';
+            echo '    }).fail(function(xhr, status, error) {';
+            echo '      console.error("AJAX failed", xhr, status, error);';
+            echo '      $("#" + modalId + "-content").html("<p>カレンダーの読み込みに失敗しました。ネットワークエラーです。</p>");';
+            echo '    });';
+            echo '  });';
+            echo '  ';
+            echo '  $(".mcs-modal-close, .mcs-modal-overlay").click(function() {';
+            echo '    $(this).closest(".mcs-modal").hide();';
+            echo '    $("body").removeClass("mcs-modal-open");';
+            echo '  });';
+            echo '  ';
+            echo '  // ESC key to close modal';
+            echo '  $(document).keydown(function(e) {';
+            echo '    if (e.keyCode === 27) {';
+            echo '      $(".mcs-modal:visible").hide();';
+            echo '      $("body").removeClass("mcs-modal-open");';
+            echo '    }';
+            echo '  });';
+            echo '});';
+            echo '</script>';
+
+            // Add modal styles
+            echo '<style>';
+            echo '.mcs-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; }';
+            echo '.mcs-modal-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); }';
+            echo '.mcs-modal-content { position: relative; max-width: 90vw; max-height: 90vh; margin: 5vh auto; background: white; border-radius: 8px; overflow: hidden; }';
+            echo '.mcs-modal-header { padding: 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }';
+            echo '.mcs-modal-title { margin: 0; font-size: 18px; }';
+            echo '.mcs-modal-close { background: none; border: none; font-size: 24px; cursor: pointer; padding: 0; width: 30px; height: 30px; }';
+            echo '.mcs-modal-body { padding: 20px; max-height: calc(90vh - 120px); overflow-y: auto; }';
+            echo '.mcs-calendar-modal-button { background: #667eea; color: white; border: none; padding: 12px 20px; border-radius: 6px; cursor: pointer; font-size: 14px; display: inline-flex; align-items: center; gap: 8px; }';
+            echo '.mcs-calendar-modal-button:hover { background: #5a67d8; }';
+            echo '.mcs-calendar-icon { font-size: 16px; }';
+            echo 'body.mcs-modal-open { overflow: hidden; }';
+            echo '.mcs-loading { text-align: center; padding: 40px; color: #666; }';
+            echo '</style>';
+        }, 100);
+
+        return $output;
     }
 
     /**
@@ -371,53 +500,36 @@ class AvailabilityCalendar
     }
 
     /**
-     * Get price for a specific day
+     * Get price for a specific day (display price = accommodation rate + cleaning fee)
      */
     private static function getPriceForDay(int $property_id, string $date_str): string
     {
-        $date = new \DateTime($date_str);
-        $today = new \DateTime('today');
+        // Get unified accommodation rate
+        $accommodation_rate = (float) get_post_meta($property_id, 'accommodation_rate', true);
 
-        // For future dates, try to get price from pricing engine
-        if ($date >= $today && class_exists('MinpakuSuite\Pricing\PricingEngine') && class_exists('MinpakuSuite\Pricing\RateContext')) {
-            try {
-                $checkin = new \DateTime($date_str);
-                $checkout = clone $checkin;
-                $checkout->add(new \DateInterval('P1D'));
-
-                $context = new \MinpakuSuite\Pricing\RateContext(
-                    $property_id,
-                    $checkin->format('Y-m-d'),
-                    $checkout->format('Y-m-d'),
-                    2, // adults
-                    0, // children
-                    0  // infants
-                );
-
-                $pricing_engine = new \MinpakuSuite\Pricing\PricingEngine($context);
-                $quote = $pricing_engine->calculateQuote();
-
-                if ($quote && isset($quote['total_incl_tax']) && $quote['total_incl_tax'] > 0) {
-                    return '¥' . number_format($quote['total_incl_tax']);
-                }
-            } catch (\Exception $e) {
-                error_log('Price calculation error for property ' . $property_id . ' on ' . $date_str . ': ' . $e->getMessage());
-                // For DomainException (availability issues), silently fall back to base price
-                if ($e instanceof \DomainException) {
-                    // This date is not available, don't show pricing engine error
-                } else {
-                    error_log('Unexpected pricing error: ' . get_class($e) . ' - ' . $e->getMessage());
-                }
-            }
+        // Fallback to legacy test fields if new field is not set
+        if ($accommodation_rate == 0) {
+            $test_base_rate = (float) get_post_meta($property_id, 'test_base_rate', true);
+            $base_price_test = (float) get_post_meta($property_id, 'base_price_test', true);
+            $accommodation_rate = $test_base_rate ?: ($base_price_test ?: 15000.0);
         }
 
-        // Fallback to base price meta (for past dates or when pricing engine fails)
-        $price_fields = ['base_price_test', 'mcs_base_price', 'base_price', 'price'];
-        foreach ($price_fields as $field) {
-            $base_price = get_post_meta($property_id, $field, true);
-            if ($base_price && is_numeric($base_price) && $base_price > 0) {
-                return '¥' . number_format(intval($base_price));
+        // Get cleaning fee
+        $cleaning_fee = (float) get_post_meta($property_id, 'cleaning_fee', true);
+
+        // Fallback to legacy test field if new field is not set
+        if ($cleaning_fee == 0) {
+            $cleaning_fee = (float) get_post_meta($property_id, 'test_cleaning_fee', true) ?: 0.0;
+        }
+
+        // Calculate display price = accommodation rate + cleaning fee
+        $display_price = $accommodation_rate + $cleaning_fee;
+
+        if ($display_price > 0) {
+            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                error_log("[Calendar] Property $property_id display price: ¥$display_price (accommodation: ¥$accommodation_rate + cleaning: ¥$cleaning_fee)");
             }
+            return '¥' . number_format($display_price);
         }
 
         // No price available
@@ -444,15 +556,103 @@ class AvailabilityCalendar
     public static function enqueue_scripts(): void
     {
         if (self::shouldEnqueueStyles()) {
-            // Enqueue external JS file instead of inline scripts
-            $js_file = MINPAKU_SUITE_PLUGIN_URL . 'assets/admin-calendar.js';
-            $js_version = filemtime(MINPAKU_SUITE_PLUGIN_DIR . 'assets/admin-calendar.js');
-            wp_enqueue_script('mcs-admin-calendar', $js_file, ['jquery'], $js_version, true);
+            // Check if we need modal functionality
+            global $post;
+            $needs_modal = false;
 
-            // Pass admin URL to JavaScript
-            wp_localize_script('mcs-admin-calendar', 'minpakuAdmin', [
-                'bookingUrl' => admin_url('post-new.php?post_type=mcs_booking')
-            ]);
+            if ($post && has_shortcode($post->post_content, 'mcs_availability')) {
+                // Parse shortcodes to check for modal="true"
+                $pattern = get_shortcode_regex(['mcs_availability']);
+                preg_match_all('/' . $pattern . '/s', $post->post_content, $matches);
+
+                foreach ($matches[3] as $attrs) {
+                    $atts = shortcode_parse_atts($attrs);
+                    if (isset($atts['modal']) && $atts['modal'] === 'true') {
+                        $needs_modal = true;
+                        break;
+                    }
+                }
+            }
+
+            if ($needs_modal) {
+                // Enqueue modal calendar CSS
+                $css_file = MINPAKU_SUITE_PLUGIN_URL . 'assets/css/calendar-modal.css';
+                $css_version = file_exists(MINPAKU_SUITE_PLUGIN_DIR . 'assets/css/calendar-modal.css')
+                    ? filemtime(MINPAKU_SUITE_PLUGIN_DIR . 'assets/css/calendar-modal.css')
+                    : MINPAKU_SUITE_VERSION;
+                wp_enqueue_style('mcs-calendar-modal', $css_file, [], $css_version);
+
+                // Enqueue modal calendar JavaScript
+                $js_file = MINPAKU_SUITE_PLUGIN_URL . 'assets/js/calendar-modal.js';
+                $js_version = file_exists(MINPAKU_SUITE_PLUGIN_DIR . 'assets/js/calendar-modal.js')
+                    ? filemtime(MINPAKU_SUITE_PLUGIN_DIR . 'assets/js/calendar-modal.js')
+                    : MINPAKU_SUITE_VERSION;
+                wp_enqueue_script('mcs-calendar-modal', $js_file, ['jquery'], $js_version, true);
+
+                // Localize script for AJAX
+                wp_localize_script('mcs-calendar-modal', 'mcsCalendarModal', [
+                    'ajaxUrl' => admin_url('admin-ajax.php'),
+                    'nonce' => wp_create_nonce('mcs_calendar_modal'),
+                    'debug' => defined('WP_DEBUG') && WP_DEBUG
+                ]);
+            }
+
+            // Enqueue admin calendar for backend functionality
+            $admin_js_file = MINPAKU_SUITE_PLUGIN_URL . 'assets/admin-calendar.js';
+            if (file_exists(MINPAKU_SUITE_PLUGIN_DIR . 'assets/admin-calendar.js')) {
+                $admin_js_version = filemtime(MINPAKU_SUITE_PLUGIN_DIR . 'assets/admin-calendar.js');
+                wp_enqueue_script('mcs-admin-calendar', $admin_js_file, ['jquery'], $admin_js_version, true);
+
+                // Pass admin URL to JavaScript
+                wp_localize_script('mcs-admin-calendar', 'minpakuAdmin', [
+                    'bookingUrl' => admin_url('post-new.php?post_type=mcs_booking')
+                ]);
+            }
+        }
+    }
+
+    /**
+     * AJAX handler for modal calendar
+     */
+    public static function ajax_get_calendar_modal(): void
+    {
+        // Verify nonce for security
+        $nonce = $_POST['nonce'] ?? '';
+        if (!wp_verify_nonce($nonce, 'mcs_calendar_modal')) {
+            wp_send_json_error('Invalid nonce');
+            return;
+        }
+
+        $property_id = intval($_POST['property_id'] ?? 0);
+        $months = max(1, min(12, intval($_POST['months'] ?? 2)));
+        $show_prices = ($_POST['show_prices'] ?? 'true') === 'true';
+
+        if (!$property_id) {
+            wp_send_json_error('Invalid property ID');
+            return;
+        }
+
+        $property = get_post($property_id);
+        if (!$property || $property->post_type !== 'mcs_property') {
+            wp_send_json_error('Property not found');
+            return;
+        }
+
+        try {
+            $atts = [
+                'months' => $months,
+                'show_prices' => $show_prices ? 'true' : 'false',
+                'adults' => intval($_POST['adults'] ?? 2),
+                'children' => intval($_POST['children'] ?? 0),
+                'infants' => intval($_POST['infants'] ?? 0),
+                'currency' => sanitize_text_field($_POST['currency'] ?? 'JPY')
+            ];
+
+            $calendar_html = self::renderCalendar($property_id, $months, $atts);
+            wp_send_json_success($calendar_html);
+        } catch (Exception $e) {
+            error_log('Modal calendar error: ' . $e->getMessage());
+            wp_send_json_error('カレンダーの読み込みに失敗しました。');
         }
     }
 
