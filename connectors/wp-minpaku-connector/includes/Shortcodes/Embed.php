@@ -30,7 +30,9 @@ class MPC_Shortcodes_Embed {
             'columns' => '3',
             'months' => '2',
             'start_date' => '',
-            'class' => ''
+            'class' => '',
+            'modal' => 'false',
+            'show_prices' => 'true'
         ), $atts, 'minpaku_connector');
 
         // Log shortcode usage for debugging
@@ -59,7 +61,7 @@ class MPC_Shortcodes_Embed {
         }
 
         // Validate shortcode type
-        $valid_types = array('properties', 'availability', 'property');
+        $valid_types = array('properties', 'availability');
         if (!in_array($atts['type'], $valid_types)) {
             self::log_error('Invalid shortcode type: ' . $atts['type'], 'shortcode');
             return self::render_error_notice(
@@ -77,9 +79,6 @@ class MPC_Shortcodes_Embed {
 
                 case 'availability':
                     return self::render_availability($atts, $api);
-
-                case 'property':
-                    return self::render_property($atts, $api);
             }
         } catch (Exception $e) {
             self::log_error('Shortcode rendering failed: ' . $e->getMessage(), 'shortcode');
@@ -132,6 +131,7 @@ class MPC_Shortcodes_Embed {
         $limit = max(1, min(50, intval($atts['limit']))); // Limit between 1-50
         $columns = max(1, min(6, intval($atts['columns']))); // Columns between 1-6
         $css_class = sanitize_html_class($atts['class']);
+        $modal = sanitize_text_field($atts['modal'] ?? 'false');
 
         self::log_error("Fetching properties: limit=$limit, columns=$columns", 'shortcode');
 
@@ -182,7 +182,7 @@ class MPC_Shortcodes_Embed {
             $output .= '<h3 class="screen-reader-text">' . esc_html__('Available Properties', 'wp-minpaku-connector') . '</h3>';
 
             foreach ($properties as $property) {
-                $output .= self::render_property_card($property);
+                $output .= self::render_property_card($property, $modal);
             }
 
             $output .= '</section>';
@@ -200,70 +200,44 @@ class MPC_Shortcodes_Embed {
     }
 
     /**
-     * Render availability calendar - DEPRECATED: Use modal calendar instead
+     * Render availability calendar with pricing and booking functionality
      */
     private static function render_availability($atts, $api) {
-        // DEPRECATED: Static calendar displays are removed in favor of modal calendar
-        // Instead of showing the old static calendar, show a modal calendar button only
-
         $property_id = intval($atts['property_id'] ?? 0);
+        $months = max(1, min(12, intval($atts['months'] ?? 2)));
+        $start_date = sanitize_text_field($atts['start_date'] ?? '');
+        $css_class = sanitize_html_class($atts['class'] ?? '');
+        $modal = sanitize_text_field($atts['modal'] ?? 'false');
 
         if (empty($property_id)) {
             return '<div class="wmc-error">' . esc_html__('Property ID is required for calendar display.', 'wp-minpaku-connector') . '</div>';
         }
 
-        // Get property info for the button
-        $property_response = $api->get_property($property_id);
-        $property_title = '';
-
-        if ($property_response['success']) {
-            $property_title = $property_response['data']['title'] ?? '';
+        // Check if the ConnectorCalendar class exists
+        if (!class_exists('MinpakuConnector\Shortcodes\MPC_Shortcodes_ConnectorCalendar')) {
+            return '<div class="wmc-error">' . esc_html__('Portal-style calendar functionality not available.', 'wp-minpaku-connector') . '</div>';
         }
 
-        // Return only the modal calendar button instead of static calendar
-        $output = '<div class="wmc-availability-section">';
-        $output .= '<h4>' . esc_html__('Availability Calendar', 'wp-minpaku-connector') . '</h4>';
-        $output .= '<div class="wmc-property-actions">';
-        $output .= '<button class="wmc-calendar-button wmc-calendar-button--large" data-property-id="' . esc_attr($property_id) . '" data-property-title="' . esc_attr($property_title) . '">';
-        $output .= '<span class="wmc-calendar-icon">📅</span>';
-        $output .= '<span class="wmc-calendar-text">' . esc_html__('View Availability Calendar', 'wp-minpaku-connector') . '</span>';
-        $output .= '</button>';
-        $output .= '</div>';
-        $output .= '</div>';
+        // Use ConnectorCalendar directly - no wrapper needed
+        $calendar_atts = array(
+            'property_id' => $property_id,
+            'months' => $months,
+            'show_prices' => $atts['show_prices'] ?? 'true',
+            'modal' => $modal
+        );
 
-        return $output;
+        if (!empty($start_date)) {
+            $calendar_atts['start_date'] = $start_date;
+        }
+
+        return \MinpakuConnector\Shortcodes\MPC_Shortcodes_ConnectorCalendar::render_calendar($calendar_atts);
     }
 
-    /**
-     * Render single property details
-     */
-    private static function render_property($atts, $api) {
-        $property_id = intval($atts['property_id']);
-        $css_class = sanitize_html_class($atts['class']);
-
-        if (empty($property_id)) {
-            return '<div class="wmc-error">' . esc_html__('Property ID is required.', 'wp-minpaku-connector') . '</div>';
-        }
-
-        $response = $api->get_property($property_id);
-
-        if (!$response['success']) {
-            return '<div class="wmc-error">' . esc_html($response['message']) . '</div>';
-        }
-
-        $property = $response['data'];
-
-        $output = '<div class="wmc-property-details ' . esc_attr($css_class) . '">';
-        $output .= self::render_property_full($property);
-        $output .= '</div>';
-
-        return $output;
-    }
 
     /**
      * Render property card for grid view
      */
-    private static function render_property_card($property) {
+    private static function render_property_card($property, $modal = 'false') {
         $output = '<div class="wmc-property-card">';
 
         // Thumbnail
@@ -277,9 +251,29 @@ class MPC_Shortcodes_Embed {
         $output .= '<div class="wmc-property-content">';
         $output .= '<h3 class="wmc-property-title">' . esc_html($property['title']) . '</h3>';
 
-        if (!empty($property['excerpt'])) {
-            $excerpt = trim($property['excerpt']);
+        // Try to get excerpt from multiple possible fields
+        $excerpt = '';
 
+        // Priority order: summary, excerpt, description (short), meta description
+        if (!empty($property['summary'])) {
+            $excerpt = trim($property['summary']);
+        } elseif (!empty($property['excerpt'])) {
+            $excerpt = trim($property['excerpt']);
+        } elseif (!empty($property['description'])) {
+            // Limit description to first 150 characters for excerpt
+            $description = trim(strip_tags($property['description']));
+            if (strlen($description) > 150) {
+                $excerpt = substr($description, 0, 150) . '...';
+            } else {
+                $excerpt = $description;
+            }
+        } elseif (!empty($property['meta']['description'])) {
+            $excerpt = trim($property['meta']['description']);
+        } elseif (!empty($property['meta']['summary'])) {
+            $excerpt = trim($property['meta']['summary']);
+        }
+
+        if (!empty($excerpt)) {
             // Only clean up auto-generated excerpts, not custom excerpts
             // If excerpt contains typical auto-generated patterns, apply cleaning
             if (strpos($excerpt, '空室カレンダーを見る') !== false ||
@@ -314,12 +308,20 @@ class MPC_Shortcodes_Embed {
             $output .= '</span>';
         }
 
-        // Use real-time pricing instead of static base_price
-        $real_price = self::get_real_property_price($property['id']);
-        if ($real_price > 0) {
+        // Use base nightly price from property meta
+        $base_price = 0;
+        if (isset($property['meta']['accommodation_rate']) && $property['meta']['accommodation_rate'] > 0) {
+            $base_price = floatval($property['meta']['accommodation_rate']);
+        } elseif (isset($property['meta']['test_base_rate']) && $property['meta']['test_base_rate'] > 0) {
+            $base_price = floatval($property['meta']['test_base_rate']);
+        } elseif (isset($property['meta']['base_price_test']) && $property['meta']['base_price_test'] > 0) {
+            $base_price = floatval($property['meta']['base_price_test']);
+        }
+
+        if ($base_price > 0) {
             $output .= '<span class="wmc-meta-item wmc-price">';
-            $output .= '<span class="wmc-meta-label">' . esc_html__('From:', 'wp-minpaku-connector') . '</span> ';
-            $output .= '<span class="wmc-meta-value">¥' . number_format($real_price) . '</span>';
+            $output .= '<span class="wmc-meta-label">' . esc_html__('料金:', 'wp-minpaku-connector') . '</span> ';
+            $output .= '<span class="wmc-meta-value">¥' . number_format($base_price) . '～</span>';
             $output .= '</span>';
         }
         $output .= '</div>';
@@ -377,206 +379,6 @@ class MPC_Shortcodes_Embed {
         return $output;
     }
 
-    /**
-     * Render full property details
-     */
-    private static function render_property_full($property) {
-        $output = '<div class="wmc-property-full">';
-
-        // Gallery or main image
-        if (!empty($property['gallery']) && is_array($property['gallery'])) {
-            $output .= '<div class="wmc-property-gallery">';
-            foreach ($property['gallery'] as $image) {
-                $output .= '<img src="' . esc_url($image['url']) . '" alt="' . esc_attr($image['alt']) . '">';
-            }
-            $output .= '</div>';
-        } elseif (!empty($property['thumbnail'])) {
-            $output .= '<div class="wmc-property-image">';
-            $output .= '<img src="' . esc_url($property['thumbnail']) . '" alt="' . esc_attr($property['title']) . '">';
-            $output .= '</div>';
-        }
-
-        // Title and content
-        $output .= '<h2 class="wmc-property-title">' . esc_html($property['title']) . '</h2>';
-
-        if (!empty($property['content'])) {
-            $output .= '<div class="wmc-property-description">' . wp_kses_post($property['content']) . '</div>';
-        }
-
-        // Meta details
-        $output .= '<div class="wmc-property-details-grid">';
-
-        $meta_items = array(
-            'capacity' => __('Capacity', 'wp-minpaku-connector'),
-            'bedrooms' => __('Bedrooms', 'wp-minpaku-connector'),
-            'bathrooms' => __('Bathrooms', 'wp-minpaku-connector')
-        );
-
-        foreach ($meta_items as $key => $label) {
-            if (!empty($property['meta'][$key])) {
-                $output .= '<div class="wmc-detail-item">';
-                $output .= '<span class="wmc-detail-label">' . esc_html($label) . ':</span> ';
-                $output .= '<span class="wmc-detail-value">' . esc_html($property['meta'][$key]) . '</span>';
-                $output .= '</div>';
-            }
-        }
-
-        // Use real-time pricing for property details page
-        $real_price = self::get_real_property_price($property['id']);
-        if ($real_price > 0) {
-            $output .= '<div class="wmc-detail-item wmc-price-item">';
-            $output .= '<span class="wmc-detail-label">' . esc_html__('Base Price:', 'wp-minpaku-connector') . '</span> ';
-            $output .= '<span class="wmc-detail-value">¥' . number_format($real_price) . ' ' . esc_html__('per night', 'wp-minpaku-connector') . '</span>';
-            $output .= '</div>';
-        }
-
-        $output .= '</div>';
-
-        // Location
-        if (!empty($property['location']['address']) || !empty($property['location']['city'])) {
-            $output .= '<div class="wmc-property-location">';
-            $output .= '<h4>' . esc_html__('Location', 'wp-minpaku-connector') . '</h4>';
-
-            $location_parts = array_filter(array(
-                $property['location']['address'],
-                $property['location']['city'],
-                $property['location']['region'],
-                $property['location']['country']
-            ));
-
-            $output .= '<p>' . esc_html(implode(', ', $location_parts)) . '</p>';
-            $output .= '</div>';
-        }
-
-        // Amenities
-        if (!empty($property['amenities']) && is_array($property['amenities'])) {
-            $output .= '<div class="wmc-property-amenities">';
-            $output .= '<h4>' . esc_html__('Amenities', 'wp-minpaku-connector') . '</h4>';
-            $output .= '<ul class="wmc-amenities-list">';
-            foreach ($property['amenities'] as $amenity) {
-                $output .= '<li>' . esc_html($amenity) . '</li>';
-            }
-            $output .= '</ul>';
-            $output .= '</div>';
-        }
-
-        // Add modal calendar button for property view - Clean modern implementation only
-        $output .= '<div class="wmc-property-calendar">';
-        $output .= '<h4>' . esc_html__('Availability Calendar', 'wp-minpaku-connector') . '</h4>';
-        $output .= '<p style="margin: 10px 0; color: #666; font-size: 14px;">' . esc_html__('Click the button below to view real-time availability and pricing.', 'wp-minpaku-connector') . '</p>';
-        $output .= '<div class="wmc-property-actions">';
-        $output .= '<button class="wmc-calendar-button wmc-calendar-button--large" data-property-id="' . esc_attr($property['id']) . '" data-property-title="' . esc_attr($property['title']) . '" style="margin: 0;">';
-        $output .= '<span class="wmc-calendar-icon">📅</span>';
-        $output .= '<span class="wmc-calendar-text">' . esc_html__('View Availability Calendar', 'wp-minpaku-connector') . '</span>';
-        $output .= '</button>';
-        $output .= '</div>';
-        $output .= '</div>';
-
-        $output .= '</div>'; // Close wmc-property-full
-
-        // IMPORTANT: Add bulletproof CSS fixes directly in footer
-        add_action('wp_footer', function() {
-            echo '<style id="wmc-property-calendar-fix">';
-            // Hide legacy calendar elements
-            echo '.wmc-property-details .mpc-calendar-container, ';
-            echo '.wmc-property-details .mcs-availability-calendar, ';
-            echo '.wmc-property-details .mcs-calendar-month, ';
-            echo '.wmc-property-details .mcs-calendar-grid, ';
-            echo '.wmc-property-details .legacy-calendar, ';
-            echo '.wmc-property-details [class*="calendar"]:not(.wmc-calendar-button):not(.wmc-property-calendar):not(.wmc-calendar-icon):not(.wmc-calendar-text) { ';
-            echo '  display: none !important; ';
-            echo '  visibility: hidden !important; ';
-            echo '} ';
-            // CRITICAL: Fix calendar button display issues with MAXIMUM specificity
-            echo '.wmc-property-details .wmc-calendar-button, ';
-            echo '.wmc-property-full .wmc-calendar-button, ';
-            echo '.wmc-calendar-button { ';
-            echo '  display: inline-flex !important; ';
-            echo '  align-items: center !important; ';
-            echo '  z-index: 1001 !important; ';
-            echo '  position: relative !important; ';
-            echo '  overflow: visible !important; ';
-            echo '  opacity: 1 !important; ';
-            echo '  visibility: visible !important; ';
-            echo '  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important; ';
-            echo '  color: white !important; ';
-            echo '  border: none !important; ';
-            echo '  padding: 10px 16px !important; ';
-            echo '  border-radius: 6px !important; ';
-            echo '  cursor: pointer !important; ';
-            echo '  font-size: 14px !important; ';
-            echo '  font-weight: 500 !important; ';
-            echo '  transition: all 0.3s ease !important; ';
-            echo '  text-decoration: none !important; ';
-            echo '  width: 100% !important; ';
-            echo '  justify-content: center !important; ';
-            echo '} ';
-            // CRITICAL: Fix calendar icon display with MAXIMUM specificity
-            echo '.wmc-property-details .wmc-calendar-button .wmc-calendar-icon, ';
-            echo '.wmc-property-full .wmc-calendar-button .wmc-calendar-icon, ';
-            echo '.wmc-calendar-icon { ';
-            echo '  display: inline-block !important; ';
-            echo '  font-size: 16px !important; ';
-            echo '  opacity: 1 !important; ';
-            echo '  visibility: visible !important; ';
-            echo '  z-index: 1000 !important; ';
-            echo '  position: relative !important; ';
-            echo '  line-height: 1 !important; ';
-            echo '  vertical-align: middle !important; ';
-            echo '  margin-right: 8px !important; ';
-            echo '  color: inherit !important; ';
-            echo '} ';
-            // CRITICAL: Fix calendar text display with MAXIMUM specificity
-            echo '.wmc-property-details .wmc-calendar-button .wmc-calendar-text, ';
-            echo '.wmc-property-full .wmc-calendar-button .wmc-calendar-text, ';
-            echo '.wmc-calendar-text { ';
-            echo '  display: inline-block !important; ';
-            echo '  opacity: 1 !important; ';
-            echo '  visibility: visible !important; ';
-            echo '  z-index: 1000 !important; ';
-            echo '  position: relative !important; ';
-            echo '  font-weight: 500 !important; ';
-            echo '  color: inherit !important; ';
-            echo '} ';
-            // CRITICAL: Ensure large button variant is visible
-            echo '.wmc-calendar-button--large { ';
-            echo '  padding: 14px 20px !important; ';
-            echo '  font-size: 16px !important; ';
-            echo '  font-weight: 600 !important; ';
-            echo '  width: 100% !important; ';
-            echo '  justify-content: center !important; ';
-            echo '} ';
-            echo '.wmc-calendar-button--large .wmc-calendar-icon { ';
-            echo '  font-size: 18px !important; ';
-            echo '} ';
-            echo '</style>';
-        }, 100); // Higher priority to ensure it loads after other styles
-
-        // Add script to footer to avoid display issues and fix visibility
-        add_action('wp_footer', function() {
-            echo '<script type="text/javascript">';
-            echo 'jQuery(document).ready(function($) {';
-            echo '  $(".wmc-property-details [data-auto-init]").removeAttr("data-auto-init");';
-            echo '  $(".wmc-property-details .mpc-calendar-container").hide();';
-            echo '  $(".wmc-property-details [id*=\'mcs-calendar\']").hide();';
-            // CRITICAL: Force show calendar button elements
-            echo '  $(".wmc-calendar-button").show().css({';
-            echo '    "display": "inline-flex",';
-            echo '    "opacity": "1",';
-            echo '    "visibility": "visible",';
-            echo '    "z-index": "999"';
-            echo '  });';
-            echo '  $(".wmc-calendar-icon, .wmc-calendar-text").show().css({';
-            echo '    "display": "inline-block",';
-            echo '    "opacity": "1",';
-            echo '    "visibility": "visible"';
-            echo '  });';
-            echo '});';
-            echo '</script>';
-        }, 101); // Load after CSS
-
-        return $output;
-    }
 
     // REMOVED: Old static calendar rendering function
     // Static calendar displays have been deprecated in favor of modal calendar popups
@@ -633,6 +435,20 @@ class MPC_Shortcodes_Embed {
 
             // Force highest priority loading
             wp_style_add_data('wp-minpaku-connector-calendar', 'priority', 'high');
+        }
+
+        // Enqueue quote CSS file with cache-busting
+        $quote_css_file = plugin_dir_url(__FILE__) . '../../assets/css/quote.css';
+        $quote_css_path = plugin_dir_path(__FILE__) . '../../assets/css/quote.css';
+
+        if (file_exists($quote_css_path)) {
+            wp_enqueue_style(
+                'wp-minpaku-connector-quote',
+                $quote_css_file,
+                ['wp-minpaku-connector-calendar'], // Depend on calendar CSS
+                filemtime($quote_css_path),
+                'all'
+            );
 
             // Enhanced critical CSS with maximum specificity and calendar button fix
             $critical_css = '
@@ -653,8 +469,12 @@ class MPC_Shortcodes_Embed {
                 .wmc-calendar-text{display:inline-block!important;font-weight:500!important;position:relative!important;z-index:1!important;opacity:1!important;visibility:visible!important;}
                 /* CRITICAL: Body scroll prevention */
                 body.wmc-modal-open{overflow:hidden!important;}
-                /* CRITICAL: Property detail page cleanup */
-                .wmc-property-details .mcs-availability-calendar, .wmc-property-details .mcs-calendar-month, .wmc-property-details .mcs-calendar-grid, .wmc-property-details .legacy-calendar, .wmc-property-details [class*="calendar"]:not(.wmc-calendar-button):not(.wmc-property-calendar):not(.wmc-calendar-icon):not(.wmc-calendar-text){display:none!important;visibility:hidden!important;}
+                /* CRITICAL: Property detail page cleanup - Hide all old calendar remnants */
+                .wmc-property-details .mcs-availability-calendar:not(.connector-calendar), .wmc-property-details .mcs-calendar-month:not(.mpc-calendar-month), .wmc-property-details .mcs-calendar-grid:not(.mpc-calendar-grid), .wmc-property-details .legacy-calendar, .wmc-property-details [class*="calendar"]:not(.wmc-calendar-button):not(.wmc-property-calendar):not(.wmc-calendar-icon):not(.wmc-calendar-text):not(.connector-calendar):not(.mpc-calendar-container){display:none!important;visibility:hidden!important;opacity:0!important;height:0!important;overflow:hidden!important;}
+                /* Force hide any remaining old calendar elements */
+                .wmc-property-full .mcs-availability-calendar:not(.connector-calendar){display:none!important;}
+                .wmc-property-full [id*="mcs-calendar"]:not([class*="mpc-calendar"]){display:none!important;}
+                .wmc-property-full [class*="mcs-"]:not(.mcs-day):not(.mcs-day-price):not(.mcs-day-number):not(.mcs-day-full-badge):not([class*="mpc-calendar"]){display:none!important;}
                 /* CRITICAL: Ensure prices are visible and properly styled */
                 .mcs-day-price{display:inline-block!important;font-size:11px!important;color:#333!important;background:rgba(0,0,0,0.06)!important;padding:2px 4px!important;border-radius:3px!important;margin-top:4px!important;}
                 /* CRITICAL: Property details cleanup */
@@ -665,43 +485,17 @@ class MPC_Shortcodes_Embed {
 
             wp_add_inline_style('wp-minpaku-connector-calendar', $critical_css);
 
-            // Additional force-load by adding to footer as well
-            add_action('wp_footer', function() use ($critical_css) {
-                echo '<style id="mpc-critical-css-backup">' . $critical_css . '</style>';
-            }, 999);
+            // No duplicate CSS output needed
 
         } else {
             // Enhanced fallback - use multiple attachment points
             $fallback_css = self::get_calendar_css();
             wp_add_inline_style('wp-block-library', $fallback_css);
 
-            // Force inject in footer as backup
-            add_action('wp_footer', function() use ($fallback_css) {
-                echo '<style id="mpc-fallback-css">' . $fallback_css . '</style>';
-            }, 999);
+            // CSS handled by wp_add_inline_style only
         }
 
-        // Force load CSS in head for faster rendering + Legacy cleanup + Button fix
-        add_action('wp_head', function() {
-            echo '<style id="mpc-head-critical">';
-            echo '.wmc-modal-overlay{z-index:999999!important;position:fixed!important;}';
-            echo '.wmc-calendar-button{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%)!important;color:white!important;border:none!important;display:inline-flex!important;z-index:10!important;position:relative!important;}';
-            echo '.wmc-calendar-icon{display:inline-block!important;opacity:1!important;visibility:visible!important;z-index:1!important;}';
-            echo '.wmc-calendar-text{display:inline-block!important;opacity:1!important;visibility:visible!important;z-index:1!important;}';
-            // Legacy calendar cleanup
-            echo '.mcs-availability-calendar:not(.wmc-modal-content .mcs-availability-calendar), ';
-            echo '.legacy-calendar, ';
-            echo '[class*="calendar"]:not(.wmc-calendar-button):not(.wmc-property-calendar):not(.wmc-calendar-icon):not(.wmc-calendar-text):not(.wmc-modal-content [class*="calendar"]) { ';
-            echo '  display: none !important; ';
-            echo '  visibility: hidden !important; ';
-            echo '} ';
-            echo '</style>';
-        }, 1);
-
-        // Add body class for additional targeting
-        add_action('wp_footer', function() {
-            echo '<script>document.body.classList.add("minpaku-connector-active");</script>';
-        }, 1);
+        // Critical CSS handled by wp_add_inline_style only to prevent duplicate output
     }
 
     /**
@@ -750,6 +544,34 @@ class MPC_Shortcodes_Embed {
                     'portalUrl' => untrailingslashit($portal_url),
                     'nonce' => wp_create_nonce('mpc_calendar_nonce'),
                     'ajaxUrl' => admin_url('admin-ajax.php'),
+                    'debug' => defined('WP_DEBUG') && WP_DEBUG,
+                    'rawPortalUrl' => $settings['portal_url'] ?? '',
+                    'normalizedPortalUrl' => $portal_url,
+                    'settingsDebug' => defined('WP_DEBUG') && WP_DEBUG ? $settings : array()
+                )
+            );
+        }
+
+        // Enqueue quote JS file with cache-busting
+        $quote_js_file = plugin_dir_url(__FILE__) . '../../assets/js/quote.js';
+        $quote_js_path = plugin_dir_path(__FILE__) . '../../assets/js/quote.js';
+
+        if (file_exists($quote_js_path)) {
+            wp_enqueue_script(
+                'wp-minpaku-connector-quote',
+                $quote_js_file,
+                ['jquery', 'wp-minpaku-connector-calendar'],
+                filemtime($quote_js_path),
+                true
+            );
+
+            // Localize quote script
+            wp_localize_script(
+                'wp-minpaku-connector-quote',
+                'mpcQuoteData',
+                array(
+                    'ajaxUrl' => admin_url('admin-ajax.php'),
+                    'nonce' => wp_create_nonce('mpc_calendar_nonce'),
                     'debug' => defined('WP_DEBUG') && WP_DEBUG
                 )
             );
@@ -759,6 +581,11 @@ class MPC_Shortcodes_Embed {
         if (!has_action('wp_ajax_mpc_get_calendar')) {
             add_action('wp_ajax_mpc_get_calendar', array(__CLASS__, 'ajax_get_calendar'));
             add_action('wp_ajax_nopriv_mpc_get_calendar', array(__CLASS__, 'ajax_get_calendar'));
+        }
+
+        if (!has_action('wp_ajax_mpc_get_quote')) {
+            add_action('wp_ajax_mpc_get_quote', array(__CLASS__, 'ajax_get_quote'));
+            add_action('wp_ajax_nopriv_mpc_get_quote', array(__CLASS__, 'ajax_get_quote'));
         }
     }
 
@@ -815,6 +642,9 @@ class MPC_Shortcodes_Embed {
 
                 $calendar_html = \MinpakuConnector\Shortcodes\MPC_Shortcodes_Calendar::render_calendar($calendar_atts);
 
+                // Clean up any portal-side code that might have leaked in
+                $calendar_html = self::clean_calendar_html($calendar_html);
+
                 if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
                     error_log('[minpaku-connector] Calendar HTML generated: ' . substr($calendar_html, 0, 200) . '...');
                 }
@@ -837,6 +667,299 @@ class MPC_Shortcodes_Embed {
             }
             wp_send_json_error('Fatal error loading calendar: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Clean property content from portal-side code leakage
+     */
+    private static function clean_property_content($content) {
+        // Remove any JavaScript code blocks
+        $content = preg_replace('/<script[^>]*>.*?<\/script>/is', '', $content);
+
+        // Remove any style blocks
+        $content = preg_replace('/<style[^>]*>.*?<\/style>/is', '', $content);
+
+        // Remove any portal calendar shortcodes
+        $content = preg_replace('/\[portal_calendar[^\]]*\]/i', '', $content);
+        $content = preg_replace('/\[mcs_availability[^\]]*\]/i', '', $content);
+        $content = preg_replace('/\[minpaku_calendar[^\]]*\]/i', '', $content);
+        $content = preg_replace('/\[connector_calendar[^\]]*\]/i', '', $content);
+
+        // Remove any portal-specific divs and classes (enhanced)
+        $content = preg_replace('/<div[^>]*class="[^"]*portal-calendar[^"]*"[^>]*>.*?<\/div>/is', '', $content);
+        $content = preg_replace('/<div[^>]*class="[^"]*mcs-calendar[^"]*"[^>]*>.*?<\/div>/is', '', $content);
+        $content = preg_replace('/<div[^>]*class="[^"]*mpc-calendar[^"]*"[^>]*>.*?<\/div>/is', '', $content);
+        $content = preg_replace('/<div[^>]*class="[^"]*mcs-availability[^"]*"[^>]*>.*?<\/div>/is', '', $content);
+
+        // Remove calendar-related elements more aggressively
+        $content = preg_replace('/<div[^>]*id="[^"]*calendar[^"]*"[^>]*>.*?<\/div>/is', '', $content);
+        $content = preg_replace('/<section[^>]*class="[^"]*calendar[^"]*"[^>]*>.*?<\/section>/is', '', $content);
+
+        // Remove any calendar buttons that might be in content
+        $content = preg_replace('/<button[^>]*class="[^"]*calendar[^"]*"[^>]*>.*?<\/button>/is', '', $content);
+
+        // Remove any loose JavaScript function calls
+        $content = preg_replace('/document\.addEventListener[^;]*;/is', '', $content);
+        $content = preg_replace('/jQuery\([^;]*;/is', '', $content);
+
+        // Remove any inline CSS properties that might be leftover
+        $content = preg_replace('/style="[^"]*"/i', '', $content);
+
+        // Remove any calendar-related headings
+        $content = preg_replace('/<h[1-6][^>]*>[^<]*(?:calendar|カレンダー|空室)[^<]*<\/h[1-6]>/i', '', $content);
+
+        // Remove any remaining calendar-related elements by class pattern
+        $content = preg_replace('/<[^>]*class="[^"]*mcs-[^"]*"[^>]*>.*?<\/[^>]*>/is', '', $content);
+
+        // Clean up extra whitespace and empty elements
+        $content = preg_replace('/\s+/', ' ', $content);
+        $content = preg_replace('/<([^>]*)>\s*<\/\1>/', '', $content); // Remove empty tags
+        $content = preg_replace('/<p[^>]*>\s*<\/p>/', '', $content); // Remove empty paragraphs
+        $content = preg_replace('/<div[^>]*>\s*<\/div>/', '', $content); // Remove empty divs
+        $content = trim($content);
+
+        return $content;
+    }
+
+    /**
+     * Clean calendar HTML from portal-side code leakage
+     */
+    private static function clean_calendar_html($html) {
+        // Remove any portal-side JavaScript
+        $html = preg_replace('/<script[^>]*>.*?<\/script>/s', '', $html);
+
+        // Remove any portal-side CSS
+        $html = preg_replace('/<style[^>]*>.*?<\/style>/s', '', $html);
+
+        // Remove any document.addEventListener fragments that might leak
+        $html = preg_replace('/document\.addEventListener.*?\}\);/s', '', $html);
+
+        // Remove any portal-specific CSS classes or fragments
+        $html = str_replace('portal-calendar', 'mpc-calendar-container', $html);
+
+        // Clean up any loose JavaScript fragments
+        $html = preg_replace('/\}\s*document\./', '', $html);
+        $html = preg_replace('/padding:\s*\d+px.*?;/', '', $html);
+        $html = preg_replace('/font-size:\s*\d+px.*?;/', '', $html);
+        $html = preg_replace('/margin-top:\s*\d+px.*?;/', '', $html);
+
+        return trim($html);
+    }
+
+    /**
+     * AJAX handler for getting live quote
+     */
+    public static function ajax_get_quote() {
+        // Debug logging
+        if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+            error_log('[minpaku-connector] AJAX quote request received');
+            error_log('[minpaku-connector] POST data: ' . print_r($_POST, true));
+        }
+
+        // Check nonce
+        $nonce = $_POST['nonce'] ?? '';
+        if (!wp_verify_nonce($nonce, 'mpc_calendar_nonce')) {
+            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                error_log('[minpaku-connector] Quote nonce verification failed: ' . $nonce);
+            }
+            wp_send_json_error('Invalid nonce');
+            return;
+        }
+
+        $property_id = intval($_POST['property_id'] ?? 0);
+        $checkin = sanitize_text_field($_POST['checkin'] ?? '');
+        $checkout = sanitize_text_field($_POST['checkout'] ?? '');
+        $adults = intval($_POST['adults'] ?? 2);
+        $children = intval($_POST['children'] ?? 0);
+        $infants = intval($_POST['infants'] ?? 0);
+
+        if (!$property_id || !$checkin || !$checkout) {
+            wp_send_json_error('Missing required parameters');
+            return;
+        }
+
+        // Validate dates
+        if (strtotime($checkin) === false || strtotime($checkout) === false) {
+            wp_send_json_error('Invalid date format');
+            return;
+        }
+
+        if ($checkin >= $checkout) {
+            wp_send_json_error('Checkout date must be after checkin date');
+            return;
+        }
+
+        try {
+            $api = new \MinpakuConnector\Client\MPC_Client_Api();
+            if (!$api->is_configured()) {
+                wp_send_json_error('API not configured');
+                return;
+            }
+
+            // Get quote from portal API
+            $quote_response = $api->get_quote($property_id, $checkin, $checkout, $adults, $children, 0, []);
+
+            if (!$quote_response['success']) {
+                if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                    error_log('[minpaku-connector] Quote API failed: ' . $quote_response['message']);
+                }
+                wp_send_json_error($quote_response['message'] ?? 'Failed to get quote');
+                return;
+            }
+
+            $quote_data = $quote_response['data'];
+
+            // Add nightly breakdown calculation if not provided by API
+            if (!isset($quote_data['nightly_breakdown']) || empty($quote_data['nightly_breakdown'])) {
+                $quote_data['nightly_breakdown'] = self::calculate_nightly_breakdown($property_id, $checkin, $checkout);
+            }
+
+            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                error_log('[minpaku-connector] Quote generated successfully: ' . print_r($quote_data, true));
+            }
+
+            wp_send_json_success($quote_data);
+
+        } catch (Exception $e) {
+            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                error_log('[minpaku-connector] Quote AJAX error: ' . $e->getMessage());
+            }
+            wp_send_json_error('Error generating quote: ' . $e->getMessage());
+        } catch (Error $e) {
+            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                error_log('[minpaku-connector] Quote AJAX fatal error: ' . $e->getMessage());
+            }
+            wp_send_json_error('Fatal error generating quote: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Calculate nightly breakdown for quote
+     */
+    private static function calculate_nightly_breakdown($property_id, $checkin, $checkout) {
+        $breakdown = array();
+
+        // Load required classes
+        require_once WP_MINPAKU_CONNECTOR_PATH . 'includes/Calendar/JPHolidays.php';
+        require_once WP_MINPAKU_CONNECTOR_PATH . 'includes/Calendar/DayClassifier.php';
+
+        // Get pricing settings
+        $pricing_settings = self::get_pricing_settings();
+
+        $current_date = new DateTime($checkin);
+        $end_date = new DateTime($checkout);
+
+        while ($current_date < $end_date) {
+            $date_string = $current_date->format('Y-m-d');
+            $nightly_price = self::calculate_local_nightly_price($date_string, $pricing_settings);
+
+            $breakdown[] = array(
+                'date' => $date_string,
+                'price' => $nightly_price
+            );
+
+            $current_date->add(new DateInterval('P1D'));
+        }
+
+        return $breakdown;
+    }
+
+    /**
+     * Calculate local nightly price for a specific date (for breakdown)
+     */
+    private static function calculate_local_nightly_price($date, $pricing_settings) {
+        $base_price = floatval($pricing_settings['base_nightly_price']);
+
+        // Check for seasonal rules first (highest priority)
+        $seasonal_price = self::apply_seasonal_rules_to_price($date, $base_price, $pricing_settings['seasonal_rules']);
+
+        if ($seasonal_price !== $base_price) {
+            // Seasonal rule applied, don't add eve surcharges (to avoid double charging)
+            return $seasonal_price;
+        }
+
+        // Check for eve surcharges (second priority)
+        $eve_surcharge = self::calculate_eve_surcharge_for_price($date, $pricing_settings);
+
+        return $base_price + $eve_surcharge;
+    }
+
+    /**
+     * Apply seasonal rules to base price (for breakdown)
+     */
+    private static function apply_seasonal_rules_to_price($date, $base_price, $seasonal_rules) {
+        if (empty($seasonal_rules) || !is_array($seasonal_rules)) {
+            return $base_price;
+        }
+
+        foreach ($seasonal_rules as $rule) {
+            if (!isset($rule['date_from']) || !isset($rule['date_to']) || !isset($rule['mode']) || !isset($rule['amount'])) {
+                continue;
+            }
+
+            $date_from = $rule['date_from'];
+            $date_to = $rule['date_to'];
+
+            // Check if date falls within this rule's range
+            if ($date >= $date_from && $date <= $date_to) {
+                $amount = floatval($rule['amount']);
+
+                if ($rule['mode'] === 'override') {
+                    return $amount; // Replace base price
+                } elseif ($rule['mode'] === 'add') {
+                    return $base_price + $amount; // Add to base price
+                }
+            }
+        }
+
+        return $base_price; // No seasonal rule applied
+    }
+
+    /**
+     * Calculate eve surcharge for a date (for breakdown)
+     */
+    private static function calculate_eve_surcharge_for_price($date, $pricing_settings) {
+        // Load DayClassifier if not already loaded
+        if (!class_exists('\MinpakuConnector\Calendar\DayClassifier')) {
+            require_once WP_MINPAKU_CONNECTOR_PATH . 'includes/Calendar/DayClassifier.php';
+        }
+
+        $eve_info = \MinpakuConnector\Calendar\DayClassifier::checkEveSurcharges($date);
+
+        if (!$eve_info['has_surcharge']) {
+            return 0;
+        }
+
+        switch ($eve_info['surcharge_type']) {
+            case 'saturday_eve':
+                return floatval($pricing_settings['eve_surcharge_sat'] ?? 0);
+            case 'sunday_eve':
+                return floatval($pricing_settings['eve_surcharge_sun'] ?? 0);
+            case 'holiday_eve':
+                return floatval($pricing_settings['eve_surcharge_holiday'] ?? 0);
+            default:
+                return 0;
+        }
+    }
+
+    /**
+     * Get pricing settings (for breakdown)
+     */
+    private static function get_pricing_settings() {
+        if (class_exists('MinpakuConnector\Admin\MPC_Admin_Settings')) {
+            return \MinpakuConnector\Admin\MPC_Admin_Settings::get_pricing_settings();
+        }
+
+        // Fallback defaults
+        return array(
+            'base_nightly_price' => 15000,
+            'cleaning_fee_per_booking' => 3000,
+            'eve_surcharge_sat' => 2000,
+            'eve_surcharge_sun' => 1000,
+            'eve_surcharge_holiday' => 1500,
+            'seasonal_rules' => array(),
+            'blackout_ranges' => array()
+        );
     }
 
     /**

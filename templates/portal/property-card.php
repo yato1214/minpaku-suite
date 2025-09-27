@@ -14,10 +14,26 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-$property = $property ?? get_post($property_id);
-if (!$property) {
+// Force fresh data from database
+wp_cache_delete($property_id, 'posts');
+clean_post_cache($property_id);
+
+// Get fresh data directly from database
+global $wpdb;
+$fresh_property = $wpdb->get_row($wpdb->prepare(
+    "SELECT * FROM {$wpdb->posts} WHERE ID = %d AND post_type = 'mcs_property'",
+    $property_id
+));
+
+if (!$fresh_property) {
     return;
 }
+
+// Convert to WP_Post object
+$property = new WP_Post($fresh_property);
+
+// Debug: Add timestamp to verify fresh data
+$debug_info = '<!-- Fresh DB Query - Property ID: ' . $property_id . ', Title: ' . $property->post_title . ', Modified: ' . $property->post_modified . ' -->';
 
 $thumbnail = get_the_post_thumbnail($property_id, 'medium', ['class' => 'mcs-property-thumbnail']);
 $edit_link = get_edit_post_link($property_id);
@@ -25,6 +41,7 @@ $view_link = get_permalink($property_id);
 $status_class = 'mcs-status--' . $property->post_status;
 
 ?>
+<?php echo $debug_info; ?>
 <div class="mcs-property-card">
     <?php if ($thumbnail) : ?>
         <div class="mcs-property-image">
@@ -107,7 +124,7 @@ $status_class = 'mcs-status--' . $property->post_status;
 
             <?php
             // Availability calendar shortcode link (if on same site)
-            $calendar_shortcode = '[mcs_availability id="' . $property_id . '"]';
+            $calendar_shortcode = '[portal_calendar property_id="' . $property_id . '" months="4" show_prices="true"]';
             ?>
             <button type="button" class="mcs-action-link mcs-action-link--calendar" data-shortcode="<?php echo esc_attr($calendar_shortcode); ?>" title="<?php esc_attr_e('Copy availability shortcode', 'minpaku-suite'); ?>">
                 <span class="dashicons dashicons-calendar"></span>
