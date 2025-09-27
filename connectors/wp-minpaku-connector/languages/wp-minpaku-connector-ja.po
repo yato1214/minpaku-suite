@@ -49,6 +49,79 @@ msgstr "民泊コネクタ"
 msgid "Testing connection..."
 msgstr "接続をテスト中..."
 
+# Quote-related strings
+msgid "Property not found."
+msgstr "物件が見つかりません。"
+
+msgid "Check-out date must be after check-in date."
+msgstr "チェックアウト日はチェックイン日より後である必要があります。"
+
+msgid "Maximum stay period is 366 days."
+msgstr "最大宿泊期間は366日です。"
+
+msgid "Base occupancy exceeded. Maximum occupancy is %d guests."
+msgstr "ベース定員を超えています。最大定員は %d 名です。"
+
+msgid "Selected dates are not available: %s"
+msgstr "選択された日程は満室です: %s"
+
+msgid "Unable to generate quote. Please try again later."
+msgstr "見積の生成に失敗しました。しばらくしてから再度お試しください。"
+
+msgid "Selected Dates"
+msgstr "選択された日程"
+
+msgid "nights"
+msgstr "泊"
+
+msgid "Guest Count"
+msgstr "宿泊人数"
+
+msgid "Adults"
+msgstr "大人"
+
+msgid "Children"
+msgstr "子供"
+
+msgid "Get Quote"
+msgstr "見積を取得"
+
+msgid "Clear Selection"
+msgstr "選択をクリア"
+
+msgid "Loading..."
+msgstr "読み込み中..."
+
+msgid "Failed to get quote."
+msgstr "見積の取得に失敗しました。"
+
+msgid "Network error occurred."
+msgstr "ネットワークエラーが発生しました。"
+
+msgid "Quote Details"
+msgstr "宿泊料金の詳細"
+
+msgid "Price Breakdown"
+msgstr "料金内訳"
+
+msgid "Accommodation Total"
+msgstr "宿泊料金小計"
+
+msgid "Cleaning Fee"
+msgstr "清掃料金"
+
+msgid "Extra Guest Fee"
+msgstr "追加人数料金"
+
+msgid "Addons Total"
+msgstr "オプション料金"
+
+msgid "Total Amount"
+msgstr "合計金額"
+
+msgid "Booking feature is under preparation"
+msgstr "予約機能は準備中です"
+
 #: wp-minpaku-connector.php
 msgid "Connection successful!"
 msgstr "接続成功！"

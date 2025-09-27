@@ -465,43 +465,85 @@ class MPC_Client_Api {
      * Get a single property details
      */
     public function get_property($property_id) {
-        $properties = $this->get_properties(array(
-            'per_page' => 1,
-            'page' => 1
-        ));
+        $cache_key = 'mpc_property_' . $property_id;
 
-        if (!$properties['success']) {
-            return $properties;
+        // Try to get from cache first
+        $cached = get_transient($cache_key);
+        if ($cached !== false) {
+            return $cached;
         }
 
-        // Find the specific property
-        foreach ($properties['data'] as $property) {
-            if ($property['id'] == $property_id) {
-                return array(
-                    'success' => true,
-                    'data' => $property
-                );
+        // Make direct API call for specific property
+        $response = $this->make_request('GET', '/wp-json/minpaku/v1/connector/property/' . intval($property_id));
+
+        if (is_wp_error($response)) {
+            return array(
+                'success' => false,
+                'message' => $response->get_error_message()
+            );
+        }
+
+        $body = wp_remote_retrieve_body($response);
+        $data = json_decode($body, true);
+        $status_code = wp_remote_retrieve_response_code($response);
+
+        if ($status_code === 200 && isset($data['success']) && $data['success']) {
+            // Cache the successful response
+            set_transient($cache_key, $data, $this->cache_duration);
+            return $data;
+        } else {
+            // If direct endpoint doesn't exist, fallback to properties list method
+            $properties = $this->get_properties(array(
+                'per_page' => 100,
+                'page' => 1
+            ));
+
+            if (!$properties['success']) {
+                return $properties;
             }
-        }
 
-        return array(
-            'success' => false,
-            'message' => __('Property not found.', 'wp-minpaku-connector')
-        );
+            // Find the specific property in the list
+            if (isset($properties['data']) && is_array($properties['data'])) {
+                foreach ($properties['data'] as $property) {
+                    if (isset($property['id']) && $property['id'] == $property_id) {
+                        $result = array(
+                            'success' => true,
+                            'data' => $property
+                        );
+                        // Cache the successful result
+                        set_transient($cache_key, $result, $this->cache_duration);
+                        return $result;
+                    }
+                }
+            }
+
+            return array(
+                'success' => false,
+                'message' => sprintf(__('Property ID %d not found or not accessible.', 'wp-minpaku-connector'), $property_id)
+            );
+        }
     }
 
     /**
      * Get quote for a booking
      */
-    public function get_quote($property_id, $check_in, $check_out, $guests = 2) {
-        $body = json_encode(array(
+    public function get_quote($property_id, $checkin, $checkout, $adults = 2, $children = 0, $pets = 0, $addons = []) {
+        $args = array(
             'property_id' => intval($property_id),
-            'check_in' => sanitize_text_field($check_in),
-            'check_out' => sanitize_text_field($check_out),
-            'guests' => intval($guests)
-        ));
+            'checkin' => sanitize_text_field($checkin),
+            'checkout' => sanitize_text_field($checkout),
+            'adults' => intval($adults),
+            'children' => intval($children),
+            'pets' => intval($pets)
+        );
 
-        $response = $this->make_request('POST', '/wp-json/minpaku/v1/connector/quote', $body);
+        // Add addons parameter if provided
+        if (!empty($addons)) {
+            $args['addons'] = json_encode($addons);
+        }
+
+        $query_string = http_build_query($args);
+        $response = $this->make_request('GET', '/wp-json/minpaku/v1/connector/quote?' . $query_string);
 
         if (is_wp_error($response)) {
             return array(
@@ -511,14 +553,22 @@ class MPC_Client_Api {
         }
 
         $response_body = wp_remote_retrieve_body($response);
+        $status_code = wp_remote_retrieve_response_code($response);
         $data = json_decode($response_body, true);
 
-        if (wp_remote_retrieve_response_code($response) === 200 && isset($data['success']) && $data['success']) {
-            return $data;
+        if ($status_code === 200) {
+            return array(
+                'success' => true,
+                'data' => $data
+            );
         } else {
+            // Handle error responses (422, 500, etc.)
+            $error_message = isset($data['error']) ? $data['error'] : __('Failed to generate quote.', 'wp-minpaku-connector');
             return array(
                 'success' => false,
-                'message' => isset($data['message']) ? $data['message'] : __('Failed to generate quote.', 'wp-minpaku-connector')
+                'message' => $error_message,
+                'code' => isset($data['code']) ? $data['code'] : 'unknown_error',
+                'status_code' => $status_code
             );
         }
     }
