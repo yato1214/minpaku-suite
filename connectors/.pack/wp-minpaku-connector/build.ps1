@@ -1,143 +1,191 @@
 # WordPress Plugin Build Script
-# Builds and packages the wp-minpaku-connector plugin
+# Creates a deployable ZIP package of the wp-minpaku-connector plugin
 
 param(
-    [string]$Version = "1.1.4",
-    [string]$OutputDir = "dist",
-    [switch]$Clean = $false
+    [string]$Version = "0.4.3",
+    [string]$OutputDir = ".\dist"
 )
 
-Write-Host "Building wp-minpaku-connector v$Version..." -ForegroundColor Green
-
-# Get script directory
-$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
-Set-Location $ScriptDir
-
-# Clean output directory if requested
-if ($Clean -and (Test-Path $OutputDir)) {
-    Write-Host "Cleaning output directory..." -ForegroundColor Yellow
-    Remove-Item $OutputDir -Recurse -Force
-}
+Write-Host "Building wp-minpaku-connector plugin v$Version..." -ForegroundColor Green
 
 # Create output directory
 if (!(Test-Path $OutputDir)) {
-    New-Item -ItemType Directory -Path $OutputDir | Out-Null
+    New-Item -ItemType Directory -Path $OutputDir -Force | Out-Null
 }
 
-# Define files and directories to include in the plugin
+# Get plugin directory name
+$PluginDir = "wp-minpaku-connector"
+$ZipFileName = "$PluginDir-v$Version.zip"
+$ZipPath = Join-Path $OutputDir $ZipFileName
+
+# Remove existing ZIP if it exists
+if (Test-Path $ZipPath) {
+    Remove-Item $ZipPath -Force
+    Write-Host "Removed existing ZIP file" -ForegroundColor Yellow
+}
+
+# Files and directories to include
 $IncludeItems = @(
     "wp-minpaku-connector.php",
-    "includes",
-    "assets",
-    "languages",
     "readme.txt",
-    "LICENSE"
+    "includes\",
+    "assets\",
+    "languages\"
 )
 
-# Define files and directories to exclude
+# Files and directories to exclude
 $ExcludePatterns = @(
-    "*.ps1",
-    "*.md",
-    ".git*",
-    "node_modules",
-    "dist",
-    "src",
-    "webpack.config.js",
-    "package*.json",
-    "composer.json",
-    "composer.lock",
-    "phpunit.xml",
-    "tests",
-    ".vscode",
-    ".idea",
+    "*.git*",
+    "*.DS_Store",
+    "Thumbs.db",
     "*.log",
-    "*.tmp",
-    ".DS_Store",
-    "Thumbs.db"
+    "node_modules\",
+    "build.ps1",
+    "dist\",
+    "*.bak",
+    "*.tmp"
 )
 
-# Create temporary build directory
-$BuildDir = Join-Path $OutputDir "wp-minpaku-connector"
-if (Test-Path $BuildDir) {
-    Remove-Item $BuildDir -Recurse -Force
-}
-New-Item -ItemType Directory -Path $BuildDir | Out-Null
+Write-Host "Creating temporary staging directory..." -ForegroundColor Blue
 
-Write-Host "Copying plugin files..." -ForegroundColor Blue
+# Create temporary staging directory
+$TempDir = Join-Path $env:TEMP "wp-minpaku-connector-build-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+$StagingDir = Join-Path $TempDir $PluginDir
 
-# Copy included items
-foreach ($Item in $IncludeItems) {
-    if (Test-Path $Item) {
-        if (Test-Path $Item -PathType Container) {
-            # Directory
-            Copy-Item $Item -Destination $BuildDir -Recurse -Force
+New-Item -ItemType Directory -Path $StagingDir -Force | Out-Null
+
+try {
+    # Copy files to staging directory
+    foreach ($Item in $IncludeItems) {
+        $SourcePath = Join-Path $PSScriptRoot $Item
+        if (Test-Path $SourcePath) {
+            $DestPath = Join-Path $StagingDir $Item
+
+            if (Test-Path $SourcePath -PathType Container) {
+                # Copy directory
+                Write-Host "Copying directory: $Item" -ForegroundColor Cyan
+                Copy-Item $SourcePath $DestPath -Recurse -Force
+            } else {
+                # Copy file
+                Write-Host "Copying file: $Item" -ForegroundColor Cyan
+                Copy-Item $SourcePath $DestPath -Force
+            }
         } else {
-            # File
-            Copy-Item $Item -Destination $BuildDir -Force
+            Write-Host "Warning: $Item not found, skipping..." -ForegroundColor Yellow
         }
-        Write-Host "  ✓ $Item" -ForegroundColor Gray
+    }
+
+    # Remove excluded items from staging directory
+    foreach ($Pattern in $ExcludePatterns) {
+        $ItemsToRemove = Get-ChildItem $StagingDir -Recurse -Force | Where-Object { $_.Name -like $Pattern -or $_.FullName -like "*$Pattern*" }
+        foreach ($Item in $ItemsToRemove) {
+            Remove-Item $Item.FullName -Recurse -Force -ErrorAction SilentlyContinue
+            Write-Host "Excluded: $($Item.FullName.Replace($StagingDir, ''))" -ForegroundColor DarkGray
+        }
+    }
+
+    # Update version in main plugin file
+    $MainFile = Join-Path $StagingDir "wp-minpaku-connector.php"
+    if (Test-Path $MainFile) {
+        $Content = Get-Content $MainFile -Raw
+        $Content = $Content -replace "Version:\s*[\d\.]+", "Version: $Version"
+        $Content = $Content -replace "define\s*\(\s*['""]WP_MINPAKU_CONNECTOR_VERSION['""],\s*['""][\d\.]+['""]", "define('WP_MINPAKU_CONNECTOR_VERSION', '$Version'"
+        Set-Content $MainFile $Content -Encoding UTF8
+        Write-Host "Updated version to $Version in main plugin file" -ForegroundColor Green
+    }
+
+    # Create readme.txt if it doesn't exist
+    $ReadmeFile = Join-Path $StagingDir "readme.txt"
+    if (!(Test-Path $ReadmeFile)) {
+        $ReadmeContent = @"
+=== WP Minpaku Connector ===
+Contributors: minpaku-suite
+Tags: booking, calendar, minpaku, vacation-rental
+Requires at least: 5.0
+Tested up to: 6.4
+Stable tag: $Version
+Requires PHP: 7.4
+License: GPL v2 or later
+
+WordPress connector plugin for Minpaku Suite booking system.
+
+== Description ==
+
+This plugin provides WordPress integration for the Minpaku Suite booking system, including:
+
+* Live availability calendar with pricing
+* Interactive booking forms
+* Property listings with embedded calendars
+* Real-time quote calculations
+* Japanese holiday support
+* Responsive design
+
+== Installation ==
+
+1. Upload the plugin files to the `/wp-content/plugins/wp-minpaku-connector` directory
+2. Activate the plugin through the 'Plugins' screen in WordPress
+3. Configure the plugin settings under Settings > Minpaku Connector
+
+== Changelog ==
+
+= $Version =
+* Fixed code output issue in property shortcode display
+* Fixed pricing discrepancy between portal and connector calendars
+* Added seasonal pricing and eve surcharge support matching portal side
+* Fixed calendar click navigation to portal booking screen
+* Added booking functionality with quote display and portal redirection
+* Improved calendar interaction with checkin/checkout selection
+* Enhanced CSS styling for quote display and booking buttons
+
+"@
+        Set-Content $ReadmeFile $ReadmeContent -Encoding UTF8
+        Write-Host "Created readme.txt file" -ForegroundColor Green
+    }
+
+    # Create ZIP archive
+    Write-Host "Creating ZIP archive..." -ForegroundColor Blue
+
+    if (Get-Command "Compress-Archive" -ErrorAction SilentlyContinue) {
+        # Use PowerShell 5.0+ Compress-Archive
+        Compress-Archive -Path "$TempDir\*" -DestinationPath $ZipPath -Force
     } else {
-        Write-Host "  ! $Item (not found)" -ForegroundColor Yellow
+        # Fallback to .NET compression
+        Add-Type -AssemblyName System.IO.Compression.FileSystem
+        [System.IO.Compression.ZipFile]::CreateFromDirectory($TempDir, $ZipPath)
+    }
+
+    # Get file size
+    $FileSize = [math]::Round((Get-Item $ZipPath).Length / 1MB, 2)
+
+    Write-Host "Build completed successfully!" -ForegroundColor Green
+    Write-Host "Package: $ZipPath" -ForegroundColor White
+    Write-Host "Size: $FileSize MB" -ForegroundColor White
+
+    # Show contents
+    Write-Host "`nPackage contents:" -ForegroundColor Blue
+    if (Get-Command "Expand-Archive" -ErrorAction SilentlyContinue) {
+        $TempExtract = Join-Path $env:TEMP "wp-minpaku-connector-verify"
+        if (Test-Path $TempExtract) { Remove-Item $TempExtract -Recurse -Force }
+        Expand-Archive $ZipPath $TempExtract
+        Get-ChildItem $TempExtract -Recurse | ForEach-Object {
+            $RelativePath = $_.FullName.Replace($TempExtract, "").TrimStart("\")
+            if ($_.PSIsContainer) {
+                Write-Host "  📁 $RelativePath" -ForegroundColor Cyan
+            } else {
+                $Size = [math]::Round($_.Length / 1KB, 1)
+                Write-Host "  📄 $RelativePath ($Size KB)" -ForegroundColor Gray
+            }
+        }
+        Remove-Item $TempExtract -Recurse -Force
+    }
+
+} finally {
+    # Clean up temporary directory
+    if (Test-Path $TempDir) {
+        Remove-Item $TempDir -Recurse -Force
+        Write-Host "Cleaned up temporary files" -ForegroundColor DarkGray
     }
 }
 
-# Remove excluded files from build directory
-Write-Host "Cleaning excluded files..." -ForegroundColor Blue
-foreach ($Pattern in $ExcludePatterns) {
-    Get-ChildItem $BuildDir -Recurse -Force | Where-Object {
-        $_.Name -like $Pattern -or $_.FullName -like "*\$Pattern\*"
-    } | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
-}
-
-# Update version in main plugin file if specified
-$MainFile = Join-Path $BuildDir "wp-minpaku-connector.php"
-if (Test-Path $MainFile) {
-    Write-Host "Updating version to $Version..." -ForegroundColor Blue
-    $Content = Get-Content $MainFile -Raw
-    $Content = $Content -replace "Version:\s*[\d\.]+", "Version: $Version"
-    $Content = $Content -replace "define\s*\(\s*['`"]WP_MINPAKU_CONNECTOR_VERSION['`"]\s*,\s*['`"][\d\.]+['`"]\s*\)", "define('WP_MINPAKU_CONNECTOR_VERSION', '$Version')"
-    Set-Content $MainFile -Value $Content -NoNewline
-}
-
-# Create ZIP archive
-$ZipPath = Join-Path $OutputDir "wp-minpaku-connector-v$Version.zip"
-if (Test-Path $ZipPath) {
-    Remove-Item $ZipPath -Force
-}
-
-Write-Host "Creating ZIP archive..." -ForegroundColor Blue
-try {
-    # Use .NET compression for better control
-    Add-Type -AssemblyName System.IO.Compression.FileSystem
-    [System.IO.Compression.ZipFile]::CreateFromDirectory($BuildDir, $ZipPath)
-    Write-Host "✓ Created: $ZipPath" -ForegroundColor Green
-} catch {
-    # Fallback to PowerShell Compress-Archive
-    Compress-Archive -Path "$BuildDir\*" -DestinationPath $ZipPath -Force
-    Write-Host "✓ Created: $ZipPath" -ForegroundColor Green
-}
-
-# Clean up temporary build directory
-Remove-Item $BuildDir -Recurse -Force
-
-# Show file size
-$ZipSize = (Get-Item $ZipPath).Length
-$ZipSizeMB = [math]::Round($ZipSize / 1MB, 2)
-Write-Host "Archive size: $ZipSizeMB MB" -ForegroundColor Cyan
-
-# Verification
-Write-Host "`nBuild completed successfully!" -ForegroundColor Green
-Write-Host "Plugin archive: $ZipPath" -ForegroundColor White
-
-# Optional: Show contents of ZIP
-if ($VerbosePreference -eq 'Continue') {
-    Write-Host "`nArchive contents:" -ForegroundColor Yellow
-    Add-Type -AssemblyName System.IO.Compression.FileSystem
-    $zip = [System.IO.Compression.ZipFile]::OpenRead($ZipPath)
-    $zip.Entries | ForEach-Object { Write-Host "  $($_.FullName)" }
-    $zip.Dispose()
-}
-
-Write-Host "`nTo install:" -ForegroundColor Cyan
-Write-Host "  1. Upload $ZipPath to WordPress admin > Plugins > Add New > Upload Plugin" -ForegroundColor Gray
-Write-Host "  2. Or extract to wp-content/plugins/ directory" -ForegroundColor Gray
+Write-Host "`nBuild script completed." -ForegroundColor Green
+Write-Host "You can now upload $ZipFileName to WordPress sites." -ForegroundColor Yellow

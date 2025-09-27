@@ -400,7 +400,9 @@ class MPC_Shortcodes_Embed {
         $output .= '<h2 class="wmc-property-title">' . esc_html($property['title']) . '</h2>';
 
         if (!empty($property['content'])) {
-            $output .= '<div class="wmc-property-description">' . wp_kses_post($property['content']) . '</div>';
+            // Clean portal-side content to remove code and calendar elements
+            $cleaned_content = self::clean_property_content($property['content']);
+            $output .= '<div class="wmc-property-description">' . wp_kses_post($cleaned_content) . '</div>';
         }
 
         // Meta details
@@ -474,106 +476,6 @@ class MPC_Shortcodes_Embed {
 
         $output .= '</div>'; // Close wmc-property-full
 
-        // IMPORTANT: Add bulletproof CSS fixes directly in footer
-        add_action('wp_footer', function() {
-            echo '<style id="wmc-property-calendar-fix">';
-            // Hide legacy calendar elements
-            echo '.wmc-property-details .mpc-calendar-container, ';
-            echo '.wmc-property-details .mcs-availability-calendar, ';
-            echo '.wmc-property-details .mcs-calendar-month, ';
-            echo '.wmc-property-details .mcs-calendar-grid, ';
-            echo '.wmc-property-details .legacy-calendar, ';
-            echo '.wmc-property-details [class*="calendar"]:not(.wmc-calendar-button):not(.wmc-property-calendar):not(.wmc-calendar-icon):not(.wmc-calendar-text) { ';
-            echo '  display: none !important; ';
-            echo '  visibility: hidden !important; ';
-            echo '} ';
-            // CRITICAL: Fix calendar button display issues with MAXIMUM specificity
-            echo '.wmc-property-details .wmc-calendar-button, ';
-            echo '.wmc-property-full .wmc-calendar-button, ';
-            echo '.wmc-calendar-button { ';
-            echo '  display: inline-flex !important; ';
-            echo '  align-items: center !important; ';
-            echo '  z-index: 1001 !important; ';
-            echo '  position: relative !important; ';
-            echo '  overflow: visible !important; ';
-            echo '  opacity: 1 !important; ';
-            echo '  visibility: visible !important; ';
-            echo '  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important; ';
-            echo '  color: white !important; ';
-            echo '  border: none !important; ';
-            echo '  padding: 10px 16px !important; ';
-            echo '  border-radius: 6px !important; ';
-            echo '  cursor: pointer !important; ';
-            echo '  font-size: 14px !important; ';
-            echo '  font-weight: 500 !important; ';
-            echo '  transition: all 0.3s ease !important; ';
-            echo '  text-decoration: none !important; ';
-            echo '  width: 100% !important; ';
-            echo '  justify-content: center !important; ';
-            echo '} ';
-            // CRITICAL: Fix calendar icon display with MAXIMUM specificity
-            echo '.wmc-property-details .wmc-calendar-button .wmc-calendar-icon, ';
-            echo '.wmc-property-full .wmc-calendar-button .wmc-calendar-icon, ';
-            echo '.wmc-calendar-icon { ';
-            echo '  display: inline-block !important; ';
-            echo '  font-size: 16px !important; ';
-            echo '  opacity: 1 !important; ';
-            echo '  visibility: visible !important; ';
-            echo '  z-index: 1000 !important; ';
-            echo '  position: relative !important; ';
-            echo '  line-height: 1 !important; ';
-            echo '  vertical-align: middle !important; ';
-            echo '  margin-right: 8px !important; ';
-            echo '  color: inherit !important; ';
-            echo '} ';
-            // CRITICAL: Fix calendar text display with MAXIMUM specificity
-            echo '.wmc-property-details .wmc-calendar-button .wmc-calendar-text, ';
-            echo '.wmc-property-full .wmc-calendar-button .wmc-calendar-text, ';
-            echo '.wmc-calendar-text { ';
-            echo '  display: inline-block !important; ';
-            echo '  opacity: 1 !important; ';
-            echo '  visibility: visible !important; ';
-            echo '  z-index: 1000 !important; ';
-            echo '  position: relative !important; ';
-            echo '  font-weight: 500 !important; ';
-            echo '  color: inherit !important; ';
-            echo '} ';
-            // CRITICAL: Ensure large button variant is visible
-            echo '.wmc-calendar-button--large { ';
-            echo '  padding: 14px 20px !important; ';
-            echo '  font-size: 16px !important; ';
-            echo '  font-weight: 600 !important; ';
-            echo '  width: 100% !important; ';
-            echo '  justify-content: center !important; ';
-            echo '} ';
-            echo '.wmc-calendar-button--large .wmc-calendar-icon { ';
-            echo '  font-size: 18px !important; ';
-            echo '} ';
-            echo '</style>';
-        }, 100); // Higher priority to ensure it loads after other styles
-
-        // Add script to footer to avoid display issues and fix visibility
-        add_action('wp_footer', function() {
-            echo '<script type="text/javascript">';
-            echo 'jQuery(document).ready(function($) {';
-            echo '  $(".wmc-property-details [data-auto-init]").removeAttr("data-auto-init");';
-            echo '  $(".wmc-property-details .mpc-calendar-container").hide();';
-            echo '  $(".wmc-property-details [id*=\'mcs-calendar\']").hide();';
-            // CRITICAL: Force show calendar button elements
-            echo '  $(".wmc-calendar-button").show().css({';
-            echo '    "display": "inline-flex",';
-            echo '    "opacity": "1",';
-            echo '    "visibility": "visible",';
-            echo '    "z-index": "999"';
-            echo '  });';
-            echo '  $(".wmc-calendar-icon, .wmc-calendar-text").show().css({';
-            echo '    "display": "inline-block",';
-            echo '    "opacity": "1",';
-            echo '    "visibility": "visible"';
-            echo '  });';
-            echo '});';
-            echo '</script>';
-        }, 101); // Load after CSS
 
         return $output;
     }
@@ -665,43 +567,17 @@ class MPC_Shortcodes_Embed {
 
             wp_add_inline_style('wp-minpaku-connector-calendar', $critical_css);
 
-            // Additional force-load by adding to footer as well
-            add_action('wp_footer', function() use ($critical_css) {
-                echo '<style id="mpc-critical-css-backup">' . $critical_css . '</style>';
-            }, 999);
+            // No duplicate CSS output needed
 
         } else {
             // Enhanced fallback - use multiple attachment points
             $fallback_css = self::get_calendar_css();
             wp_add_inline_style('wp-block-library', $fallback_css);
 
-            // Force inject in footer as backup
-            add_action('wp_footer', function() use ($fallback_css) {
-                echo '<style id="mpc-fallback-css">' . $fallback_css . '</style>';
-            }, 999);
+            // CSS handled by wp_add_inline_style only
         }
 
-        // Force load CSS in head for faster rendering + Legacy cleanup + Button fix
-        add_action('wp_head', function() {
-            echo '<style id="mpc-head-critical">';
-            echo '.wmc-modal-overlay{z-index:999999!important;position:fixed!important;}';
-            echo '.wmc-calendar-button{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%)!important;color:white!important;border:none!important;display:inline-flex!important;z-index:10!important;position:relative!important;}';
-            echo '.wmc-calendar-icon{display:inline-block!important;opacity:1!important;visibility:visible!important;z-index:1!important;}';
-            echo '.wmc-calendar-text{display:inline-block!important;opacity:1!important;visibility:visible!important;z-index:1!important;}';
-            // Legacy calendar cleanup
-            echo '.mcs-availability-calendar:not(.wmc-modal-content .mcs-availability-calendar), ';
-            echo '.legacy-calendar, ';
-            echo '[class*="calendar"]:not(.wmc-calendar-button):not(.wmc-property-calendar):not(.wmc-calendar-icon):not(.wmc-calendar-text):not(.wmc-modal-content [class*="calendar"]) { ';
-            echo '  display: none !important; ';
-            echo '  visibility: hidden !important; ';
-            echo '} ';
-            echo '</style>';
-        }, 1);
-
-        // Add body class for additional targeting
-        add_action('wp_footer', function() {
-            echo '<script>document.body.classList.add("minpaku-connector-active");</script>';
-        }, 1);
+        // Critical CSS handled by wp_add_inline_style only to prevent duplicate output
     }
 
     /**
@@ -750,7 +626,10 @@ class MPC_Shortcodes_Embed {
                     'portalUrl' => untrailingslashit($portal_url),
                     'nonce' => wp_create_nonce('mpc_calendar_nonce'),
                     'ajaxUrl' => admin_url('admin-ajax.php'),
-                    'debug' => defined('WP_DEBUG') && WP_DEBUG
+                    'debug' => defined('WP_DEBUG') && WP_DEBUG,
+                    'rawPortalUrl' => $settings['portal_url'] ?? '',
+                    'normalizedPortalUrl' => $portal_url,
+                    'settingsDebug' => defined('WP_DEBUG') && WP_DEBUG ? $settings : array()
                 )
             );
         }
@@ -820,6 +699,9 @@ class MPC_Shortcodes_Embed {
 
                 $calendar_html = \MinpakuConnector\Shortcodes\MPC_Shortcodes_Calendar::render_calendar($calendar_atts);
 
+                // Clean up any portal-side code that might have leaked in
+                $calendar_html = self::clean_calendar_html($calendar_html);
+
                 if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
                     error_log('[minpaku-connector] Calendar HTML generated: ' . substr($calendar_html, 0, 200) . '...');
                 }
@@ -842,6 +724,76 @@ class MPC_Shortcodes_Embed {
             }
             wp_send_json_error('Fatal error loading calendar: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Clean property content from portal-side code leakage
+     */
+    private static function clean_property_content($content) {
+        // Remove any JavaScript code blocks
+        $content = preg_replace('/<script[^>]*>.*?<\/script>/is', '', $content);
+
+        // Remove any style blocks
+        $content = preg_replace('/<style[^>]*>.*?<\/style>/is', '', $content);
+
+        // Remove any portal calendar shortcodes
+        $content = preg_replace('/\[portal_calendar[^\]]*\]/i', '', $content);
+        $content = preg_replace('/\[mcs_availability[^\]]*\]/i', '', $content);
+        $content = preg_replace('/\[minpaku_calendar[^\]]*\]/i', '', $content);
+
+        // Remove any portal-specific divs and classes (enhanced)
+        $content = preg_replace('/<div[^>]*class="[^"]*portal-calendar[^"]*"[^>]*>.*?<\/div>/is', '', $content);
+        $content = preg_replace('/<div[^>]*class="[^"]*mcs-calendar[^"]*"[^>]*>.*?<\/div>/is', '', $content);
+        $content = preg_replace('/<div[^>]*class="[^"]*mpc-calendar[^"]*"[^>]*>.*?<\/div>/is', '', $content);
+
+        // Remove calendar-related elements more aggressively
+        $content = preg_replace('/<div[^>]*id="[^"]*calendar[^"]*"[^>]*>.*?<\/div>/is', '', $content);
+        $content = preg_replace('/<section[^>]*class="[^"]*calendar[^"]*"[^>]*>.*?<\/section>/is', '', $content);
+
+        // Remove any calendar buttons that might be in content
+        $content = preg_replace('/<button[^>]*class="[^"]*calendar[^"]*"[^>]*>.*?<\/button>/is', '', $content);
+
+        // Remove any loose JavaScript function calls
+        $content = preg_replace('/document\.addEventListener[^;]*;/is', '', $content);
+        $content = preg_replace('/jQuery\([^;]*;/is', '', $content);
+
+        // Remove any inline CSS properties that might be leftover
+        $content = preg_replace('/style="[^"]*"/i', '', $content);
+
+        // Remove any calendar-related headings
+        $content = preg_replace('/<h[1-6][^>]*>[^<]*(?:calendar|カレンダー|空室)[^<]*<\/h[1-6]>/i', '', $content);
+
+        // Clean up extra whitespace and empty elements
+        $content = preg_replace('/\s+/', ' ', $content);
+        $content = preg_replace('/<([^>]*)>\s*<\/\1>/', '', $content); // Remove empty tags
+        $content = trim($content);
+
+        return $content;
+    }
+
+    /**
+     * Clean calendar HTML from portal-side code leakage
+     */
+    private static function clean_calendar_html($html) {
+        // Remove any portal-side JavaScript
+        $html = preg_replace('/<script[^>]*>.*?<\/script>/s', '', $html);
+
+        // Remove any portal-side CSS
+        $html = preg_replace('/<style[^>]*>.*?<\/style>/s', '', $html);
+
+        // Remove any document.addEventListener fragments that might leak
+        $html = preg_replace('/document\.addEventListener.*?\}\);/s', '', $html);
+
+        // Remove any portal-specific CSS classes or fragments
+        $html = str_replace('portal-calendar', 'mpc-calendar-container', $html);
+
+        // Clean up any loose JavaScript fragments
+        $html = preg_replace('/\}\s*document\./', '', $html);
+        $html = preg_replace('/padding:\s*\d+px.*?;/', '', $html);
+        $html = preg_replace('/font-size:\s*\d+px.*?;/', '', $html);
+        $html = preg_replace('/margin-top:\s*\d+px.*?;/', '', $html);
+
+        return trim($html);
     }
 
     /**

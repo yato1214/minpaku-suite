@@ -3,62 +3,6 @@
  * Exact copy of portal design for consistency
  */
 
-.mpc-calendar-legend {
-    background: white;
-    border: 1px solid #e0e0e0;
-    border-radius: 6px;
-    padding: 16px;
-    margin-bottom: 20px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
-
-.mpc-calendar-legend h4 {
-    margin: 0 0 12px 0;
-    font-size: 14px;
-    font-weight: 600;
-    color: #333;
-}
-
-.mpc-legend-items {
-    display: flex;
-    gap: 20px;
-    flex-wrap: wrap;
-}
-
-.mpc-legend-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.mpc-legend-color {
-    width: 24px;
-    height: 20px;
-    border-radius: 4px;
-    border: 1px solid rgba(0,0,0,0.15);
-    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-}
-
-.mpc-legend-color--vacant {
-    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
-    border-left: 4px solid #28a745;
-}
-
-.mpc-legend-color--partial {
-    background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
-    border-left: 4px solid #ffc107;
-}
-
-.mpc-legend-color--full {
-    background: #dc3545;
-    border: 1px solid #dc3545;
-}
-
-.mpc-legend-label {
-    font-size: 13px;
-    color: #555;
-    font-weight: 500;
-}
 
 .mpc-calendar-container {
     max-width: 100%;
@@ -215,6 +159,27 @@
 }
 
 .mcs-day-price {
+    align-self: stretch;
+    margin-top: 8px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    color: white;
+    font-weight: 600;
+    font-size: 12px;
+    text-align: center;
+    line-height: 1.2;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    z-index: 5;
+    display: inline-block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+.mcs-day-full-badge {
     position: absolute;
     top: 4px;
     right: 6px;
@@ -222,14 +187,15 @@
     line-height: 1;
     padding: 2px 6px;
     border-radius: 4px;
-    background: rgba(0, 0, 0, 0.06);
-    color: #333;
-    font-weight: 500;
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    color: white;
+    font-weight: 600;
     white-space: nowrap;
     z-index: 5;
     display: inline-block !important;
     opacity: 1 !important;
     visibility: visible !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 /* Error styles */
@@ -430,6 +396,149 @@ body.wmc-modal-open {
     overflow: hidden;
 }
 
+/* Quote display styles */
+.mpc-quote-container {
+    margin-top: 20px;
+    padding: 20px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.mpc-quote-container.active {
+    opacity: 1;
+    max-height: 1000px;
+}
+
+.mpc-quote-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    color: #333;
+    border-bottom: 2px solid #667eea;
+    padding-bottom: 8px;
+}
+
+.mpc-quote-details {
+    margin-bottom: 20px;
+}
+
+.mpc-quote-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.mpc-quote-label {
+    font-weight: 500;
+    color: #666;
+}
+
+.mpc-quote-amount {
+    font-weight: 600;
+    color: #333;
+}
+
+.mpc-quote-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.mpc-booking-button {
+    flex: 1;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 6px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.mpc-booking-button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.mpc-clear-selection-button {
+    background: #f8f9fa;
+    color: #666;
+    border: 1px solid #dee2e6;
+    padding: 12px 20px;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.mpc-clear-selection-button:hover {
+    background: #e9ecef;
+    border-color: #adb5bd;
+}
+
+.mpc-nightly-breakdown {
+    background: #f8f9fa;
+    padding: 12px;
+    border-radius: 4px;
+    margin-top: 8px;
+}
+
+.mpc-nightly-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+    font-size: 14px;
+}
+
+.mpc-selection-message {
+    background: #e3f2fd;
+    color: #1976d2;
+    padding: 12px;
+    border-radius: 4px;
+    margin-bottom: 16px;
+    text-align: center;
+    font-weight: 500;
+}
+
+.mpc-selection-message.mpc-message--error {
+    background: #ffebee;
+    color: #d32f2f;
+}
+
+.mpc-selection-message.mpc-message--success {
+    background: #e8f5e8;
+    color: #2e7d32;
+}
+
+.mpc-selection-message.mpc-message--loading {
+    background: #fff3e0;
+    color: #f57c00;
+}
+
+/* Selection states */
+.mcs-day--selected-checkin {
+    background: #4caf50 !important;
+    color: white !important;
+}
+
+.mcs-day--selected-checkout {
+    background: #f44336 !important;
+    color: white !important;
+}
+
+.mcs-day--in-range {
+    background: #bbdefb !important;
+    color: #1976d2 !important;
+}
+
 /* Responsive design */
 @media (max-width: 600px) {
     .mcs-day {
@@ -448,13 +557,10 @@ body.wmc-modal-open {
         margin-top: 3px;
     }
 
-    .mpc-legend-items {
-        gap: 12px;
-    }
-
-    .mpc-legend-color {
-        width: 20px;
-        height: 16px;
+    .mcs-day-full-badge {
+        font-size: 10px;
+        padding: 1px 3px;
+        margin-top: 3px;
     }
 
     .mpc-calendar-month-title {

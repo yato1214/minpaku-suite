@@ -59,8 +59,37 @@ class MPCConnectorCalendar {
             const propertyId = dayCell.data('property');
             const isDisabled = dayCell.data('disabled');
 
+            // Check if Shift key is held for direct booking (bypass quote flow)
+            if (event.shiftKey && date && propertyId && !isDisabled && (dayCell.hasClass('mcs-day--available') || dayCell.hasClass('mcs-day--vacant'))) {
+                // Direct booking - redirect to portal immediately with check-in date only
+                this.redirectToPortalBookingDirect({
+                    propertyId: propertyId,
+                    checkin: date,
+                    adults: calendarData.adults || 2,
+                    children: calendarData.children || 0,
+                    infants: calendarData.infants || 0,
+                    currency: calendarData.currency || 'JPY'
+                });
+                return;
+            }
+
             // Only handle clicks on available, non-disabled days (new classes)
             if (date && propertyId && !isDisabled && (dayCell.hasClass('mcs-day--available') || dayCell.hasClass('mcs-day--vacant'))) {
+                // Add direct booking option: Ctrl+Click for immediate booking
+                if (event.ctrlKey || event.metaKey) {
+                    // Direct booking - skip quote flow
+                    console.log('MPC Calendar: Direct booking triggered for', date);
+                    this.redirectToPortalBookingDirect({
+                        propertyId: propertyId,
+                        checkin: date,
+                        adults: calendarData.adults || 2,
+                        children: calendarData.children || 0,
+                        infants: calendarData.infants || 0,
+                        currency: calendarData.currency || 'JPY'
+                    });
+                    return;
+                }
+
                 this.handleDayClick(dayCell, date, propertyId, calendarData);
             }
         });
@@ -334,10 +363,42 @@ class MPCConnectorCalendar {
             `;
         }
 
+        // Add booking action button
+        quoteHtml += `
+            <div class="mpc-quote-actions">
+                <button class="mpc-booking-button" data-property-id="${this.currentPropertyId}" data-checkin="${checkin}" data-checkout="${checkout}" data-adults="${calendarData.adults}" data-children="${calendarData.children}" data-infants="${calendarData.infants}">
+                    この条件で予約する
+                </button>
+                <button class="mpc-clear-selection-button">
+                    選択をクリア
+                </button>
+            </div>
+        `;
+
         quoteHtml += '</div>';
 
         quoteContainer.html(quoteHtml);
         quoteContainer.addClass('active');
+
+        // Bind booking button click
+        quoteContainer.find('.mpc-booking-button').on('click', (e) => {
+            const button = $(e.target);
+            const eventData = {
+                propertyId: button.data('property-id'),
+                checkin: button.data('checkin'),
+                checkout: button.data('checkout'),
+                adults: button.data('adults'),
+                children: button.data('children'),
+                infants: button.data('infants'),
+                currency: calendarData.currency
+            };
+            this.redirectToPortalBooking(eventData);
+        });
+
+        // Bind clear selection button
+        quoteContainer.find('.mpc-clear-selection-button').on('click', () => {
+            this.clearSelection(container);
+        });
 
         // Scroll to quote display
         quoteContainer[0].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -375,15 +436,52 @@ class MPCConnectorCalendar {
      * Redirect to portal booking page (admin new booking page)
      */
     redirectToPortalBooking(eventData) {
+        this.performRedirectToPortal(eventData, false);
+    }
+
+    /**
+     * Direct redirect to portal booking page (for Shift+click)
+     */
+    redirectToPortalBookingDirect(eventData) {
+        this.performRedirectToPortal(eventData, true);
+    }
+
+    /**
+     * Perform the actual redirect to portal
+     */
+    performRedirectToPortal(eventData, isDirect = false) {
+        // Debug logging
+        console.log('MPC Calendar: Attempting redirect to portal', eventData);
+
         // Get portal URL from WordPress localization or global variable
         let portalUrl = '';
 
         if (typeof mpcCalendarData !== 'undefined' && mpcCalendarData.portalUrl) {
             portalUrl = mpcCalendarData.portalUrl;
+            console.log('MPC Calendar: Using portalUrl from mpcCalendarData:', portalUrl);
+            console.log('MPC Calendar: Full mpcCalendarData:', mpcCalendarData);
         } else if (typeof wpMinpakuConnector !== 'undefined' && wpMinpakuConnector.portalUrl) {
             portalUrl = wpMinpakuConnector.portalUrl;
+            console.log('MPC Calendar: Using portalUrl from wpMinpakuConnector:', portalUrl);
         } else {
             console.warn('MPC Calendar: Portal URL not configured');
+            console.log('MPC Calendar: Available globals:', {
+                mpcCalendarData: typeof mpcCalendarData !== 'undefined' ? mpcCalendarData : 'undefined',
+                wpMinpakuConnector: typeof wpMinpakuConnector !== 'undefined' ? wpMinpakuConnector : 'undefined'
+            });
+
+            // More detailed error information
+            if (typeof mpcCalendarData !== 'undefined') {
+                console.log('MPC Calendar: mpcCalendarData exists but portalUrl is:', mpcCalendarData.portalUrl);
+                console.log('MPC Calendar: mpcCalendarData keys:', Object.keys(mpcCalendarData));
+            }
+
+            // Try to show error message to user with debug info
+            const debugInfo = typeof mpcCalendarData !== 'undefined' ?
+                `Debug: mpcCalendarData.portalUrl = ${mpcCalendarData.portalUrl}` :
+                'Debug: mpcCalendarData is undefined';
+
+            alert(`設定エラー: ポータルURLが設定されていません。\n${debugInfo}\n管理者にお問い合わせください。`);
             return;
         }
 
@@ -397,7 +495,6 @@ class MPCConnectorCalendar {
             post_type: 'mcs_booking',
             property_id: eventData.propertyId,
             checkin: eventData.checkin,
-            checkout: eventData.checkout,
             adults: eventData.adults,
             children: eventData.children,
             infants: eventData.infants,
@@ -405,15 +502,33 @@ class MPCConnectorCalendar {
             _mcs_nonce: nonceParam
         });
 
+        // Add checkout date only if it's provided (not for direct single-day booking)
+        if (eventData.checkout && !isDirect) {
+            bookingParams.set('checkout', eventData.checkout);
+        }
+
         // Construct the admin booking URL (WordPress admin format)
         const bookingUrl = `${portalUrl.replace(/\/$/, '')}/wp-admin/post-new.php?${bookingParams.toString()}`;
 
-        // Open in new tab/window to preserve user's current page
-        window.open(bookingUrl, '_blank', 'noopener,noreferrer');
+        // Debug logging
+        console.log('MPC Calendar: Final booking URL:', bookingUrl);
 
-        // Log for debugging
-        if (window.console && window.console.log) {
-            console.log('MPC Calendar: Redirecting to admin booking page:', bookingUrl);
+        // Show user feedback before redirect
+        if (isDirect) {
+            console.log('MPC Calendar: Direct booking mode - redirecting immediately');
+        } else {
+            console.log('MPC Calendar: Quote mode - redirecting with full date range');
+        }
+
+        // Open in new tab/window to preserve user's current page
+        const newWindow = window.open(bookingUrl, '_blank', 'noopener,noreferrer');
+
+        // Check if popup was blocked
+        if (!newWindow) {
+            alert('ポップアップがブロックされました。ポップアップを許可してから再度お試しください。\n\n予約URL: ' + bookingUrl);
+            console.warn('MPC Calendar: Popup blocked, showing URL to user');
+        } else {
+            console.log('MPC Calendar: Successfully opened new window');
         }
     }
 
@@ -505,15 +620,19 @@ function initModalCalendar() {
     // Handle calendar button clicks
     $(document).on('click', '.wmc-calendar-button', function(e) {
         e.preventDefault();
+        console.log('MPC Calendar: Button clicked');
 
         const propertyId = $(this).data('property-id');
         const propertyTitle = $(this).data('property-title');
+
+        console.log('MPC Calendar: Property data', { propertyId, propertyTitle });
 
         if (!propertyId) {
             console.warn('Property ID not found for calendar button');
             return;
         }
 
+        console.log('MPC Calendar: Calling showCalendarModal');
         showCalendarModal(propertyId, propertyTitle);
     });
 
@@ -538,8 +657,11 @@ function initModalCalendar() {
 function showCalendarModal(propertyId, propertyTitle) {
     const $ = jQuery;
 
+    console.log('MPC Calendar: showCalendarModal called', { propertyId, propertyTitle });
+
     // Create modal if it doesn't exist
     if ($('#wmc-calendar-modal').length === 0) {
+        console.log('MPC Calendar: Creating modal');
         const modalHtml = `
             <div id="wmc-calendar-modal" class="wmc-modal-overlay">
                 <div class="wmc-modal-content">
@@ -581,9 +703,37 @@ function showCalendarModal(propertyId, propertyTitle) {
             // Initialize calendar functionality for the modal content
             if (window.mpcCalendarInstances) {
                 const calendarContainer = contentDiv.find('.mpc-calendar-container');
+                console.log('MPC Calendar: Modal calendar container found:', calendarContainer.length);
+
                 if (calendarContainer.length && calendarContainer.attr('id')) {
-                    window.mpcCalendarInstances.initCalendar('#' + calendarContainer.attr('id'));
+                    const calendarId = '#' + calendarContainer.attr('id');
+                    console.log('MPC Calendar: Initializing modal calendar:', calendarId);
+
+                    // Add debug data attributes
+                    console.log('MPC Calendar: Container data attributes:', {
+                        propertyId: calendarContainer.data('property-id'),
+                        showPrices: calendarContainer.data('show-prices'),
+                        autoInit: calendarContainer.data('auto-init')
+                    });
+
+                    window.mpcCalendarInstances.initCalendar(calendarId);
+
+                    // Verify initialization
+                    setTimeout(() => {
+                        const clickableDays = calendarContainer.find('.mcs-day--available');
+                        console.log('MPC Calendar: Available clickable days found:', clickableDays.length);
+
+                        // Check if booking navigation is configured
+                        console.log('MPC Calendar: Booking configuration:', {
+                            mpcCalendarData: typeof mpcCalendarData !== 'undefined' ? mpcCalendarData : 'undefined',
+                            portalUrl: typeof mpcCalendarData !== 'undefined' ? mpcCalendarData.portalUrl : 'N/A'
+                        });
+                    }, 100);
+                } else {
+                    console.warn('MPC Calendar: No valid calendar container found in modal content');
                 }
+            } else {
+                console.error('MPC Calendar: mpcCalendarInstances not available');
             }
         } else {
             contentDiv.html('<div class="wmc-error">Failed to load calendar. Please try again.</div>').show();
@@ -623,9 +773,16 @@ function loadCalendarContent(propertyId, callback) {
     // Check if mpcCalendarData is available
     if (typeof mpcCalendarData === 'undefined') {
         console.error('MPC Calendar: Calendar data not available');
+        console.log('MPC Calendar: Available global objects:', Object.keys(window));
         callback(false, 'Configuration error: Calendar data not available');
         return;
     }
+
+    console.log('MPC Calendar: AJAX request starting', {
+        propertyId: propertyId,
+        ajaxUrl: mpcCalendarData.ajaxUrl,
+        nonce: mpcCalendarData.nonce
+    });
 
     // Make AJAX request to get calendar content
     $.ajax({
@@ -637,15 +794,20 @@ function loadCalendarContent(propertyId, callback) {
             nonce: mpcCalendarData.nonce
         },
         success: function(response) {
+            console.log('MPC Calendar: AJAX response received', response);
             if (response.success) {
+                console.log('MPC Calendar: Calendar content loaded successfully');
                 callback(true, response.data);
             } else {
                 console.error('MPC Calendar: AJAX error:', response.data);
+                console.log('MPC Calendar: Full response object:', response);
                 callback(false, response.data || 'Failed to load calendar content');
             }
         },
         error: function(xhr, status, error) {
             console.error('MPC Calendar: AJAX request failed:', status, error);
+            console.log('MPC Calendar: XHR object:', xhr);
+            console.log('MPC Calendar: Response text:', xhr.responseText);
             callback(false, 'Network error: Failed to load calendar content');
         }
     });

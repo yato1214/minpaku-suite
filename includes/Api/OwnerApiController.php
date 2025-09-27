@@ -274,7 +274,7 @@ class OwnerApiController
                 'view' => get_permalink($property_id),
                 'edit' => get_edit_post_link($property_id),
                 'add_booking' => admin_url('post-new.php?post_type=mcs_booking&property_id=' . $property_id),
-                'calendar_shortcode' => '[mcs_availability id="' . $property_id . '"]'
+                'calendar_shortcode' => '[portal_calendar property_id="' . $property_id . '" months="4" show_prices="true"]'
             ]
         ];
     }
