@@ -49,6 +49,55 @@ msgstr "施設アーカイブ"
 msgid "Property Attributes"
 msgstr "施設属性"
 
+# Unified Calendar Interactions
+msgid "Loading..."
+msgstr "読み込み中..."
+
+msgid "nights"
+msgstr "泊"
+
+msgid "Adults"
+msgstr "大人"
+
+msgid "Children"
+msgstr "子供"
+
+msgid "Total Amount"
+msgstr "合計金額"
+
+msgid "Get Quote"
+msgstr "見積を取得"
+
+msgid "Clear Selection"
+msgstr "選択をクリア"
+
+msgid "Booking feature is under preparation"
+msgstr "予約機能は準備中です"
+
+msgid "Quote Preview"
+msgstr "見積プレビュー"
+
+msgid "Accommodation Fee"
+msgstr "宿泊料金"
+
+msgid "Cleaning Fee"
+msgstr "清掃料金"
+
+msgid "Extra Guest Fee"
+msgstr "追加人数料金"
+
+msgid "Error"
+msgstr "エラー"
+
+msgid "This date is fully booked"
+msgstr "この日程は満室です"
+
+msgid "Occupancy exceeded"
+msgstr "定員を超えています"
+
+msgid "Network error occurred"
+msgstr "ネットワークエラーが発生しました"
+
 msgid "Parent Property:"
 msgstr "親施設："
 

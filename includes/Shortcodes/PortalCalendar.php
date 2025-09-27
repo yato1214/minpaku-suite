@@ -29,7 +29,8 @@ class PortalCalendar {
             'property_id' => '',
             'months' => 2,
             'show_prices' => 'true',
-            'modal' => 'false'
+            'modal' => 'false',
+            'interactions' => 'modern'
         ], $atts, 'portal_calendar');
 
         // Auto-detect property ID if not provided
@@ -44,6 +45,7 @@ class PortalCalendar {
         $months = max(1, min(12, intval($atts['months'])));
         $show_prices = ($atts['show_prices'] === 'true');
         $is_modal = ($atts['modal'] === 'true');
+        $interactions = $atts['interactions'];
 
         // Check if property exists
         if (get_post_type($property_id) !== 'mcs_property') {
@@ -54,18 +56,27 @@ class PortalCalendar {
 
         // モーダル表示の場合はボタンを返す
         if ($is_modal) {
-            return self::render_modal_button($property_id, $months, $show_prices);
+            return self::render_modal_button($property_id, $months, $show_prices, $interactions);
+        }
+
+        // Enqueue unified interactions assets if using modern interactions
+        if ($interactions === 'modern') {
+            self::enqueue_unified_interactions();
         }
 
         $calendar_id = 'portal-calendar-' . uniqid();
+        $mode = $is_modal ? 'modal' : 'inline';
 
         ob_start();
         ?>
 
-        <div id="<?php echo esc_attr($calendar_id); ?>" class="mpc-calendar-container portal-calendar"
+        <div id="<?php echo esc_attr($calendar_id); ?>"
+             class="mpc-calendar-container portal-calendar"
              data-property-id="<?php echo esc_attr($property_id); ?>"
              data-show-prices="<?php echo $show_prices ? '1' : '0'; ?>"
-             data-months="<?php echo esc_attr($months); ?>">
+             data-months="<?php echo esc_attr($months); ?>"
+             data-interactions="<?php echo esc_attr($interactions); ?>"
+             data-mode="<?php echo esc_attr($mode); ?>">
 
             <?php for ($i = 0; $i < $months; $i++): ?>
                 <?php
@@ -590,7 +601,7 @@ class PortalCalendar {
     /**
      * Render modal calendar button
      */
-    private static function render_modal_button($property_id, $months, $show_prices) {
+    private static function render_modal_button($property_id, $months, $show_prices, $interactions = 'modern') {
         // Enqueue modal scripts and styles
         self::enqueue_modal_assets();
 
@@ -952,5 +963,66 @@ class PortalCalendar {
         ]);
 
         wp_send_json_success($calendar_content);
+    }
+
+    /**
+     * Enqueue unified interactions assets
+     */
+    private static function enqueue_unified_interactions() {
+        // CSS
+        $css_file = get_template_directory_uri() . '/assets/css/calendar-interactions.css';
+        $css_path = get_template_directory() . '/assets/css/calendar-interactions.css';
+
+        if (file_exists($css_path)) {
+            wp_enqueue_style(
+                'minpaku-calendar-interactions',
+                $css_file,
+                [],
+                filemtime($css_path)
+            );
+        }
+
+        // JavaScript
+        $js_file = get_template_directory_uri() . '/assets/js/calendar-interactions.js';
+        $js_path = get_template_directory() . '/assets/js/calendar-interactions.js';
+
+        if (file_exists($js_path)) {
+            wp_enqueue_script(
+                'minpaku-calendar-interactions',
+                $js_file,
+                ['jquery'],
+                filemtime($js_path),
+                true
+            );
+
+            // Localize script
+            wp_localize_script(
+                'minpaku-calendar-interactions',
+                'minpakuCalendarData',
+                [
+                    'ajaxUrl' => admin_url('admin-ajax.php'),
+                    'nonce' => wp_create_nonce('minpaku_calendar'),
+                    'apiBase' => '/wp-json/minpaku/v1',
+                    'texts' => [
+                        'loading' => __('読み込み中...', 'minpaku-suite'),
+                        'nightsLabel' => __('泊', 'minpaku-suite'),
+                        'adultsLabel' => __('大人', 'minpaku-suite'),
+                        'childrenLabel' => __('子供', 'minpaku-suite'),
+                        'totalLabel' => __('合計金額', 'minpaku-suite'),
+                        'getQuoteLabel' => __('見積を取得', 'minpaku-suite'),
+                        'clearSelectionLabel' => __('選択をクリア', 'minpaku-suite'),
+                        'bookingDisabled' => __('予約機能は準備中です', 'minpaku-suite'),
+                        'quotePreview' => __('見積プレビュー', 'minpaku-suite'),
+                        'accommodationFee' => __('宿泊料金', 'minpaku-suite'),
+                        'cleaningFee' => __('清掃料金', 'minpaku-suite'),
+                        'extraGuestFee' => __('追加人数料金', 'minpaku-suite'),
+                        'errorTitle' => __('エラー', 'minpaku-suite'),
+                        'dateUnavailable' => __('この日程は満室です', 'minpaku-suite'),
+                        'occupancyExceeded' => __('定員を超えています', 'minpaku-suite'),
+                        'networkError' => __('ネットワークエラーが発生しました', 'minpaku-suite')
+                    ]
+                ]
+            );
+        }
     }
 }

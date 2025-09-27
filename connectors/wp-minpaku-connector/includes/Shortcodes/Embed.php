@@ -32,7 +32,8 @@ class MPC_Shortcodes_Embed {
             'start_date' => '',
             'class' => '',
             'modal' => 'false',
-            'show_prices' => 'true'
+            'show_prices' => 'true',
+            'interactions' => 'modern'
         ), $atts, 'minpaku_connector');
 
         // Log shortcode usage for debugging
@@ -208,6 +209,7 @@ class MPC_Shortcodes_Embed {
         $start_date = sanitize_text_field($atts['start_date'] ?? '');
         $css_class = sanitize_html_class($atts['class'] ?? '');
         $modal = sanitize_text_field($atts['modal'] ?? 'false');
+        $interactions = sanitize_text_field($atts['interactions'] ?? 'modern');
 
         if (empty($property_id)) {
             return '<div class="wmc-error">' . esc_html__('Property ID is required for calendar display.', 'wp-minpaku-connector') . '</div>';
@@ -223,7 +225,8 @@ class MPC_Shortcodes_Embed {
             'property_id' => $property_id,
             'months' => $months,
             'show_prices' => $atts['show_prices'] ?? 'true',
-            'modal' => $modal
+            'modal' => $modal,
+            'interactions' => $interactions
         );
 
         if (!empty($start_date)) {

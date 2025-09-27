@@ -29,7 +29,8 @@ class MPC_Shortcodes_ConnectorCalendar {
             'property_id' => '',
             'months' => 2,
             'show_prices' => 'true',
-            'modal' => 'false'
+            'modal' => 'false',
+            'interactions' => 'modern'
         ], $atts, 'connector_calendar');
 
         // Auto-detect property ID if not provided
@@ -44,6 +45,7 @@ class MPC_Shortcodes_ConnectorCalendar {
         $months = max(1, min(12, intval($atts['months'])));
         $show_prices = ($atts['show_prices'] === 'true');
         $is_modal = ($atts['modal'] === 'true');
+        $interactions = $atts['interactions'];
 
         // Check API configuration
         if (!class_exists('MinpakuConnector\Client\MPC_Client_Api')) {
@@ -70,7 +72,12 @@ class MPC_Shortcodes_ConnectorCalendar {
 
         // モーダル表示の場合はボタンを返す
         if ($is_modal) {
-            return self::render_modal_button($property_id, $months, $show_prices, $property_title);
+            return self::render_modal_button($property_id, $months, $show_prices, $property_title, $interactions);
+        }
+
+        // Enqueue unified interactions assets if using modern interactions
+        if ($interactions === 'modern') {
+            self::enqueue_unified_interactions();
         }
 
         $calendar_id = 'connector-calendar-' . uniqid();
@@ -81,7 +88,9 @@ class MPC_Shortcodes_ConnectorCalendar {
         <div id="<?php echo esc_attr($calendar_id); ?>" class="mpc-calendar-container connector-calendar"
              data-property-id="<?php echo esc_attr($property_id); ?>"
              data-show-prices="<?php echo $show_prices ? '1' : '0'; ?>"
-             data-months="<?php echo esc_attr($months); ?>">
+             data-months="<?php echo esc_attr($months); ?>"
+             data-interactions="<?php echo esc_attr($interactions); ?>"
+             data-mode="<?php echo $is_modal ? 'modal' : 'inline'; ?>">
 
             <?php for ($i = 0; $i < $months; $i++): ?>
                 <?php
@@ -1116,7 +1125,7 @@ class MPC_Shortcodes_ConnectorCalendar {
     /**
      * Render modal calendar button
      */
-    private static function render_modal_button($property_id, $months, $show_prices, $property_title) {
+    private static function render_modal_button($property_id, $months, $show_prices, $property_title, $interactions = 'modern') {
         // Enqueue modal scripts and styles
         self::enqueue_modal_assets();
 
@@ -1733,5 +1742,66 @@ class MPC_Shortcodes_ConnectorCalendar {
             }
         }, true); // Use capture phase for modal clicks
         ';
+    }
+
+    /**
+     * Enqueue unified interactions assets for connector calendar
+     */
+    private static function enqueue_unified_interactions() {
+        // Create connector-specific unified interactions files with proper plugin paths
+        $css_file = plugin_dir_url(__FILE__) . '../../assets/css/calendar-interactions.css';
+        $css_path = plugin_dir_path(__FILE__) . '../../assets/css/calendar-interactions.css';
+
+        if (file_exists($css_path)) {
+            wp_enqueue_style(
+                'wp-minpaku-connector-interactions',
+                $css_file,
+                [],
+                filemtime($css_path)
+            );
+        }
+
+        // JavaScript
+        $js_file = plugin_dir_url(__FILE__) . '../../assets/js/calendar-interactions.js';
+        $js_path = plugin_dir_path(__FILE__) . '../../assets/js/calendar-interactions.js';
+
+        if (file_exists($js_path)) {
+            wp_enqueue_script(
+                'wp-minpaku-connector-interactions',
+                $js_file,
+                ['jquery'],
+                filemtime($js_path),
+                true
+            );
+
+            // Localize script for connector
+            wp_localize_script(
+                'wp-minpaku-connector-interactions',
+                'mpcConnectorInteractions',
+                [
+                    'ajaxUrl' => admin_url('admin-ajax.php'),
+                    'nonce' => wp_create_nonce('mpc_connector_calendar'),
+                    'apiBase' => '/wp-json/minpaku/v1',
+                    'texts' => [
+                        'loading' => __('読み込み中...', 'wp-minpaku-connector'),
+                        'nightsLabel' => __('泊', 'wp-minpaku-connector'),
+                        'adultsLabel' => __('大人', 'wp-minpaku-connector'),
+                        'childrenLabel' => __('子供', 'wp-minpaku-connector'),
+                        'totalLabel' => __('合計金額', 'wp-minpaku-connector'),
+                        'getQuoteLabel' => __('見積を取得', 'wp-minpaku-connector'),
+                        'clearSelectionLabel' => __('選択をクリア', 'wp-minpaku-connector'),
+                        'bookingDisabled' => __('予約機能は準備中です', 'wp-minpaku-connector'),
+                        'quotePreview' => __('見積プレビュー', 'wp-minpaku-connector'),
+                        'accommodationFee' => __('宿泊料金', 'wp-minpaku-connector'),
+                        'cleaningFee' => __('清掃料金', 'wp-minpaku-connector'),
+                        'extraGuestFee' => __('追加人数料金', 'wp-minpaku-connector'),
+                        'errorTitle' => __('エラー', 'wp-minpaku-connector'),
+                        'dateUnavailable' => __('この日程は満室です', 'wp-minpaku-connector'),
+                        'occupancyExceeded' => __('定員を超えています', 'wp-minpaku-connector'),
+                        'networkError' => __('ネットワークエラーが発生しました', 'wp-minpaku-connector')
+                    ]
+                ]
+            );
+        }
     }
 }
