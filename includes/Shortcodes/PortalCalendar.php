@@ -404,27 +404,40 @@ class PortalCalendar {
 
         <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Handle calendar day clicks for booking
-            document.querySelectorAll('.portal-calendar .mcs-day').forEach(function(day) {
-                day.addEventListener('click', function(e) {
+            // Handle calendar day clicks for booking using event delegation (works with dynamically loaded content)
+            document.addEventListener('click', function(e) {
+                // Check if clicked element is a calendar day in portal calendar
+                if ((e.target.classList.contains('mcs-day') || e.target.closest('.mcs-day')) &&
+                    e.target.closest('.portal-calendar')) {
+
+                    var dayElement = e.target.classList.contains('mcs-day') ? e.target : e.target.closest('.mcs-day');
                     e.preventDefault();
 
+                    console.log('Portal calendar day clicked:', dayElement);
+
                     // Only allow clicks on available days and current month days
-                    if (this.dataset.disabled === '1' || this.classList.contains('mcs-day--empty') || this.classList.contains('mcs-day--past')) {
+                    if (dayElement.dataset.disabled === '1' || dayElement.classList.contains('mcs-day--empty') || dayElement.classList.contains('mcs-day--past')) {
+                        console.log('Day click ignored - disabled or invalid day');
                         return;
                     }
 
-                    var date = this.dataset.ymd;
-                    var propertyId = this.dataset.property;
+                    var date = dayElement.dataset.ymd;
+                    var propertyId = dayElement.dataset.property;
+
+                    console.log('Portal calendar navigation - Date:', date, 'Property:', propertyId);
 
                     if (date && propertyId) {
                         // Navigate to new booking page with property and date pre-filled
-                        var bookingUrl = '<?php echo admin_url('post-new.php?post_type=mcs_booking'); ?>' +
-                                        '&property_id=' + propertyId +
-                                        '&checkin=' + date;
+                        var bookingUrl = '<?php echo esc_js(admin_url('post-new.php?post_type=mcs_booking')); ?>' +
+                                        '&property_id=' + encodeURIComponent(propertyId) +
+                                        '&checkin=' + encodeURIComponent(date);
+
+                        console.log('Navigating to booking URL:', bookingUrl);
                         window.location.href = bookingUrl;
+                    } else {
+                        console.warn('Missing date or property ID for navigation');
                     }
-                });
+                }
             });
         });
         </script>
@@ -821,6 +834,9 @@ class PortalCalendar {
                         if (contentDiv) {
                             contentDiv.innerHTML = data.data;
                             contentDiv.style.display = 'block';
+
+                            // Initialize click handlers for modal calendar after content is loaded
+                            initModalCalendarHandlers(contentDiv);
                         }
                     } else {
                         if (contentDiv) {
@@ -838,6 +854,48 @@ class PortalCalendar {
                     }
                 });
             }, 100);
+        }
+
+        function initModalCalendarHandlers(modalContent) {
+            console.log('Initializing modal calendar handlers');
+
+            // Find all calendar days in the modal content
+            var calendarDays = modalContent.querySelectorAll('.mcs-day');
+            console.log('Found calendar days in modal:', calendarDays.length);
+
+            calendarDays.forEach(function(dayElement) {
+                dayElement.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    console.log('Modal calendar day clicked:', dayElement);
+
+                    // Only allow clicks on available days and current month days
+                    if (dayElement.dataset.disabled === '1' ||
+                        dayElement.classList.contains('mcs-day--empty') ||
+                        dayElement.classList.contains('mcs-day--past')) {
+                        console.log('Day click ignored - disabled or invalid day');
+                        return;
+                    }
+
+                    var date = dayElement.dataset.ymd;
+                    var propertyId = dayElement.dataset.property;
+
+                    console.log('Modal calendar navigation - Date:', date, 'Property:', propertyId);
+
+                    if (date && propertyId) {
+                        // Navigate to new booking page with property and date pre-filled
+                        var bookingUrl = '<?php echo esc_js(admin_url('post-new.php?post_type=mcs_booking')); ?>' +
+                                        '&property_id=' + encodeURIComponent(propertyId) +
+                                        '&checkin=' + encodeURIComponent(date);
+
+                        console.log('Navigating to booking URL from modal:', bookingUrl);
+                        window.location.href = bookingUrl;
+                    } else {
+                        console.warn('Missing date or property ID for navigation');
+                    }
+                });
+            });
         }
 
         function closePortalCalendarModal() {
