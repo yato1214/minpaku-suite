@@ -378,7 +378,7 @@ class MPC_Client_Api {
     /**
      * Get availability for a property
      */
-    public function get_availability($property_id, $months = 2, $start_date = null) {
+    public function get_availability($property_id, $months = 2, $start_date = null, $with_price = false) {
         $args = array(
             'property_id' => intval($property_id),
             'months' => intval($months)
@@ -386,6 +386,11 @@ class MPC_Client_Api {
 
         if ($start_date) {
             $args['start_date'] = sanitize_text_field($start_date);
+        }
+
+        // Add with_price parameter to request pricing data
+        if ($with_price) {
+            $args['with_price'] = 1;
         }
 
         $cache_key = 'mpc_availability_' . md5(serialize($args));
@@ -439,6 +444,7 @@ class MPC_Client_Api {
         }
 
         if ($response_code === 200 && isset($data['success']) && $data['success']) {
+
             // Cache for shorter duration since availability changes frequently
             set_transient($cache_key, $data, 60); // 1 minute cache
             return $data;
@@ -453,6 +459,7 @@ class MPC_Client_Api {
             );
         }
     }
+
 
     /**
      * Get a single property details

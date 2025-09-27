@@ -107,7 +107,7 @@ $status_class = 'mcs-status--' . $property->post_status;
 
             <?php
             // Availability calendar shortcode link (if on same site)
-            $calendar_shortcode = '[mcs_availability id="' . $property_id . '"]';
+            $calendar_shortcode = '[portal_calendar property_id="' . $property_id . '" months="4" show_prices="true"]';
             ?>
             <button type="button" class="mcs-action-link mcs-action-link--calendar" data-shortcode="<?php echo esc_attr($calendar_shortcode); ?>" title="<?php esc_attr_e('Copy availability shortcode', 'minpaku-suite'); ?>">
                 <span class="dashicons dashicons-calendar"></span>

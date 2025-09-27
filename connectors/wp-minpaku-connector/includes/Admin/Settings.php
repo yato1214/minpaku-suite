@@ -31,6 +31,7 @@ class MPC_Admin_Settings {
             array(__CLASS__, 'sanitize_settings')
         );
 
+
         add_settings_section(
             'mpc_connection_section',
             __('Portal Connection', 'wp-minpaku-connector'),
@@ -69,6 +70,7 @@ class MPC_Admin_Settings {
             'wp-minpaku-connector',
             'mpc_connection_section'
         );
+
     }
 
     /**
@@ -107,6 +109,7 @@ class MPC_Admin_Settings {
 
         return $sanitized;
     }
+
 
     /**
      * Normalize and validate portal URL - improved version
@@ -625,6 +628,7 @@ class MPC_Admin_Settings {
         echo '<p class="description">' . esc_html__('The Secret key generated in your portal connector settings.', 'wp-minpaku-connector') . '</p>';
     }
 
+
     /**
      * Render admin page
      */
@@ -650,6 +654,7 @@ class MPC_Admin_Settings {
                 submit_button();
                 ?>
             </form>
+
 
             <?php if ($is_configured): ?>
                 <hr>
@@ -709,11 +714,20 @@ class MPC_Admin_Settings {
 
                 <h3><?php echo esc_html__('空室カレンダー', 'wp-minpaku-connector'); ?></h3>
                 <code>[minpaku_connector type="availability" property_id="123" months="2"]</code>
-                <p class="description"><?php echo esc_html__('指定した物件の空室カレンダーを表示します。パラメータ: property_id（必須）、months（表示月数）', 'wp-minpaku-connector'); ?></p>
+                <p class="description"><?php echo esc_html__('指定した物件の空室カレンダーを表示します。1泊ごとの価格表示、2クリック選択でリアルタイム見積。パラメータ: property_id（必須）、months（表示月数）', 'wp-minpaku-connector'); ?></p>
+                <p class="description" style="color: #666; font-style: italic;"><?php echo esc_html__('※ カレンダー価格は1泊分のみ表示（清掃費は含まず）。選択完了後に清掃費を含む合計見積が表示されます。', 'wp-minpaku-connector'); ?></p>
 
                 <h3><?php echo esc_html__('物件詳細', 'wp-minpaku-connector'); ?></h3>
                 <code>[minpaku_connector type="property" property_id="123"]</code>
                 <p class="description"><?php echo esc_html__('指定した物件の詳細情報を表示します。パラメータ: property_id（必須）', 'wp-minpaku-connector'); ?></p>
+
+                <h4><?php echo esc_html__('カレンダー機能詳細', 'wp-minpaku-connector'); ?></h4>
+                <ul>
+                    <li><strong><?php echo esc_html__('価格表示', 'wp-minpaku-connector'); ?></strong>: <?php echo esc_html__('各日付に1泊分の料金を表示（季節料金、前日割増対応）', 'wp-minpaku-connector'); ?></li>
+                    <li><strong><?php echo esc_html__('色分け表示', 'wp-minpaku-connector'); ?></strong>: <?php echo esc_html__('祝日・日曜（ピンク）、土曜（水色）、平日（緑）、満室（グレー）', 'wp-minpaku-connector'); ?></li>
+                    <li><strong><?php echo esc_html__('2クリック選択', 'wp-minpaku-connector'); ?></strong>: <?php echo esc_html__('1クリック目でチェックイン、2クリック目でチェックアウトを選択', 'wp-minpaku-connector'); ?></li>
+                    <li><strong><?php echo esc_html__('リアルタイム見積', 'wp-minpaku-connector'); ?></strong>: <?php echo esc_html__('選択完了後に宿泊料金・清掃費・合計金額を自動計算して表示', 'wp-minpaku-connector'); ?></li>
+                </ul>
 
                 <h4><?php echo esc_html__('追加オプション', 'wp-minpaku-connector'); ?></h4>
                 <ul>
@@ -748,6 +762,8 @@ class MPC_Admin_Settings {
 
         <script>
         jQuery(document).ready(function($) {
+
+            // Connection test JavaScript
             $('#test-connection').on('click', function() {
                 var button = $(this);
                 var result = $('#test-result');

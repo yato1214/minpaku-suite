@@ -53,8 +53,14 @@ class MPC_Shortcodes_Calendar {
             return '<p class="mpc-error">' . __('Portal connection not configured. Please check the connector settings.', 'wp-minpaku-connector') . '</p>';
         }
 
-        // Get availability data from portal API
-        $availability_result = $api->get_availability($property_id, $months);
+        // Get availability data from portal API with pricing
+        $availability_result = $api->get_availability($property_id, $months, null, true);
+
+        // Enhanced debugging for availability data
+        if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+            error_log('[minpaku-connector] Calendar API call result: ' . print_r($availability_result, true));
+        }
+
         if (!$availability_result['success']) {
             $error_message = $availability_result['message'] ?? __('Unknown error', 'wp-minpaku-connector');
 
@@ -68,81 +74,22 @@ class MPC_Shortcodes_Calendar {
 
         $availability_data = $availability_result['data'] ?? array();
 
+        // Debug pricing data specifically
+        if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+            error_log('[minpaku-connector] Calendar pricing data received: ' . print_r($availability_data['pricing'] ?? 'none', true));
+            error_log('[minpaku-connector] Calendar availability data structure: ' . print_r(array_keys($availability_data), true));
+        }
+
         // Ensure property_id is available for price lookup
         if (!isset($availability_data['property_id'])) {
             $availability_data['property_id'] = $property_id;
         }
 
-        // CRITICAL FIX: Override any ¥100 prices with actual property data
-        $real_price = null;
-
-        // STEP 1: Get GUARANTEED unified pricing (accommodation rate + cleaning fee) - BULLETPROOF VERSION
-        if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
-            error_log('[minpaku-connector] [BULLETPROOF-PRICING] Getting guaranteed unified pricing for property_id: ' . $property_id);
-        }
-
-        // FORCE unified pricing calculation for ALL properties
-        $real_price = self::get_bulletproof_unified_price($property_id, $api);
-
-        if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
-            error_log('[minpaku-connector] [BULLETPROOF-PRICING] Property ' . $property_id . ' - GUARANTEED unified price: ¥' . $real_price);
-        }
-
-        // STEP 2: FORCE apply unified pricing to ALL available days - BULLETPROOF VERSION
-        if (isset($availability_data['availability']) && is_array($availability_data['availability'])) {
-            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
-                error_log('[minpaku-connector] [BULLETPROOF-PRICING] Applying GUARANTEED unified price ¥' . $real_price . ' to ALL available days');
-            }
-
-            foreach ($availability_data['availability'] as &$day_data) {
-                // FORCE override ALL prices with guaranteed unified pricing for available days
-                if (isset($day_data['available']) && $day_data['available']) {
-                    $day_data['price'] = $real_price;
-                    if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
-                        error_log('[minpaku-connector] [BULLETPROOF-PRICING] Property ' . $property_id . ' - Set price ¥' . $real_price . ' for date: ' . ($day_data['date'] ?? 'unknown'));
-                    }
-                }
-            }
-            unset($day_data);
-
-            // Also force override pricing array if it exists
-            if (isset($availability_data['pricing']) && is_array($availability_data['pricing'])) {
-                foreach ($availability_data['pricing'] as &$pricing_data) {
-                    $pricing_data['price'] = $real_price;
-                }
-                unset($pricing_data);
-            }
-
-            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
-                error_log('[minpaku-connector] [BULLETPROOF-PRICING] Price override COMPLETED for property ' . $property_id . ' with guaranteed price ¥' . $real_price);
-            }
-        } else {
-            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
-                error_log('[minpaku-connector] [BULLETPROOF-PRICING] No availability data found for property ' . $property_id);
-            }
-        }
+        // Generate calendar with portal data
         $calendar_id = 'mpc-calendar-' . uniqid();
 
         ob_start();
         ?>
-        <!-- Calendar Legend -->
-        <div class="mpc-calendar-legend">
-            <h4><?php _e('空室状況の見方', 'wp-minpaku-connector'); ?></h4>
-            <div class="mpc-legend-items">
-                <div class="mpc-legend-item">
-                    <span class="mpc-legend-color mpc-legend-color--vacant"></span>
-                    <span class="mpc-legend-label"><?php _e('空き', 'wp-minpaku-connector'); ?></span>
-                </div>
-                <div class="mpc-legend-item">
-                    <span class="mpc-legend-color mpc-legend-color--partial"></span>
-                    <span class="mpc-legend-label"><?php _e('一部予約あり', 'wp-minpaku-connector'); ?></span>
-                </div>
-                <div class="mpc-legend-item">
-                    <span class="mpc-legend-color mpc-legend-color--full"></span>
-                    <span class="mpc-legend-label"><?php _e('満室', 'wp-minpaku-connector'); ?></span>
-                </div>
-            </div>
-        </div>
 
         <div id="<?php echo esc_attr($calendar_id); ?>" class="mpc-calendar-container"
              data-property-id="<?php echo esc_attr($property_id); ?>"
@@ -191,6 +138,7 @@ class MPC_Shortcodes_Calendar {
      * Generate calendar days for a specific month with real availability data
      */
     private static function generate_calendar_days($year, $month, $property_id, $availability_data, $show_prices) {
+
         $first_day = new \DateTime("$year-$month-01");
         $last_day = new \DateTime($first_day->format('Y-m-t'));
         $start_of_week = clone $first_day;
@@ -210,6 +158,9 @@ class MPC_Shortcodes_Calendar {
         $current_date = clone $start_of_week;
         $output = '';
 
+        // Get blackout ranges for checking
+        $blackout_ranges = array(); // Remove blackout functionality
+
         while ($current_date <= $end_of_week) {
             $week_start = clone $current_date;
             $output .= '<div class="mpc-calendar-week">';
@@ -219,42 +170,50 @@ class MPC_Shortcodes_Calendar {
                 $is_past = ($current_date < new \DateTime('today'));
                 $date_string = $current_date->format('Y-m-d');
 
-                // Get availability status from real data
-                $availability_status = self::get_availability_status($date_string, $availability_data);
-                $is_available = ($availability_status === 'vacant');
-                $is_disabled = $is_past || !$is_available;
+                // Check if date is in blackout range
+                $is_blackout = self::is_date_in_blackout_range($date_string, $blackout_ranges);
 
-                $cell_classes = array('mcs-day');
+                // Get availability status from real data
+                if ($is_blackout) {
+                    $availability_status = 'blackout';
+                } else {
+                    $availability_status = self::get_availability_status($date_string, $availability_data);
+                }
+
+                // Simple day classification for colors
+                $day_classification = self::getSimpleDayClasses($date_string, $availability_status);
+
+                $is_available = ($availability_status === 'available');
+                $is_disabled = $is_past || !$is_available || $is_blackout;
+
+                $cell_classes = $day_classification['css_classes'];
                 if (!$is_current_month) {
                     $cell_classes[] = 'mcs-day--empty';
-                } else {
-                    $cell_classes[] = 'mcs-day--' . $availability_status;
-                    if ($is_past) {
-                        $cell_classes[] = 'mcs-day--past';
-                    }
-                    if ($is_disabled) {
-                        $cell_classes[] = 'mcs-day--disabled';
-                    }
                 }
 
                 $output .= sprintf(
-                    '<div class="%s" data-ymd="%s" data-property="%s" data-disabled="%d">',
+                    '<div class="%s" data-ymd="%s" data-property="%s" data-disabled="%d" style="background-color: %s;">',
                     esc_attr(implode(' ', $cell_classes)),
                     esc_attr($date_string),
                     esc_attr($property_id),
-                    $is_disabled ? 1 : 0
+                    $is_disabled ? 1 : 0,
+                    esc_attr($day_classification['background_color'])
                 );
 
                 $output .= '<span class="mcs-day-number">' . $current_date->format('j') . '</span>';
 
-                // Add price badge for available days only when vacant and not past
-                if ($show_prices && $is_current_month && $availability_status === 'vacant' && !$is_past) {
-                    $price_text = self::get_price_for_day($date_string, $availability_data);
-                    if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
-                        error_log('[minpaku-connector] Calendar price display for ' . $date_string . ': ' . $price_text);
-                    }
-                    if ($price_text !== '—' && !empty($price_text)) {
-                        $output .= '<span class="mcs-day-price">' . esc_html($price_text) . '</span>';
+                // Add price badge for available days, or 満室 badge for booked days
+                if ($is_current_month && !$is_past) {
+                    if ($availability_status === 'available' && $show_prices && !$is_blackout) {
+                        $price_text = self::get_price_for_day($date_string, $availability_data);
+                        if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                            error_log('[minpaku-connector] Calendar price display for ' . $date_string . ': ' . $price_text);
+                        }
+                        if ($price_text !== '—' && !empty($price_text)) {
+                            $output .= '<span class="mcs-day-price">' . esc_html($price_text) . '</span>';
+                        }
+                    } elseif ($availability_status === 'full') {
+                        $output .= '<span class="mcs-day-full-badge">満室</span>';
                     }
                 }
 
@@ -279,7 +238,7 @@ class MPC_Shortcodes_Calendar {
                     $available = $day_data['available'] ?? true;
                     $status = $day_data['status'] ?? 'available';
 
-                    // Map API statuses to CSS class names
+                    // Map API statuses to standardized names
                     if (!$available) {
                         switch ($status) {
                             case 'booked':
@@ -287,161 +246,206 @@ class MPC_Shortcodes_Calendar {
                                 return 'full';
                             case 'partial':
                             case 'PARTIAL':
-                                return 'partial';
+                                return 'pending';
                             default:
                                 return 'full';
                         }
                     } else {
-                        return 'vacant';
+                        return 'available';
                     }
                 }
             }
         }
-        return 'vacant'; // Default to available if no data
+        return 'available'; // Default to available if no data
     }
 
     /**
-     * Get price for a specific date - UNIFIED VERSION (matching portal logic exactly)
+     * Check if a date is in any blackout range
      */
-    private static function get_price_for_day($date_string, $availability_data) {
-        if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
-            error_log('[minpaku-connector] [UNIFIED-PRICE] Getting price for date: ' . $date_string);
+    private static function is_date_in_blackout_range($date, $blackout_ranges) {
+        if (empty($blackout_ranges) || !is_array($blackout_ranges)) {
+            return false;
         }
 
-        // PRIORITY 1: Check if unified price was already set during availability processing
+        foreach ($blackout_ranges as $range) {
+            if (isset($range['date_from']) && isset($range['date_to'])) {
+                if ($date >= $range['date_from'] && $date <= $range['date_to']) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Simple day classification for colors (matching portal side)
+     */
+    private static function getSimpleDayClasses($date_string, $availability_status) {
+        $date = new \DateTime($date_string);
+        $day_of_week = $date->format('w'); // 0 = Sunday, 6 = Saturday
+
+        $css_classes = ['mcs-day'];
+        $background_color = '#FFFFFF'; // Default white
+
+        // Add availability class
+        $css_classes[] = "mcs-day--{$availability_status}";
+
+        // Add day type classes for color (same logic as portal)
+        if ($availability_status === 'available') {
+            if ($day_of_week == 0 || self::isJapaneseHoliday($date_string)) { // Sunday or Holiday
+                $css_classes[] = 'mcs-day--sun';
+                if (self::isJapaneseHoliday($date_string)) {
+                    $css_classes[] = 'mcs-day--holiday';
+                }
+                $background_color = '#FFE7EC'; // Pink
+            } elseif ($day_of_week == 6) { // Saturday
+                $css_classes[] = 'mcs-day--sat';
+                $background_color = '#E7F2FF'; // Light blue
+            } else { // Weekday
+                $css_classes[] = 'mcs-day--weekday';
+                $background_color = '#F0F9F0'; // Light green
+            }
+        } elseif ($availability_status === 'full') {
+            // Booked dates keep white background (満室 badge provides visual indication)
+            $css_classes[] = 'mcs-day--booked';
+            $background_color = '#FFFFFF'; // White background
+        }
+
+        return array(
+            'css_classes' => $css_classes,
+            'background_color' => $background_color
+        );
+    }
+
+    /**
+     * Check if date is a Japanese holiday (matching portal side)
+     */
+    private static function isJapaneseHoliday($date_string) {
+        // Simplified holiday check - matching portal side logic
+        $holidays = [
+            // 2025 holidays
+            '2025-01-01', // New Year
+            '2025-01-13', // Coming of Age Day
+            '2025-02-11', // Foundation Day
+            '2025-02-23', // Emperor's Birthday
+            '2025-03-20', // Spring Equinox
+            '2025-04-29', // Showa Day
+            '2025-05-03', // Constitution Day
+            '2025-05-04', // Greenery Day
+            '2025-05-05', // Children's Day
+            '2025-07-21', // Marine Day
+            '2025-08-11', // Mountain Day
+            '2025-09-15', // Respect for the Aged Day
+            '2025-09-23', // Autumn Equinox
+            '2025-10-13', // Sports Day
+            '2025-11-03', // Culture Day
+            '2025-11-23', // Labor Thanksgiving Day
+            // 2024 holidays (for historical data)
+            '2024-01-01', '2024-01-08', '2024-02-11', '2024-02-23',
+            '2024-03-20', '2024-04-29', '2024-05-03', '2024-05-04',
+            '2024-05-05', '2024-07-15', '2024-08-11', '2024-09-16',
+            '2024-09-22', '2024-10-14', '2024-11-03', '2024-11-23',
+            // 2026 holidays (for future bookings)
+            '2026-01-01', '2026-01-12', '2026-02-11', '2026-02-23',
+            '2026-03-20', '2026-04-29', '2026-05-03', '2026-05-04',
+            '2026-05-05', '2026-07-20', '2026-08-11', '2026-09-21',
+            '2026-09-22', '2026-10-12', '2026-11-03', '2026-11-23'
+        ];
+
+        return in_array($date_string, $holidays);
+    }
+
+    /**
+     * Get price for a specific date from portal API data (trust portal calculations)
+     */
+    private static function get_price_for_day($date_string, $availability_data) {
+        // Enhanced debug logging
+        if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+            error_log('[minpaku-connector] Getting price for date: ' . $date_string);
+            error_log('[minpaku-connector] Available pricing data: ' . print_r($availability_data['pricing'] ?? 'none', true));
+        }
+
+        // First, check the pricing array for date-specific pricing (TRUST PORTAL CALCULATIONS)
+        if (isset($availability_data['pricing']) && is_array($availability_data['pricing'])) {
+            foreach ($availability_data['pricing'] as $pricing_data) {
+                if (isset($pricing_data['date']) && $pricing_data['date'] === $date_string) {
+                    if (isset($pricing_data['price']) && is_numeric($pricing_data['price'])) {
+                        $price = floatval($pricing_data['price']);
+
+                        // Trust portal calculations - don't filter out any prices
+                        if ($price > 0) {
+                            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                                error_log('[minpaku-connector] Using pricing array price for ' . $date_string . ': ¥' . $price);
+                            }
+                            return '¥' . number_format($price);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Then check availability array for pricing (but trust portal values)
         if (isset($availability_data['availability']) && is_array($availability_data['availability'])) {
             foreach ($availability_data['availability'] as $day_data) {
                 if (isset($day_data['date']) && $day_data['date'] === $date_string) {
-                    // Check if we have a pre-calculated unified price (set during API processing above)
-                    if (isset($day_data['price']) && is_numeric($day_data['price']) && $day_data['price'] > 0) {
+                    // Check price field
+                    if (isset($day_data['price']) && is_numeric($day_data['price'])) {
                         $price = floatval($day_data['price']);
-                        if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
-                            error_log('[minpaku-connector] [UNIFIED-PRICE] Property ' . ($availability_data['property_id'] ?? 'unknown') . ' - Using unified price for ' . $date_string . ': ¥' . $price);
+                        if ($price > 0) {
+                            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                                error_log('[minpaku-connector] Using availability array price for ' . $date_string . ': ¥' . $price);
+                            }
+                            return '¥' . number_format($price);
                         }
-                        return '¥' . number_format($price);
+                    }
+                    // Check min_price as fallback
+                    if (isset($day_data['min_price']) && is_numeric($day_data['min_price'])) {
+                        $price = floatval($day_data['min_price']);
+                        if ($price > 0) {
+                            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                                error_log('[minpaku-connector] Using availability array min_price for ' . $date_string . ': ¥' . $price);
+                            }
+                            return '¥' . number_format($price);
+                        }
                     }
                 }
             }
         }
 
-        // PRIORITY 2: If no day-specific price, calculate from property meta (same as portal does)
-        $property_id = $availability_data['property_id'] ?? null;
-        if ($property_id) {
-            $display_price = self::calculate_unified_display_price($property_id);
-            if ($display_price > 0) {
+        // If no date-specific pricing found, try to get general property pricing from pricing array
+        if (isset($availability_data['property_id'])) {
+            $real_price = self::get_real_property_price($availability_data['property_id'], $availability_data);
+            if ($real_price > 0) {
                 if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
-                    error_log('[minpaku-connector] [UNIFIED-PRICE] Property ' . $property_id . ' - Using calculated unified price for ' . $date_string . ': ¥' . $display_price);
+                    error_log('[minpaku-connector] Using fallback price for ' . $date_string . ': ¥' . $real_price);
                 }
-                return '¥' . number_format($display_price);
+                return '¥' . number_format($real_price);
             }
         }
 
-        // If no valid price found, return dash (same as portal)
+        // No price available
         if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
-            error_log('[minpaku-connector] [UNIFIED-PRICE] No unified price found for ' . $date_string . ' - returning dash');
+            error_log('[minpaku-connector] No price found for ' . $date_string);
         }
-        return __('—', 'wp-minpaku-connector');
+        return '—';
     }
 
     /**
-     * Get bulletproof unified pricing - GUARANTEED TO RETURN VALID PRICE
+     * Get real property price from availability data pricing array
      */
-    private static function get_bulletproof_unified_price($property_id, $api) {
-        if (!$property_id) {
-            return 15000.0; // Default fallback
-        }
-
-        if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
-            error_log('[minpaku-connector] [BULLETPROOF] Getting bulletproof price for property ' . $property_id);
-        }
-
-        $accommodation_rate = 0;
-        $cleaning_fee = 0;
-
-        // ATTEMPT 1: Try API call with error handling
-        try {
-            $property_response = $api->get_property($property_id);
-            if ($property_response['success'] && isset($property_response['data']['meta'])) {
-                $meta = $property_response['data']['meta'];
-
-                // UNIFIED ACCOMMODATION RATE - Same priority as portal side
-                if (isset($meta['accommodation_rate']) && $meta['accommodation_rate'] > 0) {
-                    $accommodation_rate = floatval($meta['accommodation_rate']);
-                } elseif (isset($meta['test_base_rate']) && $meta['test_base_rate'] > 0) {
-                    $accommodation_rate = floatval($meta['test_base_rate']);
-                } elseif (isset($meta['base_price_test']) && $meta['base_price_test'] > 0) {
-                    $accommodation_rate = floatval($meta['base_price_test']);
-                }
-
-                // UNIFIED CLEANING FEE - Same priority as portal side
-                if (isset($meta['cleaning_fee']) && $meta['cleaning_fee'] > 0) {
-                    $cleaning_fee = floatval($meta['cleaning_fee']);
-                } elseif (isset($meta['test_cleaning_fee'])) {
-                    $cleaning_fee = floatval($meta['test_cleaning_fee']);
-                }
-
-                if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
-                    error_log('[minpaku-connector] [BULLETPROOF] API SUCCESS - Property ' . $property_id . ' accommodation: ¥' . $accommodation_rate . ', cleaning: ¥' . $cleaning_fee);
-                }
-            } else {
-                if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
-                    error_log('[minpaku-connector] [BULLETPROOF] API call unsuccessful or no meta data for property ' . $property_id);
+    private static function get_real_property_price($property_id, $availability_data = null) {
+        // Try to get price from pricing array in availability data
+        if ($availability_data && isset($availability_data['pricing']) && is_array($availability_data['pricing'])) {
+            foreach ($availability_data['pricing'] as $price_data) {
+                if (isset($price_data['price']) && is_numeric($price_data['price']) && $price_data['price'] > 100) {
+                    return floatval($price_data['price']);
                 }
             }
-        } catch (\Exception $e) {
-            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
-                error_log('[minpaku-connector] [BULLETPROOF] API call failed for property ' . $property_id . ': ' . $e->getMessage());
-            }
         }
 
-        // FALLBACK LOGIC: Ensure we always have a valid price
-        if ($accommodation_rate == 0) {
-            // Use property-specific fallback based on property_id
-            $fallback_rates = [
-                17 => 18000.0, // Property 17 specific rate
-                16 => 16000.0, // Property 16 specific rate
-                15 => 14000.0, // Property 15 specific rate
-            ];
-            $accommodation_rate = $fallback_rates[$property_id] ?? 15000.0;
-
-            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
-                error_log('[minpaku-connector] [BULLETPROOF] Using fallback accommodation rate: ¥' . $accommodation_rate . ' for property ' . $property_id);
-            }
-        }
-
-        // Calculate GUARANTEED unified display price
-        $display_price = $accommodation_rate + $cleaning_fee;
-
-        // Ensure minimum price (never less than ¥5000)
-        if ($display_price < 5000) {
-            $display_price = 15000.0;
-            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
-                error_log('[minpaku-connector] [BULLETPROOF] Applied minimum price: ¥' . $display_price);
-            }
-        }
-
-        if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
-            error_log('[minpaku-connector] [BULLETPROOF] FINAL guaranteed price for property ' . $property_id . ': ¥' . $display_price . ' (accommodation: ¥' . $accommodation_rate . ', cleaning: ¥' . $cleaning_fee . ')');
-        }
-
-        return $display_price;
+        // Fallback to default pricing
+        return 15000; // Default ¥15,000
     }
 
-    /**
-     * Calculate unified display price (accommodation + cleaning) - EXACT PORTAL MATCH
-     */
-    private static function calculate_unified_display_price($property_id) {
-        if (!$property_id) return 0;
-
-        try {
-            $api = new \MinpakuConnector\Client\MPC_Client_Api();
-            return self::get_bulletproof_unified_price($property_id, $api);
-        } catch (\Exception $e) {
-            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
-                error_log('[minpaku-connector] [UNIFIED-PRICE] Price calculation failed: ' . $e->getMessage());
-            }
-        }
-
-        return 15000.0; // Fallback
-    }
 }

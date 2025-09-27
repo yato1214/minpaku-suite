@@ -792,20 +792,14 @@ class ConnectorApiController
      */
     private static function process_property_shortcodes(string $content, int $property_id): string
     {
-        // Replace [mcs_availability] with [mcs_availability id="property_id"]
+        // Replace [mcs_availability] with [portal_calendar property_id="property_id"]
         $content = preg_replace_callback(
             '/\[mcs_availability([^\]]*)\]/',
             function ($matches) use ($property_id) {
                 $attributes = $matches[1];
 
-                // Check if id parameter is already set
-                if (strpos($attributes, 'id=') !== false) {
-                    return $matches[0]; // Return unchanged if id is already set
-                }
-
-                // Add the property id to the shortcode
-                $new_attributes = trim($attributes . ' id="' . $property_id . '"');
-                return '[mcs_availability' . ($new_attributes ? ' ' . $new_attributes : ' id="' . $property_id . '"') . ']';
+                // Convert to portal_calendar shortcode
+                return '[portal_calendar property_id="' . $property_id . '" months="4" show_prices="true"' . $attributes . ']';
             },
             $content
         );
@@ -871,11 +865,30 @@ class ConnectorApiController
     }
 
     /**
-     * Get price for a specific date
+     * Get price for a specific date with seasonal rules and eve surcharges
      */
     private static function get_price_for_date(int $property_id, string $date_str): int
     {
-        return self::get_unified_display_price($property_id);
+        // Use the same pricing calculation as portal calendar
+        if (class_exists('MinpakuSuite\Calendar\DayClassifier')) {
+            $calculated_price = \MinpakuSuite\Calendar\DayClassifier::calculatePriceForDate($date_str, $property_id);
+
+            // Debug logging for pricing calculation
+            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                error_log("[minpaku-suite] Price calculation for property {$property_id} on {$date_str}: ¥{$calculated_price}");
+            }
+
+            return $calculated_price;
+        }
+
+        // Fallback to unified display price
+        $fallback_price = self::get_unified_display_price($property_id);
+
+        if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+            error_log("[minpaku-suite] Using fallback price for property {$property_id} on {$date_str}: ¥{$fallback_price}");
+        }
+
+        return $fallback_price;
     }
 
     /**

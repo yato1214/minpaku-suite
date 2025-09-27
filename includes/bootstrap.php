@@ -17,6 +17,8 @@ class Bootstrap
         add_action('init', [__CLASS__, 'register_portal_components'], 15);
         add_action('init', [__CLASS__, 'register_connector_components'], 15);
         add_action('init', [__CLASS__, 'register_pricing_components'], 15);
+        add_action('init', [__CLASS__, 'register_property_components'], 15);
+        add_action('init', [__CLASS__, 'register_shortcode_components'], 15);
         add_action('acf/init', [__CLASS__, 'register_acf'], 10);
         add_action('admin_menu', [__CLASS__, 'register_menu'], 9);
         add_action('admin_enqueue_scripts', [__CLASS__, 'enqueue_admin_styles'], 10);
@@ -138,6 +140,18 @@ class Bootstrap
                     'read',
                     'mcs-owner-portal',
                     [__CLASS__, 'render_owner_portal']
+                );
+            }
+
+            // Add Pricing Settings submenu for admins only
+            if (current_user_can('manage_options')) {
+                add_submenu_page(
+                    'minpaku-suite',
+                    __('料金設定', 'minpaku-suite'),
+                    __('料金設定', 'minpaku-suite'),
+                    'manage_options',
+                    'mcs-pricing-settings',
+                    [__CLASS__, 'render_pricing_settings']
                 );
             }
 
@@ -385,14 +399,14 @@ class Bootstrap
     public static function register_ui_components()
     {
         try {
-            // Register UI components
-            $calendar_file = MCS_PATH . 'includes/UI/AvailabilityCalendar.php';
-            if (file_exists($calendar_file)) {
-                require_once $calendar_file;
-                if (class_exists('MinpakuSuite\UI\AvailabilityCalendar')) {
-                    \MinpakuSuite\UI\AvailabilityCalendar::init();
-                }
-            }
+            // DEPRECATED: Old mcs_availability shortcode removed in favor of portal_calendar
+            // $calendar_file = MCS_PATH . 'includes/UI/AvailabilityCalendar.php';
+            // if (file_exists($calendar_file)) {
+            //     require_once $calendar_file;
+            //     if (class_exists('MinpakuSuite\UI\AvailabilityCalendar')) {
+            //         \MinpakuSuite\UI\AvailabilityCalendar::init();
+            //     }
+            // }
 
             // Register availability service
             $service_file = MCS_PATH . 'includes/Availability/AvailabilityService.php';
@@ -449,6 +463,23 @@ class Bootstrap
         }
     }
 
+    public static function render_pricing_settings()
+    {
+        // Load PricingSettings class
+        $settings_file = MCS_PATH . 'includes/Admin/PricingSettings.php';
+        if (file_exists($settings_file)) {
+            require_once $settings_file;
+            if (class_exists('MinpakuSuite\Admin\PricingSettings')) {
+                \MinpakuSuite\Admin\PricingSettings::render_page();
+            }
+        } else {
+            echo '<div class="wrap">';
+            echo '<h1>' . esc_html(__('料金設定', 'minpaku-suite')) . '</h1>';
+            echo '<p class="notice notice-error">' . esc_html(__('料金設定が利用できません。', 'minpaku-suite')) . '</p>';
+            echo '</div>';
+        }
+    }
+
     public static function render_connector_settings()
     {
         // Load ConnectorSettings class
@@ -485,6 +516,15 @@ class Bootstrap
     public static function register_pricing_components()
     {
         try {
+            // Initialize Pricing Settings
+            $pricing_settings_file = MCS_PATH . 'includes/Admin/PricingSettings.php';
+            if (file_exists($pricing_settings_file)) {
+                require_once $pricing_settings_file;
+                if (class_exists('MinpakuSuite\Admin\PricingSettings')) {
+                    \MinpakuSuite\Admin\PricingSettings::init();
+                }
+            }
+
             // Load Pricing domain models
             $pricing_files = [
                 'RateContext.php',
@@ -538,6 +578,47 @@ class Bootstrap
 
         } catch (Exception $e) {
             error_log('Minpaku Suite Pricing Components Error: ' . $e->getMessage());
+        }
+    }
+
+    public static function register_property_components()
+    {
+        try {
+            // Initialize Property Pricing Metabox
+            $pricing_metabox_file = MCS_PATH . 'includes/Admin/PropertyPricingMetabox.php';
+            if (file_exists($pricing_metabox_file)) {
+                require_once $pricing_metabox_file;
+                if (class_exists('MinpakuSuite\Admin\PropertyPricingMetabox')) {
+                    \MinpakuSuite\Admin\PropertyPricingMetabox::init();
+                }
+            }
+
+            // Initialize Property Calendar Preview Metabox
+            $calendar_metabox_file = MCS_PATH . 'includes/Admin/PropertyCalendarMetabox.php';
+            if (file_exists($calendar_metabox_file)) {
+                require_once $calendar_metabox_file;
+                if (class_exists('MinpakuSuite\Admin\PropertyCalendarMetabox')) {
+                    \MinpakuSuite\Admin\PropertyCalendarMetabox::init();
+                }
+            }
+        } catch (Exception $e) {
+            error_log('Minpaku Suite Property Components Error: ' . $e->getMessage());
+        }
+    }
+
+    public static function register_shortcode_components()
+    {
+        try {
+            // Initialize Portal Calendar Shortcode
+            $portal_calendar_file = MCS_PATH . 'includes/Shortcodes/PortalCalendar.php';
+            if (file_exists($portal_calendar_file)) {
+                require_once $portal_calendar_file;
+                if (class_exists('MinpakuSuite\Shortcodes\PortalCalendar')) {
+                    \MinpakuSuite\Shortcodes\PortalCalendar::init();
+                }
+            }
+        } catch (Exception $e) {
+            error_log('Minpaku Suite Shortcode Components Error: ' . $e->getMessage());
         }
     }
 
