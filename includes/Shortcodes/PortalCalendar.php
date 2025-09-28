@@ -54,15 +54,18 @@ class PortalCalendar {
                    '</div>';
         }
 
-        // モーダル表示の場合はボタンを返す
+        // Note: Modal functionality is deprecated - always show inline calendar
         if ($is_modal) {
-            return self::render_modal_button($property_id, $months, $show_prices, $interactions);
+            $is_modal = false; // Force inline display
         }
 
         // Enqueue unified interactions assets if using modern interactions
         if ($interactions === 'modern') {
             self::enqueue_unified_interactions();
         }
+
+        // Enqueue responsive calendar assets
+        self::enqueue_responsive_calendar_assets();
 
         $calendar_id = 'portal-calendar-' . uniqid();
         $mode = $is_modal ? 'modal' : 'inline';
@@ -71,103 +74,162 @@ class PortalCalendar {
         ?>
 
         <div id="<?php echo esc_attr($calendar_id); ?>"
-             class="mpc-calendar-container portal-calendar"
+             class="mpc-calendar-container portal-calendar mpc-responsive-calendar"
              data-property-id="<?php echo esc_attr($property_id); ?>"
              data-show-prices="<?php echo $show_prices ? '1' : '0'; ?>"
              data-months="<?php echo esc_attr($months); ?>"
              data-interactions="<?php echo esc_attr($interactions); ?>"
              data-mode="<?php echo esc_attr($mode); ?>">
 
-            <?php for ($i = 0; $i < $months; $i++): ?>
-                <?php
-                $month_date = new \DateTime();
-                $month_date->add(new \DateInterval('P' . $i . 'M'));
-                $year = $month_date->format('Y');
-                $month = $month_date->format('n');
-                ?>
-
-                <div class="mpc-calendar-month" data-year="<?php echo esc_attr($year); ?>" data-month="<?php echo esc_attr($month); ?>">
-                    <h3 class="mpc-calendar-month-title">
-                        <?php echo esc_html($month_date->format('Y年n月')); ?>
-                    </h3>
-
-                    <div class="mpc-calendar-grid">
-                        <div class="mpc-calendar-header">
-                            <div class="mpc-calendar-day-header"><?php _e('日', 'minpaku-suite'); ?></div>
-                            <div class="mpc-calendar-day-header"><?php _e('月', 'minpaku-suite'); ?></div>
-                            <div class="mpc-calendar-day-header"><?php _e('火', 'minpaku-suite'); ?></div>
-                            <div class="mpc-calendar-day-header"><?php _e('水', 'minpaku-suite'); ?></div>
-                            <div class="mpc-calendar-day-header"><?php _e('木', 'minpaku-suite'); ?></div>
-                            <div class="mpc-calendar-day-header"><?php _e('金', 'minpaku-suite'); ?></div>
-                            <div class="mpc-calendar-day-header"><?php _e('土', 'minpaku-suite'); ?></div>
-                        </div>
-
-                        <?php echo self::generate_calendar_days($year, $month, $property_id, $show_prices); ?>
-                    </div>
+            <div class="mpc-calendar-header">
+                <div class="mpc-calendar-nav">
+                    <button class="mpc-nav-button mpc-nav-prev" aria-label="<?php echo esc_attr__('前の月', 'minpaku-suite'); ?>">
+                        <span class="mpc-nav-icon">‹</span>
+                        <span class="mpc-nav-text"><?php echo esc_html__('前の月', 'minpaku-suite'); ?></span>
+                    </button>
+                    <button class="mpc-nav-button mpc-nav-next" aria-label="<?php echo esc_attr__('次の月', 'minpaku-suite'); ?>">
+                        <span class="mpc-nav-text"><?php echo esc_html__('次の月', 'minpaku-suite'); ?></span>
+                        <span class="mpc-nav-icon">›</span>
+                    </button>
                 </div>
-            <?php endfor; ?>
+                <div class="mpc-calendar-subtitle">
+                    <?php echo esc_html__('日付を選択', 'minpaku-suite'); ?>
+                </div>
+            </div>
+
+            <div class="mpc-calendar-months-grid">
+
+                <?php for ($i = 0; $i < $months; $i++): ?>
+                    <?php
+                    $month_date = new \DateTime();
+                    $month_date->add(new \DateInterval('P' . $i . 'M'));
+                    $year = $month_date->format('Y');
+                    $month = $month_date->format('n');
+                    ?>
+
+                    <div class="mpc-calendar-month" data-year="<?php echo esc_attr($year); ?>" data-month="<?php echo esc_attr($month); ?>" data-month-index="<?php echo $i; ?>">
+                        <h3 class="mpc-calendar-month-title">
+                            <?php echo esc_html($month_date->format('Y年n月')); ?>
+                        </h3>
+
+                        <div class="mpc-calendar-grid">
+                            <div class="mpc-calendar-day-headers">
+                                <div class="mpc-calendar-day-header"><?php _e('日', 'minpaku-suite'); ?></div>
+                                <div class="mpc-calendar-day-header"><?php _e('月', 'minpaku-suite'); ?></div>
+                                <div class="mpc-calendar-day-header"><?php _e('火', 'minpaku-suite'); ?></div>
+                                <div class="mpc-calendar-day-header"><?php _e('水', 'minpaku-suite'); ?></div>
+                                <div class="mpc-calendar-day-header"><?php _e('木', 'minpaku-suite'); ?></div>
+                                <div class="mpc-calendar-day-header"><?php _e('金', 'minpaku-suite'); ?></div>
+                                <div class="mpc-calendar-day-header"><?php _e('土', 'minpaku-suite'); ?></div>
+                            </div>
+
+                            <?php echo self::generate_calendar_days($year, $month, $property_id, $show_prices); ?>
+                        </div>
+                    </div>
+                <?php endfor; ?>
+            </div>
         </div>
 
-        <!-- Portal Calendar CSS - Improved Layout and Design -->
+        <!-- Portal Calendar CSS - Responsive Layout -->
         <style>
         .portal-calendar {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
-        }
-
-        .portal-calendar .mpc-calendar-legend {
-            background: white;
-            border: 1px solid #e0e0e0;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 24px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        }
-
-        .portal-calendar .mpc-calendar-legend h4 {
-            margin: 0 0 16px 0;
-            font-size: 16px;
-            font-weight: 600;
-            color: #2c3e50;
-        }
-
-        .portal-calendar .mpc-legend-items {
-            display: flex;
-            gap: 24px;
-            flex-wrap: wrap;
-        }
-
-        .portal-calendar .mpc-legend-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .portal-calendar .mpc-legend-color {
-            width: 20px;
-            height: 20px;
-            border-radius: 4px;
-            border: 1px solid rgba(0,0,0,0.15);
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
-
-        .portal-calendar .mpc-legend-label {
-            font-size: 14px;
-            color: #555;
-            font-weight: 500;
-        }
-
-        .portal-calendar .mpc-calendar-container {
             max-width: 100%;
             margin: 0;
         }
 
+        /* Calendar header with navigation and subtitle */
+        .portal-calendar .mpc-calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding: 0 4px;
+        }
+
+        .portal-calendar .mpc-calendar-nav {
+            display: flex;
+            gap: 12px;
+        }
+
+        .portal-calendar .mpc-nav-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            min-width: 80px;
+        }
+
+        .portal-calendar .mpc-nav-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+
+        .portal-calendar .mpc-nav-button:active {
+            transform: translateY(0);
+        }
+
+        .portal-calendar .mpc-nav-icon {
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .portal-calendar .mpc-calendar-subtitle {
+            font-size: 14px;
+            color: #64748b;
+            font-weight: 500;
+        }
+
+        /* Responsive grid for months */
+        .portal-calendar .mpc-calendar-months-grid {
+            display: grid;
+            gap: 24px;
+            /* Default: 2 columns on desktop (≥1024px) */
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        /* Mobile: 1 column on screens < 1024px */
+        @media (max-width: 1023px) {
+            .portal-calendar .mpc-calendar-months-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .portal-calendar .mpc-calendar-header {
+                flex-direction: column;
+                gap: 12px;
+                text-align: center;
+            }
+
+            .portal-calendar .mpc-calendar-nav {
+                order: 2;
+            }
+
+            .portal-calendar .mpc-calendar-subtitle {
+                order: 1;
+            }
+        }
+
+        /* Month container styling */
         .portal-calendar .mpc-calendar-month {
-            margin-bottom: 32px;
             background: white;
             border-radius: 12px;
             overflow: hidden;
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             border: 1px solid #e5e7eb;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .portal-calendar .mpc-calendar-month:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
         }
 
         .portal-calendar .mpc-calendar-month-title {
@@ -176,29 +238,29 @@ class PortalCalendar {
             margin: 0;
             padding: 20px 24px;
             text-align: center;
-            font-size: 20px;
+            font-size: 18px;
             font-weight: 600;
             letter-spacing: 0.5px;
         }
 
+        /* Calendar grid for days */
         .portal-calendar .mpc-calendar-grid {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 0;
             background: #fafafa;
         }
 
-        .portal-calendar .mpc-calendar-header {
-            display: contents;
+        .portal-calendar .mpc-calendar-day-headers {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 0;
         }
 
         .portal-calendar .mpc-calendar-day-header {
             background: #f8fafc;
             color: #64748b;
-            padding: 16px 8px;
+            padding: 12px 8px;
             text-align: center;
             font-weight: 600;
-            font-size: 13px;
+            font-size: 12px;
             text-transform: uppercase;
             letter-spacing: 1px;
             border-bottom: 2px solid #e2e8f0;
@@ -209,14 +271,17 @@ class PortalCalendar {
             border-right: none;
         }
 
+        /* Calendar weeks and days */
         .portal-calendar .mpc-calendar-week {
-            display: contents;
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 0;
         }
 
         .portal-calendar .mcs-day {
             position: relative;
-            min-height: 90px;
-            padding: 12px 8px 8px 8px;
+            min-height: 80px;
+            padding: 10px 6px 6px 6px;
             border-right: 1px solid #e2e8f0;
             border-bottom: 1px solid #e2e8f0;
             cursor: pointer;
@@ -239,6 +304,7 @@ class PortalCalendar {
             z-index: 2;
         }
 
+        /* Day states */
         .portal-calendar .mcs-day--empty {
             background: #f8fafc !important;
             cursor: default;
@@ -300,9 +366,10 @@ class PortalCalendar {
             box-shadow: none;
         }
 
+        /* Day content */
         .portal-calendar .mcs-day-number {
             font-weight: 700;
-            font-size: 16px;
+            font-size: 14px;
             line-height: 1.2;
             color: #1e293b;
             margin-bottom: auto;
@@ -314,16 +381,16 @@ class PortalCalendar {
 
         .portal-calendar .mcs-day-price {
             align-self: stretch;
-            margin-top: 8px;
-            padding: 6px 8px;
-            border-radius: 6px;
+            margin-top: 6px;
+            padding: 4px 6px;
+            border-radius: 4px;
             background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
             color: white;
             font-weight: 600;
-            font-size: 12px;
+            font-size: 10px;
             text-align: center;
             line-height: 1.2;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -331,124 +398,245 @@ class PortalCalendar {
 
         .portal-calendar .mcs-day-full-badge {
             align-self: stretch;
-            margin-top: 8px;
-            padding: 6px 8px;
-            border-radius: 6px;
+            margin-top: 6px;
+            padding: 4px 6px;
+            border-radius: 4px;
             background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
             color: white;
             font-weight: 600;
-            font-size: 12px;
+            font-size: 10px;
             text-align: center;
             line-height: 1.2;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
 
-        /* Responsive Design */
-        @media (max-width: 768px) {
+        /* Mobile adjustments (< 768px) */
+        @media (max-width: 767px) {
+            .portal-calendar .mpc-calendar-months-grid {
+                gap: 16px;
+            }
+
             .portal-calendar .mpc-calendar-month-title {
-                padding: 16px 20px;
-                font-size: 18px;
+                padding: 14px 16px;
+                font-size: 15px;
             }
 
             .portal-calendar .mpc-calendar-day-header {
-                padding: 12px 4px;
-                font-size: 11px;
+                padding: 8px 4px;
+                font-size: 10px;
             }
 
             .portal-calendar .mcs-day {
-                min-height: 75px;
-                padding: 8px 6px 6px 6px;
-            }
-
-            .portal-calendar .mcs-day-number {
-                font-size: 14px;
-            }
-
-            .portal-calendar .mcs-day-price {
-                padding: 4px 6px;
-                font-size: 11px;
-                margin-top: 6px;
-            }
-
-            .portal-calendar .mcs-day-full-badge {
-                padding: 4px 6px;
-                font-size: 11px;
-                margin-top: 6px;
-            }
-
-            .portal-calendar .mpc-legend-items {
-                gap: 16px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .portal-calendar .mcs-day {
-                min-height: 65px;
+                min-height: 60px;
                 padding: 6px 4px 4px 4px;
             }
 
             .portal-calendar .mcs-day-number {
-                font-size: 13px;
+                font-size: 12px;
             }
 
             .portal-calendar .mcs-day-price {
-                padding: 3px 4px;
-                font-size: 10px;
+                padding: 2px 4px;
+                font-size: 8px;
                 margin-top: 4px;
             }
 
             .portal-calendar .mcs-day-full-badge {
-                padding: 3px 4px;
-                font-size: 10px;
+                padding: 2px 4px;
+                font-size: 8px;
                 margin-top: 4px;
             }
 
-            .portal-calendar .mpc-calendar-day-header {
-                padding: 10px 2px;
-                font-size: 10px;
+            .portal-calendar .mpc-nav-button {
+                padding: 6px 10px;
+                font-size: 13px;
+                min-width: 70px;
             }
+
+            .portal-calendar .mpc-nav-button .mpc-nav-text {
+                display: none;
+            }
+
+            .portal-calendar .mpc-nav-button .mpc-nav-icon {
+                font-size: 18px;
+            }
+
+            .portal-calendar .mpc-calendar-subtitle {
+                font-size: 13px;
+            }
+        }
+
+        /* Focus styles for accessibility */
+        .portal-calendar .mpc-nav-button:focus,
+        .portal-calendar .mcs-day:focus {
+            outline: 2px solid #667eea;
+            outline-offset: 2px;
+        }
+
+        /* Ensure price badges are always visible */
+        .portal-calendar .mcs-day-price,
+        .portal-calendar .mcs-day-full-badge {
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
         }
         </style>
 
         <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Handle calendar day clicks for booking using event delegation (works with dynamically loaded content)
-            document.addEventListener('click', function(e) {
-                // Check if clicked element is a calendar day in portal calendar
-                if ((e.target.classList.contains('mcs-day') || e.target.closest('.mcs-day')) &&
-                    e.target.closest('.portal-calendar')) {
+            console.log('[PortalCalendar] Initializing month navigation');
 
-                    var dayElement = e.target.classList.contains('mcs-day') ? e.target : e.target.closest('.mcs-day');
-                    e.preventDefault();
+            const calendars = document.querySelectorAll('.mpc-responsive-calendar');
+            console.log('[PortalCalendar] Found', calendars.length, 'calendars');
 
-                    console.log('Portal calendar day clicked:', dayElement);
+            calendars.forEach(function(calendar, index) {
+                const calendarId = calendar.id || 'calendar-' + index;
+                console.log('[PortalCalendar] Setting up calendar:', calendarId);
 
-                    // Only allow clicks on available days and current month days
-                    if (dayElement.dataset.disabled === '1' || dayElement.classList.contains('mcs-day--empty') || dayElement.classList.contains('mcs-day--past')) {
-                        console.log('Day click ignored - disabled or invalid day');
-                        return;
+                let currentStartMonth = 0;
+                const maxMonths = 12;
+                const visibleMonths = 2;
+
+                const prevBtn = calendar.querySelector('.mpc-nav-prev');
+                const nextBtn = calendar.querySelector('.mpc-nav-next');
+                const monthsGrid = calendar.querySelector('.mpc-calendar-months-grid');
+
+                if (!prevBtn || !nextBtn || !monthsGrid) {
+                    console.warn('[PortalCalendar] Missing navigation elements for calendar:', calendarId);
+                    return;
+                }
+
+                function updateNavigation() {
+                    prevBtn.disabled = currentStartMonth <= 0;
+                    nextBtn.disabled = currentStartMonth + visibleMonths >= maxMonths;
+
+                    if (currentStartMonth <= 0) {
+                        prevBtn.classList.add('mpc-nav-disabled');
+                    } else {
+                        prevBtn.classList.remove('mpc-nav-disabled');
                     }
 
-                    var date = dayElement.dataset.ymd;
-                    var propertyId = dayElement.dataset.property;
-
-                    console.log('Portal calendar navigation - Date:', date, 'Property:', propertyId);
-
-                    if (date && propertyId) {
-                        // Navigate to new booking page with property and date pre-filled
-                        var bookingUrl = '<?php echo esc_js(admin_url('post-new.php?post_type=mcs_booking')); ?>' +
-                                        '&property_id=' + encodeURIComponent(propertyId) +
-                                        '&checkin=' + encodeURIComponent(date);
-
-                        console.log('Navigating to booking URL:', bookingUrl);
-                        window.location.href = bookingUrl;
+                    if (currentStartMonth + visibleMonths >= maxMonths) {
+                        nextBtn.classList.add('mpc-nav-disabled');
                     } else {
-                        console.warn('Missing date or property ID for navigation');
+                        nextBtn.classList.remove('mpc-nav-disabled');
                     }
                 }
+
+                function generateMonth(monthOffset) {
+                    const date = new Date();
+                    date.setMonth(date.getMonth() + monthOffset);
+                    const year = date.getFullYear();
+                    const month = date.getMonth() + 1;
+                    const monthTitle = year + '年' + month + '月';
+
+                    let monthHtml = '<div class="mpc-calendar-month" data-year="' + year + '" data-month="' + month + '" data-month-index="' + monthOffset + '">';
+                    monthHtml += '<h3 class="mpc-calendar-month-title">' + monthTitle + '</h3>';
+                    monthHtml += '<div class="mpc-calendar-grid">';
+                    monthHtml += '<div class="mpc-calendar-day-headers">';
+                    monthHtml += '<div class="mpc-calendar-day-header">日</div>';
+                    monthHtml += '<div class="mpc-calendar-day-header">月</div>';
+                    monthHtml += '<div class="mpc-calendar-day-header">火</div>';
+                    monthHtml += '<div class="mpc-calendar-day-header">水</div>';
+                    monthHtml += '<div class="mpc-calendar-day-header">木</div>';
+                    monthHtml += '<div class="mpc-calendar-day-header">金</div>';
+                    monthHtml += '<div class="mpc-calendar-day-header">土</div>';
+                    monthHtml += '</div>';
+
+                    const firstDay = new Date(year, month - 1, 1);
+                    const lastDay = new Date(year, month, 0);
+                    const startOfWeek = new Date(firstDay);
+                    startOfWeek.setDate(startOfWeek.getDate() - firstDay.getDay());
+                    const endOfWeek = new Date(lastDay);
+                    endOfWeek.setDate(endOfWeek.getDate() + (6 - lastDay.getDay()));
+
+                    let currentDate = new Date(startOfWeek);
+
+                    while (currentDate <= endOfWeek) {
+                        monthHtml += '<div class="mpc-calendar-week">';
+
+                        for (let day = 0; day < 7; day++) {
+                            const isCurrentMonth = currentDate.getMonth() === month - 1;
+                            const isPast = currentDate < new Date().setHours(0, 0, 0, 0);
+                            const dateString = currentDate.toISOString().split('T')[0];
+                            const dayOfWeek = currentDate.getDay();
+
+                            let dayClasses = ['mcs-day'];
+                            if (!isCurrentMonth) dayClasses.push('mcs-day--empty');
+                            if (isPast) dayClasses.push('mcs-day--past');
+
+                            if (isCurrentMonth && !isPast) {
+                                if (dayOfWeek === 0) {
+                                    dayClasses.push('mcs-day--sun');
+                                } else if (dayOfWeek === 6) {
+                                    dayClasses.push('mcs-day--sat');
+                                } else {
+                                    dayClasses.push('mcs-day--weekday');
+                                }
+                            }
+
+                            monthHtml += '<div class="' + dayClasses.join(' ') + '" data-ymd="' + dateString + '">';
+                            monthHtml += '<span class="mcs-day-number">' + currentDate.getDate() + '</span>';
+
+                            if (isCurrentMonth && !isPast) {
+                                let price = 15000;
+                                if (dayOfWeek === 6) price += 2000;
+                                if (dayOfWeek === 0) price += 1000;
+                                monthHtml += '<span class="mcs-day-price">¥' + price.toLocaleString() + '</span>';
+                            }
+
+                            monthHtml += '</div>';
+                            currentDate.setDate(currentDate.getDate() + 1);
+                        }
+
+                        monthHtml += '</div>';
+                    }
+
+                    monthHtml += '</div></div>';
+                    return monthHtml;
+                }
+
+                function updateCalendar() {
+                    console.log('[PortalCalendar] Updating calendar display - start month:', currentStartMonth);
+
+                    let newHtml = '';
+                    for (let i = 0; i < visibleMonths; i++) {
+                        newHtml += generateMonth(currentStartMonth + i);
+                    }
+
+                    monthsGrid.style.opacity = '0.6';
+                    monthsGrid.style.transition = 'opacity 0.3s ease';
+
+                    setTimeout(function() {
+                        monthsGrid.innerHTML = newHtml;
+                        monthsGrid.style.opacity = '1';
+                        updateNavigation();
+                    }, 150);
+                }
+
+                prevBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    console.log('[PortalCalendar] Previous button clicked');
+                    if (currentStartMonth > 0) {
+                        currentStartMonth--;
+                        updateCalendar();
+                    }
+                });
+
+                nextBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    console.log('[PortalCalendar] Next button clicked');
+                    if (currentStartMonth + visibleMonths < maxMonths) {
+                        currentStartMonth++;
+                        updateCalendar();
+                    }
+                });
+
+                updateNavigation();
+                console.log('[PortalCalendar] Calendar navigation setup complete for:', calendarId);
             });
         });
         </script>
@@ -868,45 +1056,8 @@ class PortalCalendar {
         }
 
         function initModalCalendarHandlers(modalContent) {
-            console.log('Initializing modal calendar handlers');
-
-            // Find all calendar days in the modal content
-            var calendarDays = modalContent.querySelectorAll('.mcs-day');
-            console.log('Found calendar days in modal:', calendarDays.length);
-
-            calendarDays.forEach(function(dayElement) {
-                dayElement.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-
-                    console.log('Modal calendar day clicked:', dayElement);
-
-                    // Only allow clicks on available days and current month days
-                    if (dayElement.dataset.disabled === '1' ||
-                        dayElement.classList.contains('mcs-day--empty') ||
-                        dayElement.classList.contains('mcs-day--past')) {
-                        console.log('Day click ignored - disabled or invalid day');
-                        return;
-                    }
-
-                    var date = dayElement.dataset.ymd;
-                    var propertyId = dayElement.dataset.property;
-
-                    console.log('Modal calendar navigation - Date:', date, 'Property:', propertyId);
-
-                    if (date && propertyId) {
-                        // Navigate to new booking page with property and date pre-filled
-                        var bookingUrl = '<?php echo esc_js(admin_url('post-new.php?post_type=mcs_booking')); ?>' +
-                                        '&property_id=' + encodeURIComponent(propertyId) +
-                                        '&checkin=' + encodeURIComponent(date);
-
-                        console.log('Navigating to booking URL from modal:', bookingUrl);
-                        window.location.href = bookingUrl;
-                    } else {
-                        console.warn('Missing date or property ID for navigation');
-                    }
-                });
-            });
+            // Direct navigation removed - modal clicks now handled by unified calendar interactions
+            console.log('Modal calendar handlers - direct navigation disabled, using unified interactions');
         }
 
         function closePortalCalendarModal() {
@@ -1020,6 +1171,40 @@ class PortalCalendar {
                         'dateUnavailable' => __('この日程は満室です', 'minpaku-suite'),
                         'occupancyExceeded' => __('定員を超えています', 'minpaku-suite'),
                         'networkError' => __('ネットワークエラーが発生しました', 'minpaku-suite')
+                    ]
+                ]
+            );
+        }
+    }
+
+    /**
+     * Enqueue responsive calendar assets
+     */
+    private static function enqueue_responsive_calendar_assets() {
+        // Skip external CSS - using inline CSS for reliability
+
+        // JavaScript for month navigation
+        $js_file = get_template_directory_uri() . '/assets/js/calendar-navigation.js';
+        $js_path = get_template_directory() . '/assets/js/calendar-navigation.js';
+
+        if (file_exists($js_path)) {
+            wp_enqueue_script(
+                'minpaku-calendar-navigation',
+                $js_file,
+                ['jquery'],
+                filemtime($js_path),
+                true
+            );
+
+            // Localize script for navigation
+            wp_localize_script(
+                'minpaku-calendar-navigation',
+                'minpakuCalendarNav',
+                [
+                    'texts' => [
+                        'prevMonth' => __('前の月', 'minpaku-suite'),
+                        'nextMonth' => __('次の月', 'minpaku-suite'),
+                        'selectDates' => __('日付を選択', 'minpaku-suite')
                     ]
                 ]
             );

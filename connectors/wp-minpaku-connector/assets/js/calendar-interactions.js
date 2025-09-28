@@ -74,8 +74,9 @@
             this.bindEvents();
             this.createQuotePanel();
 
-            // Set data attributes
-            this.root.setAttribute('data-interactions', 'modern');
+            // Set data attributes (preserve existing interactions setting)
+            const currentInteractions = this.root.getAttribute('data-interactions') || 'modern';
+            this.root.setAttribute('data-interactions', currentInteractions);
             this.root.setAttribute('data-mode', this.options.mode);
 
             console.log('[Calendar] Unified interactions initialized', {

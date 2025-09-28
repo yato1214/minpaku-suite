@@ -447,89 +447,12 @@ class MPCConnectorCalendar {
     }
 
     /**
-     * Perform the actual redirect to portal
+     * Direct navigation disabled - now uses unified calendar interactions
      */
     performRedirectToPortal(eventData, isDirect = false) {
-        // Debug logging
-        console.log('MPC Calendar: Attempting redirect to portal', eventData);
-
-        // Get portal URL from WordPress localization or global variable
-        let portalUrl = '';
-
-        if (typeof mpcCalendarData !== 'undefined' && mpcCalendarData.portalUrl) {
-            portalUrl = mpcCalendarData.portalUrl;
-            console.log('MPC Calendar: Using portalUrl from mpcCalendarData:', portalUrl);
-            console.log('MPC Calendar: Full mpcCalendarData:', mpcCalendarData);
-        } else if (typeof wpMinpakuConnector !== 'undefined' && wpMinpakuConnector.portalUrl) {
-            portalUrl = wpMinpakuConnector.portalUrl;
-            console.log('MPC Calendar: Using portalUrl from wpMinpakuConnector:', portalUrl);
-        } else {
-            console.warn('MPC Calendar: Portal URL not configured');
-            console.log('MPC Calendar: Available globals:', {
-                mpcCalendarData: typeof mpcCalendarData !== 'undefined' ? mpcCalendarData : 'undefined',
-                wpMinpakuConnector: typeof wpMinpakuConnector !== 'undefined' ? wpMinpakuConnector : 'undefined'
-            });
-
-            // More detailed error information
-            if (typeof mpcCalendarData !== 'undefined') {
-                console.log('MPC Calendar: mpcCalendarData exists but portalUrl is:', mpcCalendarData.portalUrl);
-                console.log('MPC Calendar: mpcCalendarData keys:', Object.keys(mpcCalendarData));
-            }
-
-            // Try to show error message to user with debug info
-            const debugInfo = typeof mpcCalendarData !== 'undefined' ?
-                `Debug: mpcCalendarData.portalUrl = ${mpcCalendarData.portalUrl}` :
-                'Debug: mpcCalendarData is undefined';
-
-            alert(`設定エラー: ポータルURLが設定されていません。\n${debugInfo}\n管理者にお問い合わせください。`);
-            return;
-        }
-
-        // Generate nonce-like parameter (simplified for external sites)
-        const timestamp = Date.now().toString(36);
-        const randomStr = Math.random().toString(36).substring(2, 8);
-        const nonceParam = timestamp + randomStr;
-
-        // Build admin booking URL with parameters (matches the actual booking page format)
-        const bookingParams = new URLSearchParams({
-            post_type: 'mcs_booking',
-            property_id: eventData.propertyId,
-            checkin: eventData.checkin,
-            adults: eventData.adults,
-            children: eventData.children,
-            infants: eventData.infants,
-            currency: eventData.currency,
-            _mcs_nonce: nonceParam
-        });
-
-        // Add checkout date only if it's provided (not for direct single-day booking)
-        if (eventData.checkout && !isDirect) {
-            bookingParams.set('checkout', eventData.checkout);
-        }
-
-        // Construct the admin booking URL (WordPress admin format)
-        const bookingUrl = `${portalUrl.replace(/\/$/, '')}/wp-admin/post-new.php?${bookingParams.toString()}`;
-
-        // Debug logging
-        console.log('MPC Calendar: Final booking URL:', bookingUrl);
-
-        // Show user feedback before redirect
-        if (isDirect) {
-            console.log('MPC Calendar: Direct booking mode - redirecting immediately');
-        } else {
-            console.log('MPC Calendar: Quote mode - redirecting with full date range');
-        }
-
-        // Open in new tab/window to preserve user's current page
-        const newWindow = window.open(bookingUrl, '_blank', 'noopener,noreferrer');
-
-        // Check if popup was blocked
-        if (!newWindow) {
-            alert('ポップアップがブロックされました。ポップアップを許可してから再度お試しください。\n\n予約URL: ' + bookingUrl);
-            console.warn('MPC Calendar: Popup blocked, showing URL to user');
-        } else {
-            console.log('MPC Calendar: Successfully opened new window');
-        }
+        console.log('MPC Calendar: Direct navigation disabled, using unified interactions for quote display');
+        // Note: Portal redirects disabled to unify behavior with quote panels
+        // If specific redirect functionality is needed, implement through quote panel actions
     }
 
     /**

@@ -116,57 +116,26 @@ $status_class = 'mcs-status--' . $property->post_status;
             </a>
 
             <?php if (current_user_can('edit_mcs_bookings')) : ?>
-                <a href="<?php echo esc_url(admin_url('post-new.php?post_type=mcs_booking&property_id=' . $property_id)); ?>" class="mcs-action-link mcs-action-link--booking">
+                <span class="mcs-action-link mcs-action-link--booking mcs-action-disabled" title="<?php esc_attr_e('Use calendar quote panel to create bookings', 'minpaku-suite'); ?>">
                     <span class="dashicons dashicons-calendar-alt"></span>
-                    <?php esc_html_e('Add Booking', 'minpaku-suite'); ?>
-                </a>
+                    <?php esc_html_e('Add Booking', 'minpaku-suite'); ?> (<?php esc_html_e('Use Calendar', 'minpaku-suite'); ?>)
+                </span>
             <?php endif; ?>
 
             <?php
-            // Availability calendar shortcode link (if on same site)
-            $calendar_shortcode = '[portal_calendar property_id="' . $property_id . '" months="4" show_prices="true"]';
+            // External detail URL button (if configured)
+            $external_detail_url = '';
+            if (class_exists('MinpakuSuite\Admin\PropertyExternalMetabox')) {
+                $external_detail_url = \MinpakuSuite\Admin\PropertyExternalMetabox::get_external_detail_url($property_id);
+            }
             ?>
-            <button type="button" class="mcs-action-link mcs-action-link--calendar" data-shortcode="<?php echo esc_attr($calendar_shortcode); ?>" title="<?php esc_attr_e('Copy availability shortcode', 'minpaku-suite'); ?>">
-                <span class="dashicons dashicons-calendar"></span>
-                <?php esc_html_e('Calendar', 'minpaku-suite'); ?>
-            </button>
+            <?php if (!empty($external_detail_url)) : ?>
+                <a href="<?php echo esc_url($external_detail_url); ?>" class="mcs-action-link mcs-action-link--external" target="_blank" rel="noopener noreferrer">
+                    <span class="dashicons dashicons-external"></span>
+                    <?php esc_html_e('外部サイトで見る', 'minpaku-suite'); ?>
+                </a>
+            <?php endif; ?>
         </div>
     </div>
 </div>
 
-<script>
-// Copy shortcode to clipboard functionality
-document.addEventListener('DOMContentLoaded', function() {
-    const calendarButtons = document.querySelectorAll('.mcs-action-link--calendar');
-
-    calendarButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            const shortcode = this.getAttribute('data-shortcode');
-
-            if (navigator.clipboard) {
-                navigator.clipboard.writeText(shortcode).then(() => {
-                    // Visual feedback
-                    const originalText = this.innerHTML;
-                    this.innerHTML = '<span class="dashicons dashicons-yes"></span> <?php esc_html_e('Copied!', 'minpaku-suite'); ?>';
-                    this.style.background = '#27ae60';
-
-                    setTimeout(() => {
-                        this.innerHTML = originalText;
-                        this.style.background = '';
-                    }, 2000);
-                });
-            } else {
-                // Fallback for older browsers
-                const textArea = document.createElement('textarea');
-                textArea.value = shortcode;
-                document.body.appendChild(textArea);
-                textArea.select();
-                document.execCommand('copy');
-                document.body.removeChild(textArea);
-
-                alert('<?php esc_html_e('Shortcode copied to clipboard:', 'minpaku-suite'); ?> ' + shortcode);
-            }
-        });
-    });
-});
-</script>

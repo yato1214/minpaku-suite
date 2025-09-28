@@ -273,7 +273,7 @@ class OwnerApiController
             'links' => [
                 'view' => get_permalink($property_id),
                 'edit' => get_edit_post_link($property_id),
-                'add_booking' => admin_url('post-new.php?post_type=mcs_booking&property_id=' . $property_id),
+                // Direct booking removed - use calendar quote panel to create bookings
                 'calendar_shortcode' => '[portal_calendar property_id="' . $property_id . '" months="4" show_prices="true"]'
             ]
         ];

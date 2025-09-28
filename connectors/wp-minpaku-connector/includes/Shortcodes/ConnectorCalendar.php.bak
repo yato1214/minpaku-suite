@@ -44,7 +44,7 @@ class MPC_Shortcodes_ConnectorCalendar {
 
         $months = max(1, min(12, intval($atts['months'])));
         $show_prices = ($atts['show_prices'] === 'true');
-        $is_modal = false; // Modal functionality deprecated - always inline
+        $is_modal = ($atts['modal'] === 'true');
         $interactions = $atts['interactions'];
 
         // Check API configuration
@@ -75,7 +75,7 @@ class MPC_Shortcodes_ConnectorCalendar {
             return self::render_modal_button($property_id, $months, $show_prices, $property_title, $interactions);
         }
 
-        // Enqueue inline CSS for reliable styling\n        self::enqueue_inline_calendar_css();\n\n        // Enqueue unified interactions assets if using modern interactions
+        // Enqueue unified interactions assets if using modern interactions
         if ($interactions === 'modern') {
             self::enqueue_unified_interactions();
         }
@@ -85,66 +85,41 @@ class MPC_Shortcodes_ConnectorCalendar {
         ob_start();
         ?>
 
-        <div id="<?php echo esc_attr($calendar_id); ?>" class="mpc-responsive-calendar connector-calendar"
+        <div id="<?php echo esc_attr($calendar_id); ?>" class="mpc-calendar-container connector-calendar"
              data-property-id="<?php echo esc_attr($property_id); ?>"
              data-show-prices="<?php echo $show_prices ? '1' : '0'; ?>"
              data-months="<?php echo esc_attr($months); ?>"
              data-interactions="<?php echo esc_attr($interactions); ?>"
              data-mode="<?php echo $is_modal ? 'modal' : 'inline'; ?>">
 
-            <!-- Calendar Header with Navigation -->
-            <div class="mpc-calendar-header">
-                <div class="mpc-calendar-nav">
-                    <button type="button" class="mpc-nav-button mpc-nav-prev" aria-label="<?php _e('前の月', 'wp-minpaku-connector'); ?>">
-                        <span class="mpc-nav-icon">‹</span>
-                        <span class="mpc-nav-text"><?php _e('前月', 'wp-minpaku-connector'); ?></span>
-                    </button>
-                    <button type="button" class="mpc-nav-button mpc-nav-next" aria-label="<?php _e('次の月', 'wp-minpaku-connector'); ?>">
-                        <span class="mpc-nav-text"><?php _e('次月', 'wp-minpaku-connector'); ?></span>
-                        <span class="mpc-nav-icon">›</span>
-                    </button>
-                </div>
+            <?php for ($i = 0; $i < $months; $i++): ?>
+                <?php
+                $month_date = new \DateTime();
+                $month_date->add(new \DateInterval('P' . $i . 'M'));
+                $year = $month_date->format('Y');
+                $month = $month_date->format('n');
+                ?>
 
-                <div class="mpc-calendar-subtitle">
-                    <?php if ($property_title): ?>
-                        <?php echo esc_html($property_title); ?> -
-                    <?php endif; ?>
-                    <?php _e('空室カレンダー', 'wp-minpaku-connector'); ?>
-                </div>
-            </div>
+                <div class="mpc-calendar-month" data-year="<?php echo esc_attr($year); ?>" data-month="<?php echo esc_attr($month); ?>">
+                    <h3 class="mpc-calendar-month-title">
+                        <?php echo esc_html($month_date->format('Y年n月')); ?>
+                    </h3>
 
-            <!-- Months Grid Container -->
-            <div class="mpc-calendar-months-grid">
-                <?php for ($i = 0; $i < $months; $i++): ?>
-                    <?php
-                    $month_date = new \DateTime();
-                    $month_date->add(new \DateInterval('P' . $i . 'M'));
-                    $year = $month_date->format('Y');
-                    $month = $month_date->format('n');
-                    ?>
-
-                    <div class="mpc-calendar-month" data-year="<?php echo esc_attr($year); ?>" data-month="<?php echo esc_attr($month); ?>"
-                         data-month-index="<?php echo esc_attr($i); ?>">
-                        <h3 class="mpc-calendar-month-title">
-                            <?php echo esc_html($month_date->format('Y年n月')); ?>
-                        </h3>
-
-                        <div class="mpc-calendar-grid">
-                            <div class="mpc-calendar-day-headers">
-                                <div class="mpc-calendar-day-header"><?php _e('日', 'wp-minpaku-connector'); ?></div>
-                                <div class="mpc-calendar-day-header"><?php _e('月', 'wp-minpaku-connector'); ?></div>
-                                <div class="mpc-calendar-day-header"><?php _e('火', 'wp-minpaku-connector'); ?></div>
-                                <div class="mpc-calendar-day-header"><?php _e('水', 'wp-minpaku-connector'); ?></div>
-                                <div class="mpc-calendar-day-header"><?php _e('木', 'wp-minpaku-connector'); ?></div>
-                                <div class="mpc-calendar-day-header"><?php _e('金', 'wp-minpaku-connector'); ?></div>
-                                <div class="mpc-calendar-day-header"><?php _e('土', 'wp-minpaku-connector'); ?></div>
-                            </div>
-
-                            <?php echo self::generate_calendar_days($year, $month, $property_id, $show_prices, $api); ?>
+                    <div class="mpc-calendar-grid">
+                        <div class="mpc-calendar-header">
+                            <div class="mpc-calendar-day-header"><?php _e('日', 'wp-minpaku-connector'); ?></div>
+                            <div class="mpc-calendar-day-header"><?php _e('月', 'wp-minpaku-connector'); ?></div>
+                            <div class="mpc-calendar-day-header"><?php _e('火', 'wp-minpaku-connector'); ?></div>
+                            <div class="mpc-calendar-day-header"><?php _e('水', 'wp-minpaku-connector'); ?></div>
+                            <div class="mpc-calendar-day-header"><?php _e('木', 'wp-minpaku-connector'); ?></div>
+                            <div class="mpc-calendar-day-header"><?php _e('金', 'wp-minpaku-connector'); ?></div>
+                            <div class="mpc-calendar-day-header"><?php _e('土', 'wp-minpaku-connector'); ?></div>
                         </div>
+
+                        <?php echo self::generate_calendar_days($year, $month, $property_id, $show_prices, $api); ?>
                     </div>
-                <?php endfor; ?>
-            </div>
+                </div>
+            <?php endfor; ?>
         </div>
 
         <!-- Connector Calendar CSS - Portal Parity Design -->
@@ -458,6 +433,7 @@ class MPC_Shortcodes_ConnectorCalendar {
 
         <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // Ensure portal URL is available
             <?php
             $settings = \WP_Minpaku_Connector::get_settings();
             $portal_url = '';
@@ -472,154 +448,8 @@ class MPC_Shortcodes_ConnectorCalendar {
                 }
             }
             ?>
-            var connectorPortalUrl = "<?php echo esc_js(untrailingslashit($portal_url)); ?>";
-
-            console.log('[ConnectorCalendar] Initializing simple month navigation');
-
-            var calendar = document.getElementById('<?php echo esc_js($calendar_id); ?>');
-            if (!calendar) return;
-
-            var currentStartMonth = 0;
-            var maxMonths = 12;
-            var visibleMonths = 2;
-
-            var prevBtn = calendar.querySelector('.mpc-nav-prev');
-            var nextBtn = calendar.querySelector('.mpc-nav-next');
-            var monthsGrid = calendar.querySelector('.mpc-calendar-months-grid');
-
-            if (!prevBtn || !nextBtn || !monthsGrid) {
-                console.warn('[ConnectorCalendar] Missing navigation elements');
-                return;
-            }
-
-            function updateNavigation() {
-                prevBtn.disabled = currentStartMonth <= 0;
-                nextBtn.disabled = currentStartMonth + visibleMonths >= maxMonths;
-
-                if (currentStartMonth <= 0) {
-                    prevBtn.classList.add('mpc-nav-disabled');
-                } else {
-                    prevBtn.classList.remove('mpc-nav-disabled');
-                }
-
-                if (currentStartMonth + visibleMonths >= maxMonths) {
-                    nextBtn.classList.add('mpc-nav-disabled');
-                } else {
-                    nextBtn.classList.remove('mpc-nav-disabled');
-                }
-            }
-
-            function generateMonth(monthOffset) {
-                var date = new Date();
-                date.setMonth(date.getMonth() + monthOffset);
-                var year = date.getFullYear();
-                var month = date.getMonth() + 1;
-                var monthTitle = year + '年' + month + '月';
-
-                var monthHtml = '<div class="mpc-calendar-month" data-year="' + year + '" data-month="' + month + '">';
-                monthHtml += '<h3 class="mpc-calendar-month-title">' + monthTitle + '</h3>';
-                monthHtml += '<div class="mpc-calendar-grid">';
-                monthHtml += '<div class="mpc-calendar-day-headers">';
-                monthHtml += '<div class="mpc-calendar-day-header">日</div>';
-                monthHtml += '<div class="mpc-calendar-day-header">月</div>';
-                monthHtml += '<div class="mpc-calendar-day-header">火</div>';
-                monthHtml += '<div class="mpc-calendar-day-header">水</div>';
-                monthHtml += '<div class="mpc-calendar-day-header">木</div>';
-                monthHtml += '<div class="mpc-calendar-day-header">金</div>';
-                monthHtml += '<div class="mpc-calendar-day-header">土</div>';
-                monthHtml += '</div>';
-
-                var firstDay = new Date(year, month - 1, 1);
-                var lastDay = new Date(year, month, 0);
-                var startOfWeek = new Date(firstDay);
-                startOfWeek.setDate(startOfWeek.getDate() - firstDay.getDay());
-                var endOfWeek = new Date(lastDay);
-                endOfWeek.setDate(endOfWeek.getDate() + (6 - lastDay.getDay()));
-
-                var currentDate = new Date(startOfWeek);
-
-                while (currentDate <= endOfWeek) {
-                    monthHtml += '<div class="mpc-calendar-week">';
-
-                    for (var day = 0; day < 7; day++) {
-                        var isCurrentMonth = currentDate.getMonth() === month - 1;
-                        var isPast = currentDate < new Date().setHours(0, 0, 0, 0);
-                        var dateString = currentDate.toISOString().split('T')[0];
-                        var dayOfWeek = currentDate.getDay();
-
-                        var dayClasses = ['mcs-day'];
-                        if (!isCurrentMonth) dayClasses.push('mcs-day--empty');
-                        if (isPast) dayClasses.push('mcs-day--past');
-
-                        if (isCurrentMonth && !isPast) {
-                            if (dayOfWeek === 0) {
-                                dayClasses.push('mcs-day--sun');
-                            } else if (dayOfWeek === 6) {
-                                dayClasses.push('mcs-day--sat');
-                            } else {
-                                dayClasses.push('mcs-day--weekday');
-                            }
-                        }
-
-                        monthHtml += '<div class="' + dayClasses.join(' ') + '" data-ymd="' + dateString + '">';
-                        monthHtml += '<span class="mcs-day-number">' + currentDate.getDate() + '</span>';
-
-                        if (isCurrentMonth && !isPast) {
-                            var price = 15000;
-                            if (dayOfWeek === 6) price += 2000;
-                            if (dayOfWeek === 0) price += 1000;
-                            monthHtml += '<span class="mcs-day-price">¥' + price.toLocaleString() + '</span>';
-                        }
-
-                        monthHtml += '</div>';
-                        currentDate.setDate(currentDate.getDate() + 1);
-                    }
-
-                    monthHtml += '</div>';
-                }
-
-                monthHtml += '</div></div>';
-                return monthHtml;
-            }
-
-            function updateCalendar() {
-                console.log('[ConnectorCalendar] Updating calendar, start month:', currentStartMonth);
-
-                var newHtml = '';
-                for (var i = 0; i < visibleMonths; i++) {
-                    newHtml += generateMonth(currentStartMonth + i);
-                }
-
-                monthsGrid.style.opacity = '0.6';
-                monthsGrid.style.transition = 'opacity 0.3s ease';
-
-                setTimeout(function() {
-                    monthsGrid.innerHTML = newHtml;
-                    monthsGrid.style.opacity = '1';
-                    updateNavigation();
-                }, 150);
-            }
-
-            prevBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                console.log('[ConnectorCalendar] Previous button clicked');
-                if (currentStartMonth > 0) {
-                    currentStartMonth--;
-                    updateCalendar();
-                }
-            });
-
-            nextBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                console.log('[ConnectorCalendar] Next button clicked');
-                if (currentStartMonth + visibleMonths < maxMonths) {
-                    currentStartMonth++;
-                    updateCalendar();
-                }
-            });
-
-            updateNavigation();
-            console.log('[ConnectorCalendar] Navigation setup complete');
+            // Direct navigation removed - clicks now handled by unified calendar interactions
+            console.log('Connector calendar - direct navigation disabled, using unified interactions');
         });
         </script>
         <?php

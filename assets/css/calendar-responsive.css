@@ -1,0 +1,478 @@
+/*
+ * Responsive Calendar Layout - 2 months × 2 columns desktop, 1 column mobile
+ * Minpaku Suite Calendar System
+ */
+
+/* Base styles for responsive calendar */
+.mpc-responsive-calendar {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+    max-width: 100%;
+    margin: 0;
+}
+
+/* Calendar header with navigation and subtitle */
+.mpc-calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    padding: 0 4px;
+}
+
+.mpc-calendar-nav {
+    display: flex;
+    gap: 12px;
+}
+
+.mpc-nav-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 80px;
+}
+
+.mpc-nav-button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.mpc-nav-button:active {
+    transform: translateY(0);
+}
+
+.mpc-nav-icon {
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.mpc-calendar-subtitle {
+    font-size: 14px;
+    color: #64748b;
+    font-weight: 500;
+}
+
+/* Responsive grid for months */
+.mpc-calendar-months-grid {
+    display: grid;
+    gap: 24px;
+    /* Default: 2 columns on desktop (≥1024px) */
+    grid-template-columns: repeat(2, 1fr);
+}
+
+/* Mobile: 1 column on screens < 1024px */
+@media (max-width: 1023px) {
+    .mpc-calendar-months-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .mpc-calendar-header {
+        flex-direction: column;
+        gap: 12px;
+        text-align: center;
+    }
+
+    .mpc-calendar-nav {
+        order: 2;
+    }
+
+    .mpc-calendar-subtitle {
+        order: 1;
+    }
+}
+
+/* Month container styling */
+.mpc-calendar-month {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    border: 1px solid #e5e7eb;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.mpc-calendar-month:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+}
+
+.mpc-calendar-month-title {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    margin: 0;
+    padding: 20px 24px;
+    text-align: center;
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+/* Calendar grid for days */
+.mpc-calendar-grid {
+    background: #fafafa;
+}
+
+.mpc-calendar-day-headers {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0;
+}
+
+.mpc-calendar-day-header {
+    background: #f8fafc;
+    color: #64748b;
+    padding: 12px 8px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-bottom: 2px solid #e2e8f0;
+    border-right: 1px solid #e2e8f0;
+}
+
+.mpc-calendar-day-header:last-child {
+    border-right: none;
+}
+
+/* Calendar weeks and days */
+.mpc-calendar-week {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0;
+}
+
+.mcs-day {
+    position: relative;
+    min-height: 80px;
+    padding: 10px 6px 6px 6px;
+    border-right: 1px solid #e2e8f0;
+    border-bottom: 1px solid #e2e8f0;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: white;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: space-between;
+    overflow: hidden;
+}
+
+.mcs-day:nth-child(7n) {
+    border-right: none;
+}
+
+.mcs-day:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    z-index: 2;
+}
+
+/* Day states */
+.mcs-day--empty {
+    background: #f8fafc !important;
+    cursor: default;
+    opacity: 0.5;
+}
+
+.mcs-day--empty:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+.mcs-day--weekday {
+    background: #f0fdf4 !important;
+    border-left: 3px solid #22c55e;
+}
+
+.mcs-day--sat {
+    background: #eff6ff !important;
+    border-left: 3px solid #3b82f6;
+}
+
+.mcs-day--sun {
+    background: #fef2f2 !important;
+    border-left: 3px solid #ef4444;
+}
+
+.mcs-day--full,
+.mcs-day--blackout {
+    background: #f1f5f9 !important;
+    cursor: not-allowed !important;
+    opacity: 0.6;
+    border-left: 3px solid #64748b;
+}
+
+.mcs-day--booked {
+    cursor: pointer !important;
+}
+
+.mcs-day--full:hover,
+.mcs-day--blackout:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+.mcs-day--booked:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.mcs-day--past {
+    background: #f8fafc !important;
+    color: #94a3b8;
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.mcs-day--past:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+/* Day content */
+.mcs-day-number {
+    font-weight: 700;
+    font-size: 14px;
+    line-height: 1.2;
+    color: #1e293b;
+    margin-bottom: auto;
+}
+
+.mcs-day--past .mcs-day-number {
+    color: #94a3b8;
+}
+
+.mcs-day-price {
+    align-self: stretch;
+    margin-top: 6px;
+    padding: 4px 6px;
+    border-radius: 4px;
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    color: white;
+    font-weight: 600;
+    font-size: 10px;
+    text-align: center;
+    line-height: 1.2;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.mcs-day-full-badge {
+    align-self: stretch;
+    margin-top: 6px;
+    padding: 4px 6px;
+    border-radius: 4px;
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    color: white;
+    font-weight: 600;
+    font-size: 10px;
+    text-align: center;
+    line-height: 1.2;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Tablet adjustments (768px - 1023px) */
+@media (max-width: 1023px) and (min-width: 768px) {
+    .mpc-calendar-month-title {
+        padding: 16px 20px;
+        font-size: 16px;
+    }
+
+    .mpc-calendar-day-header {
+        padding: 10px 6px;
+        font-size: 11px;
+    }
+
+    .mcs-day {
+        min-height: 70px;
+        padding: 8px 5px 5px 5px;
+    }
+
+    .mcs-day-number {
+        font-size: 13px;
+    }
+
+    .mcs-day-price {
+        padding: 3px 5px;
+        font-size: 9px;
+        margin-top: 5px;
+    }
+
+    .mcs-day-full-badge {
+        padding: 3px 5px;
+        font-size: 9px;
+        margin-top: 5px;
+    }
+}
+
+/* Mobile adjustments (< 768px) */
+@media (max-width: 767px) {
+    .mpc-calendar-months-grid {
+        gap: 16px;
+    }
+
+    .mpc-calendar-month-title {
+        padding: 14px 16px;
+        font-size: 15px;
+    }
+
+    .mpc-calendar-day-header {
+        padding: 8px 4px;
+        font-size: 10px;
+    }
+
+    .mcs-day {
+        min-height: 60px;
+        padding: 6px 4px 4px 4px;
+    }
+
+    .mcs-day-number {
+        font-size: 12px;
+    }
+
+    .mcs-day-price {
+        padding: 2px 4px;
+        font-size: 8px;
+        margin-top: 4px;
+    }
+
+    .mcs-day-full-badge {
+        padding: 2px 4px;
+        font-size: 8px;
+        margin-top: 4px;
+    }
+
+    .mpc-nav-button {
+        padding: 6px 10px;
+        font-size: 13px;
+        min-width: 70px;
+    }
+
+    .mpc-nav-button .mpc-nav-text {
+        display: none;
+    }
+
+    .mpc-nav-button .mpc-nav-icon {
+        font-size: 18px;
+    }
+
+    .mpc-calendar-subtitle {
+        font-size: 13px;
+    }
+}
+
+/* Small mobile adjustments (< 480px) */
+@media (max-width: 479px) {
+    .mpc-calendar-header {
+        margin-bottom: 16px;
+    }
+
+    .mpc-calendar-months-grid {
+        gap: 12px;
+    }
+
+    .mpc-calendar-month-title {
+        padding: 12px 14px;
+        font-size: 14px;
+    }
+
+    .mpc-calendar-day-header {
+        padding: 6px 2px;
+        font-size: 9px;
+    }
+
+    .mcs-day {
+        min-height: 50px;
+        padding: 4px 2px 2px 2px;
+    }
+
+    .mcs-day-number {
+        font-size: 11px;
+    }
+
+    .mcs-day-price {
+        padding: 1px 3px;
+        font-size: 7px;
+        margin-top: 3px;
+    }
+
+    .mcs-day-full-badge {
+        padding: 1px 3px;
+        font-size: 7px;
+        margin-top: 3px;
+    }
+
+    .mpc-nav-button {
+        padding: 5px 8px;
+        font-size: 12px;
+        min-width: 60px;
+    }
+
+    .mpc-calendar-subtitle {
+        font-size: 12px;
+    }
+}
+
+/* 3+ months support - responsive stacking */
+.mpc-responsive-calendar[data-months="3"] .mpc-calendar-months-grid,
+.mpc-responsive-calendar[data-months="4"] .mpc-calendar-months-grid,
+.mpc-responsive-calendar[data-months="5"] .mpc-calendar-months-grid,
+.mpc-responsive-calendar[data-months="6"] .mpc-calendar-months-grid {
+    /* Desktop: 2 columns, wrapping */
+    grid-template-columns: repeat(2, 1fr);
+}
+
+@media (max-width: 1023px) {
+    .mpc-responsive-calendar[data-months="3"] .mpc-calendar-months-grid,
+    .mpc-responsive-calendar[data-months="4"] .mpc-calendar-months-grid,
+    .mpc-responsive-calendar[data-months="5"] .mpc-calendar-months-grid,
+    .mpc-responsive-calendar[data-months="6"] .mpc-calendar-months-grid {
+        /* Mobile: 1 column */
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Animation for month transitions */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.mpc-calendar-month {
+    animation: fadeInUp 0.3s ease-out;
+}
+
+/* Focus styles for accessibility */
+.mpc-nav-button:focus,
+.mcs-day:focus {
+    outline: 2px solid #667eea;
+    outline-offset: 2px;
+}
+
+/* Ensure price badges are always visible */
+.mcs-day-price,
+.mcs-day-full-badge {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}

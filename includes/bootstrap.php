@@ -346,9 +346,10 @@ class Bootstrap
                     true
                 );
 
-                // Localize script with booking URL
+                // Localize script - direct booking URL removed, uses unified interactions
                 wp_localize_script('minpaku-admin-calendar', 'minpakuAdmin', [
-                    'bookingUrl' => admin_url('post-new.php?post_type=mcs_booking')
+                    'interactionsEnabled' => true, // Flag for unified interactions
+                    'legacyBookingDisabled' => true // Flag that legacy direct booking is disabled
                 ]);
 
                 error_log("MCS Debug: Calendar JS enqueued successfully");
@@ -599,6 +600,15 @@ class Bootstrap
                 require_once $calendar_metabox_file;
                 if (class_exists('MinpakuSuite\Admin\PropertyCalendarMetabox')) {
                     \MinpakuSuite\Admin\PropertyCalendarMetabox::init();
+                }
+            }
+
+            // Initialize Property External Integration Metabox
+            $external_metabox_file = MCS_PATH . 'includes/Admin/PropertyExternalMetabox.php';
+            if (file_exists($external_metabox_file)) {
+                require_once $external_metabox_file;
+                if (class_exists('MinpakuSuite\Admin\PropertyExternalMetabox')) {
+                    \MinpakuSuite\Admin\PropertyExternalMetabox::init();
                 }
             }
         } catch (Exception $e) {
