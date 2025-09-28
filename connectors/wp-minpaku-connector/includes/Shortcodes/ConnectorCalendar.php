@@ -1775,9 +1775,9 @@ class MPC_Shortcodes_ConnectorCalendar {
     }
 
     /**
-     * Enqueue modern calendar assets for connector
+     * Enqueue modern unified assets
      */
-    private static function enqueue_modern_calendar_assets() {
+    private static function enqueue_modern_assets() {
         // Calendar CSS
         $calendar_css_file = plugin_dir_url(__FILE__) . '../../assets/css/wpmc-calendar.css';
         $calendar_css_path = plugin_dir_path(__FILE__) . '../../assets/css/wpmc-calendar.css';
@@ -1849,5 +1849,40 @@ class MPC_Shortcodes_ConnectorCalendar {
                 ]
             );
         }
+    }
+
+    /**
+     * Enqueue legacy assets
+     */
+    private static function enqueue_legacy_assets() {
+        // Legacy calendar CSS (simplified)
+        $legacy_css_file = plugin_dir_url(__FILE__) . '../../assets/css/wpmc-calendar.css';
+        $legacy_css_path = plugin_dir_path(__FILE__) . '../../assets/css/wpmc-calendar.css';
+
+        if (file_exists($legacy_css_path)) {
+            wp_enqueue_style(
+                'wpmc-calendar-legacy',
+                $legacy_css_file,
+                [],
+                filemtime($legacy_css_path)
+            );
+        }
+
+        // Legacy JavaScript - basic navigation only
+        wp_add_inline_script('jquery', '
+            jQuery(document).ready(function($) {
+                // Basic legacy calendar navigation
+                $(".connector-calendar .mcs-day:not(.mcs-day--disabled)").on("click", function() {
+                    var propertyId = $(this).closest(".connector-calendar").data("property-id");
+                    var dateYmd = $(this).data("ymd");
+
+                    // Legacy behavior: navigate to booking form
+                    if (propertyId && dateYmd) {
+                        var bookingUrl = "/new-booking?property=" + propertyId + "&date=" + dateYmd;
+                        window.location.href = bookingUrl;
+                    }
+                });
+            });
+        ');
     }
 }

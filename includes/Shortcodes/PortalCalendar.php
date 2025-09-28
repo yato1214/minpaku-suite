@@ -1315,9 +1315,9 @@ class PortalCalendar {
     }
 
     /**
-     * Enqueue unified interactions assets
+     * Enqueue modern unified assets
      */
-    private static function enqueue_unified_interactions() {
+    private static function enqueue_modern_assets() {
         // Portal Quote Panel CSS
         $quote_css_file = get_template_directory_uri() . '/assets/css/portal-quote-panel.css';
         $quote_css_path = get_template_directory() . '/assets/css/portal-quote-panel.css';
@@ -1421,5 +1421,30 @@ class PortalCalendar {
                 ]
             );
         }
+    }
+
+    /**
+     * Enqueue legacy assets
+     */
+    private static function enqueue_legacy_assets() {
+        // Legacy portal calendar CSS
+        wp_enqueue_style('mcs-portal-calendar', MCS_PLUGIN_URL . 'assets/css/portal-calendar.css', [], MCS_VERSION);
+
+        // Legacy JavaScript - basic navigation only
+        wp_add_inline_script('jquery', '
+            jQuery(document).ready(function($) {
+                // Basic legacy calendar navigation
+                $(".portal-calendar .mcs-day:not(.mcs-day--disabled)").on("click", function() {
+                    var propertyId = $(this).closest(".portal-calendar").data("property-id");
+                    var dateYmd = $(this).data("ymd");
+
+                    // Legacy behavior: navigate to booking form
+                    if (propertyId && dateYmd) {
+                        var bookingUrl = "/new-booking?property=" + propertyId + "&date=" + dateYmd;
+                        window.location.href = bookingUrl;
+                    }
+                });
+            });
+        ');
     }
 }
