@@ -17,10 +17,10 @@
             this.options = {
                 mode: options.mode || this.detectMode(),
                 canBook: options.canBook || false,
-                apiBase: options.apiBase || '/wp-json/minpaku-connector/v1',
+                apiBase: options.apiBase || '/wp-json/minpaku/v1',
                 propertyId: options.propertyId || null,
                 texts: options.texts || {},
-                isConnector: true,
+                isPortal: true,
                 ...options
             };
 
@@ -504,7 +504,7 @@
             const panel = this.getQuotePanel();
             if (!panel) return;
 
-            const quoteBtn = panel.querySelector('.mcs-get-quote, .mpc-get-quote');
+            const quoteBtn = panel.querySelector('.mcs-get-quote, .mpc-get-quote, .wpmc-get-quote');
             if (quoteBtn && !quoteBtn.hasAttribute('data-bound')) {
                 quoteBtn.setAttribute('data-bound', 'true');
                 quoteBtn.addEventListener('click', () => this.fetchQuote());
@@ -529,7 +529,7 @@
             }
 
             // Clear button event binding
-            const clearBtn = this.getQuotePanel()?.querySelector('.mcs-clear-selection-btn, .mpc-clear-selection-btn');
+            const clearBtn = this.getQuotePanel()?.querySelector('.mcs-clear-selection-btn, .mpc-clear-selection-btn, .wpmc-clear-selection-btn');
             if (clearBtn) {
                 clearBtn.addEventListener('click', () => this.clearSelection());
             }
@@ -676,7 +676,7 @@
             panel.innerHTML = `
                 <div class="mcs-quote-header mpc-quote-header">
                     <h3>${this.texts.quotePreview || '見積り'}</h3>
-                    <button class="mcs-clear-selection-btn mpc-clear-selection-btn" aria-label="${this.texts.clearSelection || '選択をクリア'}">×</button>
+                    <button class="mcs-clear-selection-btn mpc-clear-selection-btn wpmc-clear-selection-btn" aria-label="${this.texts.clearSelection || '選択をクリア'}">×</button>
                 </div>
                 <div class="mcs-quote-content mpc-quote-content">
                     <div class="mcs-quote-placeholder mpc-quote-placeholder">
@@ -686,7 +686,7 @@
             `;
 
             // Add click handler for clear button
-            const clearBtn = panel.querySelector('.mcs-clear-selection-btn, .mpc-clear-selection-btn');
+            const clearBtn = panel.querySelector('.mcs-clear-selection-btn, .mpc-clear-selection-btn, .wpmc-clear-selection-btn');
             if (clearBtn) {
                 clearBtn.addEventListener('click', () => this.clearSelection());
             }

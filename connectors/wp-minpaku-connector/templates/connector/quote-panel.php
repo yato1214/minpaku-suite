@@ -59,6 +59,49 @@ $texts = array_merge($default_texts, $texts);
             <p><?php echo esc_html($texts['select_dates_placeholder']); ?></p>
         </div>
 
+        <!-- Selection Summary & Guest Form (modern UI) -->
+        <div class="mcs-quote-selection wpmc-quote-selection" style="display: none;">
+            <!-- Date Range Summary -->
+            <div class="mcs-quote-summary wpmc-quote-summary">
+                <div class="mcs-quote-dates wpmc-quote-dates" aria-label="選択された日程">
+                    <span class="mcs-checkin-date wpmc-checkin-date"></span>
+                    <span class="mcs-date-separator wpmc-date-separator">〜</span>
+                    <span class="mcs-checkout-date wpmc-checkout-date"></span>
+                    <span class="mcs-nights-count wpmc-nights-count"></span>
+                </div>
+            </div>
+
+            <!-- Guest Form -->
+            <div class="mcs-guest-form wpmc-guest-form">
+                <div class="mcs-guest-input-group wpmc-guest-input-group">
+                    <label for="quote-adults" class="mcs-guest-label wpmc-guest-label"><?php echo esc_html__('大人', 'wp-minpaku-connector'); ?></label>
+                    <select id="quote-adults" class="mcs-guest-select wpmc-guest-select" name="adults">
+                        <?php for ($i = 1; $i <= 10; $i++): ?>
+                            <option value="<?php echo $i; ?>" <?php selected($i, 2); ?>><?php echo $i . __('名', 'wp-minpaku-connector'); ?></option>
+                        <?php endfor; ?>
+                    </select>
+                </div>
+                <div class="mcs-guest-input-group wpmc-guest-input-group">
+                    <label for="quote-children" class="mcs-guest-label wpmc-guest-label"><?php echo esc_html__('子供', 'wp-minpaku-connector'); ?></label>
+                    <select id="quote-children" class="mcs-guest-select wpmc-guest-select" name="children">
+                        <?php for ($i = 0; $i <= 8; $i++): ?>
+                            <option value="<?php echo $i; ?>"><?php echo $i . __('名', 'wp-minpaku-connector'); ?></option>
+                        <?php endfor; ?>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="mcs-quote-actions wpmc-quote-actions">
+                <button type="button" class="mcs-get-quote wpmc-get-quote mcs-btn-primary wpmc-btn-primary">
+                    <?php echo esc_html__('見積を取得', 'wp-minpaku-connector'); ?>
+                </button>
+                <button type="button" class="mcs-clear-selection-btn wpmc-clear-selection-btn mcs-btn-secondary wpmc-btn-secondary">
+                    <?php echo esc_html__('選択をクリア', 'wp-minpaku-connector'); ?>
+                </button>
+            </div>
+        </div>
+
         <!-- Loading State (hidden by default) -->
         <div class="mcs-quote-loading wpmc-quote-loading" style="display: none;" aria-hidden="true">
             <span class="mcs-loading-spinner wpmc-loading-spinner" aria-hidden="true"></span>

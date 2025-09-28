@@ -58,6 +58,24 @@ class QuoteController {
                         return (bool) preg_match('/^\d{4}-\d{2}-\d{2}$/', $param);
                     }
                 ],
+                'adults' => [
+                    'required' => false,
+                    'default' => 2,
+                    'type' => 'integer',
+                    'sanitize_callback' => 'absint',
+                    'validate_callback' => function($param) {
+                        return $param >= 1 && $param <= 50;
+                    }
+                ],
+                'children' => [
+                    'required' => false,
+                    'default' => 0,
+                    'type' => 'integer',
+                    'sanitize_callback' => 'absint',
+                    'validate_callback' => function($param) {
+                        return $param >= 0 && $param <= 20;
+                    }
+                ],
                 'guests' => [
                     'required' => false,
                     'default' => 2,
@@ -88,7 +106,22 @@ class QuoteController {
             $property_id = $request->get_param('property_id');
             $checkin = $request->get_param('checkin');
             $checkout = $request->get_param('checkout');
+
+            // Handle both individual guest counts and total guests
+            $adults = $request->get_param('adults');
+            $children = $request->get_param('children');
             $guests = $request->get_param('guests');
+
+            // Calculate total guests if individual counts provided
+            if ($adults !== null || $children !== null) {
+                $adults = $adults ?: 2;
+                $children = $children ?: 0;
+                $guests = $adults + $children;
+            } else {
+                $guests = $guests ?: 2;
+                $adults = $guests; // Default assumption
+                $children = 0;
+            }
 
             // Verify property exists and is published
             $property = get_post($property_id);
@@ -119,7 +152,10 @@ class QuoteController {
             }
 
             // Calculate quote using RateEngine
-            $quote = RateEngine::calculate_quote($property_id, $checkin, $checkout, $guests);
+            $quote = RateEngine::calculate_quote($property_id, $checkin, $checkout, $guests, [
+                'adults' => $adults,
+                'children' => $children
+            ]);
 
             // Log successful quote generation
             if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {

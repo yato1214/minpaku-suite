@@ -16,7 +16,7 @@ class PortalCalendar {
     public static function init() {
         add_shortcode('portal_calendar', [__CLASS__, 'render_calendar']);
 
-        // Register AJAX handlers for modal functionality
+        // AJAX handlers for modal functionality (deprecated for modern interactions)
         add_action('wp_ajax_portal_calendar_modal_content', [__CLASS__, 'ajax_modal_content']);
         add_action('wp_ajax_nopriv_portal_calendar_modal_content', [__CLASS__, 'ajax_modal_content']);
     }
@@ -30,7 +30,7 @@ class PortalCalendar {
             'months' => 2,
             'show_prices' => 'true',
             'modal' => 'false',
-            'interactions' => 'modern'
+            'interactions' => 'modern'  // Default to modern
         ], $atts, 'portal_calendar');
 
         // Auto-detect property ID if not provided
@@ -54,37 +54,173 @@ class PortalCalendar {
                    '</div>';
         }
 
-        // Note: Modal functionality is deprecated - always show inline calendar
-        if ($is_modal) {
-            $is_modal = false; // Force inline display
+        // Modal functionality is deprecated for modern interactions
+        if ($is_modal && $interactions === 'modern') {
+            $is_modal = false; // Force inline display for modern
         }
 
-        // Enqueue unified assets for modern interactions
+        // DEBUG: Check what interactions mode is being used
+        $debug_info = "<!-- DEBUG: interactions='" . $interactions . "', is_modal=" . ($is_modal ? 'true' : 'false') . " -->";
+
+        // Enqueue unified assets based on interactions mode
         if ($interactions === 'modern') {
             self::enqueue_modern_assets();
+            return $debug_info . self::render_modern_calendar($property_id, $months, $show_prices);
         } else {
             self::enqueue_legacy_assets();
+            return $debug_info . self::render_legacy_calendar($property_id, $months, $show_prices, $is_modal);
+        }
+    }
+
+    /**
+     * Render modern calendar with connector parity
+     */
+    private static function render_modern_calendar($property_id, $months, $show_prices) {
+        try {
+            echo "<!-- DEBUG: render_modern_calendar() called -->";
+            $calendar_id = 'portal-calendar-' . uniqid();
+            $responsive_months = $months; // Keep original months setting
+
+            ob_start();
+            ?>
+
+            <div id="<?php echo esc_attr($calendar_id); ?>" class="mcs-calendar-container wpmc-calendar-container connector-calendar"
+                 data-property-id="<?php echo esc_attr($property_id); ?>"
+                 data-show-prices="<?php echo $show_prices ? '1' : '0'; ?>"
+                 data-months="<?php echo esc_attr($months); ?>"
+                 data-interactions="modern"
+                 data-mode="inline"
+                 data-calendar-id="<?php echo esc_attr($calendar_id); ?>">
+
+                <!-- Calendar Header -->
+                <div class="mcs-calendar-header wpmc-calendar-header">
+                    <h2 class="mcs-calendar-title wpmc-calendar-title">
+                        <?php echo esc_html(get_the_title($property_id)); ?> - <?php echo esc_html__('空室カレンダー', 'minpaku-suite'); ?>
+                    </h2>
+                </div>
+
+                <!-- Calendar Navigation -->
+                <div class="mcs-calendar-nav wpmc-calendar-nav">
+                    <button type="button" class="mcs-nav-button mcs-nav-prev wpmc-nav-button wpmc-nav-prev">
+                        <span class="mcs-nav-icon wpmc-nav-icon">‹</span>
+                        <span class="mcs-nav-text wpmc-nav-text"><?php echo esc_html__('前月', 'minpaku-suite'); ?></span>
+                    </button>
+                    <button type="button" class="mcs-nav-button mcs-nav-next wpmc-nav-button wpmc-nav-next">
+                        <span class="mcs-nav-text wpmc-nav-text"><?php echo esc_html__('次月', 'minpaku-suite'); ?></span>
+                        <span class="mcs-nav-icon wpmc-nav-icon">›</span>
+                    </button>
+                </div>
+
+                <!-- Calendar Grid Container -->
+                <div class="mpc-calendar-months-grid mpc-responsive-grid">
+                    <?php for ($i = 0; $i < $responsive_months; $i++) { ?>
+                        <?php
+                        $month_date = new \DateTime();
+                        $month_date->add(new \DateInterval('P' . $i . 'M'));
+                        $year = $month_date->format('Y');
+                        $month = $month_date->format('n');
+                        ?>
+
+                        <div class="mpc-calendar-month"
+                             data-year="<?php echo esc_attr($year); ?>"
+                             data-month="<?php echo esc_attr($month); ?>"
+                             data-month-index="<?php echo esc_attr($i); ?>">
+
+                            <h3 class="mpc-calendar-month-title">
+                                <?php echo esc_html($month_date->format('Y年n月')); ?>
+                            </h3>
+
+                            <div class="mpc-calendar-grid" style="display: grid !important; grid-template-columns: repeat(7, 1fr) !important; gap: 0 !important; width: 100% !important;">
+                                <!-- Day headers -->
+                                <div class="mpc-calendar-day-header" style="background: #f8fafc; padding: 12px 8px; text-align: center; font-weight: 600; border-bottom: 2px solid #e2e8f0; border-right: 1px solid #e2e8f0;">日</div>
+                                <div class="mpc-calendar-day-header" style="background: #f8fafc; padding: 12px 8px; text-align: center; font-weight: 600; border-bottom: 2px solid #e2e8f0; border-right: 1px solid #e2e8f0;">月</div>
+                                <div class="mpc-calendar-day-header" style="background: #f8fafc; padding: 12px 8px; text-align: center; font-weight: 600; border-bottom: 2px solid #e2e8f0; border-right: 1px solid #e2e8f0;">火</div>
+                                <div class="mpc-calendar-day-header" style="background: #f8fafc; padding: 12px 8px; text-align: center; font-weight: 600; border-bottom: 2px solid #e2e8f0; border-right: 1px solid #e2e8f0;">水</div>
+                                <div class="mpc-calendar-day-header" style="background: #f8fafc; padding: 12px 8px; text-align: center; font-weight: 600; border-bottom: 2px solid #e2e8f0; border-right: 1px solid #e2e8f0;">木</div>
+                                <div class="mpc-calendar-day-header" style="background: #f8fafc; padding: 12px 8px; text-align: center; font-weight: 600; border-bottom: 2px solid #e2e8f0; border-right: 1px solid #e2e8f0;">金</div>
+                                <div class="mpc-calendar-day-header" style="background: #f8fafc; padding: 12px 8px; text-align: center; font-weight: 600; border-bottom: 2px solid #e2e8f0;">土</div>
+
+                                <?php echo self::generate_calendar_days($year, $month, $property_id, $show_prices); ?>
+                            </div>
+                        </div>
+                    <?php } ?>
+                </div>
+            </div>
+
+            <?php
+            $calendar_html = ob_get_clean();
+
+            // Include unified quote panel template
+            ob_start();
+            $texts = [
+                'quote_title' => __('見積り', 'minpaku-suite'),
+                'clear_selection' => __('選択をクリア', 'minpaku-suite'),
+                'select_dates_placeholder' => __('日程を選択すると見積が表示されます', 'minpaku-suite'),
+                'loading' => __('読み込み中...', 'minpaku-suite'),
+                'breakdown_title' => __('内訳', 'minpaku-suite'),
+                'accommodation_fee' => __('宿泊料金', 'minpaku-suite'),
+                'cleaning_fee' => __('清掃料金', 'minpaku-suite'),
+                'total_amount' => __('合計金額', 'minpaku-suite'),
+                'final_notice' => __('※ 最終合計は予約時に確定します', 'minpaku-suite'),
+                'error_title' => __('エラー', 'minpaku-suite'),
+                'get_quote' => __('見積を取得', 'minpaku-suite'),
+                'adults' => __('大人', 'minpaku-suite'),
+                'children' => __('子供', 'minpaku-suite'),
+                'guests' => __('名', 'minpaku-suite')
+            ];
+
+            $template_path = defined('MCS_PATH') ? MCS_PATH : plugin_dir_path(dirname(dirname(__DIR__)));
+            $calendar_id = $calendar_id; // Pass calendar ID to template
+            echo "<!-- DEBUG: Loading quote-panel from: " . $template_path . 'templates/portal/partials/quote-panel.php' . " -->";
+            include $template_path . 'templates/portal/partials/quote-panel.php';
+            $quote_panel_html = ob_get_clean();
+
+            // DEBUG: Force inline critical styles to ensure they're applied
+            $inline_styles = '<style>
+                .connector-calendar .mpc-nav-button {
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+                    color: white !important;
+                    border: none !important;
+                    padding: 8px 16px !important;
+                    border-radius: 6px !important;
+                }
+                .mcs-quote-panel, .mpc-quote-panel {
+                    display: block !important;
+                    border: 1px solid #e5e7eb !important;
+                    border-radius: 8px !important;
+                    background: #ffffff !important;
+                    margin-top: 24px !important;
+                }
+                .mcs-get-quote, .mpc-get-quote {
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+                    color: white !important;
+                    border: none !important;
+                    padding: 12px 24px !important;
+                    border-radius: 6px !important;
+                }
+            </style>';
+
+            return $inline_styles . $calendar_html . $quote_panel_html;
+
+        } catch (\Exception $e) {
+            return '<div class="mpc-error" style="background: #fef2f2; border: 1px solid #fca5a5; color: #b91c1c; padding: 12px; border-radius: 6px; margin: 16px 0;">' .
+                   'Calendar Error: ' . esc_html($e->getMessage()) .
+                   '</div>';
+        }
+    }
+
+    /**
+     * Render legacy calendar (preserve existing functionality)
+     */
+    private static function render_legacy_calendar($property_id, $months, $show_prices, $is_modal) {
+        echo "<!-- DEBUG: render_legacy_calendar() called -->";
+        if ($is_modal) {
+            return self::render_modal_button($property_id, $months, $show_prices, 'legacy');
         }
 
         $calendar_id = 'portal-calendar-' . uniqid();
-        $mode = $is_modal ? 'modal' : 'inline';
-
-        // Use template if available for modern interactions
-        $template_path = MCS_PATH . 'templates/portal/calendar.php';
-        if (file_exists($template_path) && $interactions === 'modern') {
-            ob_start();
-
-            // Set variables for template (avoid variable conflicts)
-            extract([
-                'property_id' => $property_id,
-                'months' => $months,
-                'show_prices' => $show_prices,
-                'interactions' => $interactions
-            ]);
-
-            include $template_path;
-            return ob_get_clean();
-        }
+        $interactions = 'legacy';
+        $mode = 'inline';
 
         ob_start();
         ?>
@@ -730,7 +866,8 @@ class PortalCalendar {
      */
     private static function generate_calendar_days($year, $month, $property_id, $show_prices) {
         // Load DayClassifier
-        require_once MCS_PATH . 'includes/Calendar/DayClassifier.php';
+        $plugin_path = defined('MCS_PATH') ? MCS_PATH : plugin_dir_path(dirname(dirname(__DIR__)));
+        require_once $plugin_path . 'includes/Calendar/DayClassifier.php';
 
         $first_day = new \DateTime("$year-$month-01");
         $last_day = new \DateTime($first_day->format('Y-m-t'));
@@ -1207,48 +1344,18 @@ class PortalCalendar {
                 contentDiv.innerHTML = '';
             }
 
-            // Generate calendar content directly (not via AJAX for portal side)
+            // Modern calendars use inline display with unified quote panels (modal deprecated)
             setTimeout(function() {
-                var calendarShortcode = '[portal_calendar property_id="' + propertyId + '" months="' + months + '" show_prices="' + (showPrices ? 'true' : 'false') + '"]';
-
-                // For portal side, we can directly call the shortcode
-                var formData = new FormData();
-                formData.append('action', 'portal_calendar_modal_content');
-                formData.append('property_id', propertyId);
-                formData.append('months', months);
-                formData.append('show_prices', showPrices);
-                formData.append('nonce', '<?php echo wp_create_nonce('portal_calendar_modal'); ?>');
-
-                fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (loadingDiv) loadingDiv.style.display = 'none';
-                    if (data.success) {
-                        if (contentDiv) {
-                            contentDiv.innerHTML = data.data;
-                            contentDiv.style.display = 'block';
-
-                            // Initialize click handlers for modal calendar after content is loaded
-                            initModalCalendarHandlers(contentDiv);
-                        }
-                    } else {
-                        if (contentDiv) {
-                            contentDiv.innerHTML = '<div class="portal-calendar-error">カレンダーの読み込みに失敗しました。</div>';
-                            contentDiv.style.display = 'block';
-                        }
-                    }
-                })
-                .catch(error => {
-                    console.error('AJAX Error:', error);
-                    if (loadingDiv) loadingDiv.style.display = 'none';
-                    if (contentDiv) {
-                        contentDiv.innerHTML = '<div class="portal-calendar-error">ネットワークエラーが発生しました。</div>';
-                        contentDiv.style.display = 'block';
-                    }
-                });
+                // Note: Modal functionality is deprecated for modern interactions
+                // Modern calendars use inline display with unified quote panels
+                if (loadingDiv) loadingDiv.style.display = 'none';
+                if (contentDiv) {
+                    contentDiv.innerHTML = '<div class="portal-calendar-notice" style="padding: 20px; text-align: center; color: #666;">' +
+                        'モーダル表示は新しいUIでは非対応です。<br>' +
+                        'インライン表示（interactions="modern"）をご利用ください。' +
+                        '</div>';
+                    contentDiv.style.display = 'block';
+                }
             }, 100);
         }
 
@@ -1318,9 +1425,31 @@ class PortalCalendar {
      * Enqueue modern unified assets
      */
     private static function enqueue_modern_assets() {
+        echo "<!-- DEBUG: enqueue_modern_assets() called -->";
+        // Get plugin constants
+        $plugin_url = defined('MCS_PLUGIN_URL') ? MCS_PLUGIN_URL : plugin_dir_url(dirname(dirname(__DIR__)));
+        $plugin_path = defined('MCS_PATH') ? MCS_PATH : plugin_dir_path(dirname(dirname(__DIR__)));
+
+        // Portal Calendar CSS
+        $calendar_css_file = $plugin_url . 'assets/portal/css/calendar.css';
+        $calendar_css_path = $plugin_path . 'assets/portal/css/calendar.css';
+
+        if (file_exists($calendar_css_path)) {
+            wp_enqueue_style(
+                'minpaku-portal-calendar',
+                $calendar_css_file,
+                [],
+                filemtime($calendar_css_path)
+            );
+            // DEBUG: CSS file enqueued
+            echo "<!-- DEBUG: Calendar CSS enqueued from: $calendar_css_file -->";
+        } else {
+            echo "<!-- DEBUG: Calendar CSS NOT FOUND at: $calendar_css_path -->";
+        }
+
         // Portal Quote Panel CSS
-        $quote_css_file = get_template_directory_uri() . '/assets/css/portal-quote-panel.css';
-        $quote_css_path = get_template_directory() . '/assets/css/portal-quote-panel.css';
+        $quote_css_file = $plugin_url . 'assets/portal/css/quote-panel.css';
+        $quote_css_path = $plugin_path . 'assets/portal/css/quote-panel.css';
 
         if (file_exists($quote_css_path)) {
             wp_enqueue_style(
@@ -1329,42 +1458,32 @@ class PortalCalendar {
                 [],
                 filemtime($quote_css_path)
             );
+            echo "<!-- DEBUG: Quote Panel CSS enqueued from: $quote_css_file -->";
+        } else {
+            echo "<!-- DEBUG: Quote Panel CSS NOT FOUND at: $quote_css_path -->";
         }
 
-        // CSS
-        $css_file = get_template_directory_uri() . '/assets/css/calendar-interactions.css';
-        $css_path = get_template_directory() . '/assets/css/calendar-interactions.css';
-
-        if (file_exists($css_path)) {
-            wp_enqueue_style(
-                'minpaku-calendar-interactions',
-                $css_file,
-                [],
-                filemtime($css_path)
-            );
-        }
-
-        // JavaScript
-        $js_file = get_template_directory_uri() . '/assets/js/calendar-interactions.js';
-        $js_path = get_template_directory() . '/assets/js/calendar-interactions.js';
+        // Portal Calendar Interactions JavaScript
+        $js_file = $plugin_url . 'assets/portal/js/calendar-interactions.js';
+        $js_path = $plugin_path . 'assets/portal/js/calendar-interactions.js';
 
         if (file_exists($js_path)) {
             wp_enqueue_script(
-                'minpaku-calendar-interactions',
+                'minpaku-portal-calendar-interactions',
                 $js_file,
                 ['jquery'],
                 filemtime($js_path),
                 true
             );
 
-            // Localize script
+            // Localize script for portal calendar
             wp_localize_script(
-                'minpaku-calendar-interactions',
+                'minpaku-portal-calendar-interactions',
                 'minpakuCalendarData',
                 [
-                    'ajaxUrl' => admin_url('admin-ajax.php'),
-                    'nonce' => wp_create_nonce('minpaku_calendar'),
-                    'apiBase' => '/wp-json/minpaku/v1',
+                    'apiBase' => home_url('/wp-json/minpaku/v1'),
+                    'restUrl' => home_url('/wp-json/minpaku/v1/'),
+                    'restNonce' => wp_create_nonce('wp_rest'),
                     'isAdmin' => current_user_can('manage_options'),
                     'texts' => [
                         'loading' => __('読み込み中...', 'minpaku-suite'),
@@ -1382,7 +1501,9 @@ class PortalCalendar {
                         'errorTitle' => __('エラー', 'minpaku-suite'),
                         'dateUnavailable' => __('この日程は満室です', 'minpaku-suite'),
                         'occupancyExceeded' => __('定員を超えています', 'minpaku-suite'),
-                        'networkError' => __('ネットワークエラーが発生しました', 'minpaku-suite')
+                        'networkError' => __('ネットワークエラーが発生しました', 'minpaku-suite'),
+                        'selectDates' => __('日程を選択すると見積が表示されます', 'minpaku-suite'),
+                        'clearSelection' => __('選択をクリア', 'minpaku-suite')
                     ]
                 ]
             );
@@ -1427,8 +1548,11 @@ class PortalCalendar {
      * Enqueue legacy assets
      */
     private static function enqueue_legacy_assets() {
-        // Legacy portal calendar CSS
-        wp_enqueue_style('mcs-portal-calendar', MCS_PLUGIN_URL . 'assets/css/portal-calendar.css', [], MCS_VERSION);
+        // Get plugin constants
+        $plugin_url = defined('MCS_PLUGIN_URL') ? MCS_PLUGIN_URL : plugin_dir_url(dirname(dirname(__DIR__)));
+        $plugin_version = defined('MCS_VERSION') ? MCS_VERSION : '1.0.0';
+
+        // Legacy CSS removed - using modern unified styles only
 
         // Legacy JavaScript - basic navigation only
         wp_add_inline_script('jquery', '

@@ -60,7 +60,8 @@
 }
 
 .mcs-clear-selection-btn,
-.mpc-clear-selection-btn {
+.mpc-clear-selection-btn,
+.wpmc-clear-selection-btn {
     background: none;
     border: none;
     font-size: 24px;
@@ -78,7 +79,8 @@
 }
 
 .mcs-clear-selection-btn:hover,
-.mpc-clear-selection-btn:hover {
+.mpc-clear-selection-btn:hover,
+.wpmc-clear-selection-btn:hover {
     background: rgba(255, 255, 255, 0.2);
 }
 
@@ -190,7 +192,8 @@
 
 /* Action Buttons */
 .mcs-quote-actions,
-.mpc-quote-actions {
+.mpc-quote-actions,
+.wpmc-quote-actions {
     display: flex;
     gap: 12px;
     justify-content: center;
@@ -199,8 +202,10 @@
 
 .mcs-get-quote,
 .mpc-get-quote,
+.wpmc-get-quote,
 .mcs-btn-primary,
-.mpc-btn-primary {
+.mpc-btn-primary,
+.wpmc-btn-primary {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
     border: none;
@@ -215,14 +220,17 @@
 
 .mcs-get-quote:hover,
 .mpc-get-quote:hover,
+.wpmc-get-quote:hover,
 .mcs-btn-primary:hover,
-.mpc-btn-primary:hover {
+.mpc-btn-primary:hover,
+.wpmc-btn-primary:hover {
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
 }
 
 .mcs-btn-secondary,
-.mpc-btn-secondary {
+.mpc-btn-secondary,
+.wpmc-btn-secondary {
     background: #f3f4f6;
     color: #374151;
     border: 1px solid #d1d5db;
@@ -236,7 +244,8 @@
 }
 
 .mcs-btn-secondary:hover,
-.mpc-btn-secondary:hover {
+.mpc-btn-secondary:hover,
+.wpmc-btn-secondary:hover {
     background: #e5e7eb;
     border-color: #9ca3af;
 }
@@ -436,7 +445,8 @@
     }
 
     .mcs-quote-actions,
-    .mpc-quote-actions {
+    .mpc-quote-actions,
+    .wpmc-quote-actions {
         flex-direction: column;
         align-items: stretch;
         gap: 8px;
@@ -444,10 +454,13 @@
 
     .mcs-get-quote,
     .mpc-get-quote,
+    .wpmc-get-quote,
     .mcs-btn-primary,
     .mpc-btn-primary,
+    .wpmc-btn-primary,
     .mcs-btn-secondary,
-    .mpc-btn-secondary {
+    .mpc-btn-secondary,
+    .wpmc-btn-secondary {
         min-width: auto;
         width: 100%;
     }

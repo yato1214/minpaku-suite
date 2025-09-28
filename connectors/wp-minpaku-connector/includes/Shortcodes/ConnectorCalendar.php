@@ -26,16 +26,17 @@ class MPC_Shortcodes_ConnectorCalendar {
      * Render calendar shortcode for connector side - Portal Parity
      */
     public static function render_calendar($atts) {
-        $atts = shortcode_atts([
-            'property_id' => '',
-            'months' => 2,
-            'show_prices' => 'true',
-            'modal' => 'false',
-            'interactions' => 'modern',
-            'type' => 'availability',
-            'limit' => 6,
-            'columns' => 2
-        ], $atts, 'connector_calendar');
+        try {
+            $atts = shortcode_atts([
+                'property_id' => '',
+                'months' => 2,
+                'show_prices' => 'true',
+                'modal' => 'false',
+                'interactions' => 'modern',
+                'type' => 'availability',
+                'limit' => 6,
+                'columns' => 2
+            ], $atts, 'connector_calendar');
 
         $calendar_type = $atts['type'];
 
@@ -96,11 +97,13 @@ class MPC_Shortcodes_ConnectorCalendar {
             return self::render_modal_button($property_id, $months, $show_prices, $property_title, $interactions);
         }
 
-        // Enqueue unified assets for modern interactions
-        if ($interactions === 'modern') {
-            self::enqueue_modern_assets();
-        } else {
+        // Default to modern interactions with unified quote panel
+        if ($interactions === 'legacy') {
             self::enqueue_legacy_assets();
+        } else {
+            // Always use modern assets for unified experience
+            self::enqueue_modern_assets();
+            $interactions = 'modern'; // Force modern UI
         }
 
         // For now, always use direct rendering for reliability
@@ -111,36 +114,38 @@ class MPC_Shortcodes_ConnectorCalendar {
         ob_start();
         ?>
 
-        <div id="<?php echo esc_attr($calendar_id); ?>" class="mpc-responsive-calendar connector-calendar"
+        <div id="<?php echo esc_attr($calendar_id); ?>" class="mcs-calendar-container wpmc-calendar-container connector-calendar"
              data-property-id="<?php echo esc_attr($property_id); ?>"
              data-show-prices="<?php echo $show_prices ? '1' : '0'; ?>"
              data-months="<?php echo esc_attr($months); ?>"
-             data-interactions="<?php echo esc_attr($interactions); ?>"
-             data-mode="<?php echo $is_modal ? 'modal' : 'inline'; ?>">
+             data-interactions="modern"
+             data-mode="inline">
 
-            <!-- Calendar Title -->
-            <div class="mpc-calendar-subtitle">
-                <?php if ($property_title): ?>
-                    <?php echo esc_html($property_title); ?> -
-                <?php endif; ?>
-                <?php _e('空室カレンダー', 'wp-minpaku-connector'); ?>
+            <!-- Calendar Header -->
+            <div class="mcs-calendar-header wpmc-calendar-header">
+                <h2 class="mcs-calendar-title wpmc-calendar-title">
+                    <?php if ($property_title) { ?>
+                        <?php echo esc_html($property_title); ?> -
+                    <?php } ?>
+                    <?php _e('空室カレンダー', 'wp-minpaku-connector'); ?>
+                </h2>
             </div>
 
-            <!-- Calendar Navigation - Outside of Grid for Portal Parity -->
-            <div class="mpc-calendar-nav">
-                <button type="button" class="mpc-nav-button mpc-nav-prev" aria-label="<?php _e('前の月', 'wp-minpaku-connector'); ?>">
-                    <span class="mpc-nav-icon">‹</span>
-                    <span class="mpc-nav-text"><?php _e('前月', 'wp-minpaku-connector'); ?></span>
+            <!-- Calendar Navigation -->
+            <div class="mcs-calendar-nav wpmc-calendar-nav">
+                <button type="button" class="mcs-nav-button mcs-nav-prev wpmc-nav-button wpmc-nav-prev">
+                    <span class="mcs-nav-icon wpmc-nav-icon">‹</span>
+                    <span class="mcs-nav-text wpmc-nav-text"><?php _e('前月', 'wp-minpaku-connector'); ?></span>
                 </button>
-                <button type="button" class="mpc-nav-button mpc-nav-next" aria-label="<?php _e('次の月', 'wp-minpaku-connector'); ?>">
-                    <span class="mpc-nav-text"><?php _e('次月', 'wp-minpaku-connector'); ?></span>
-                    <span class="mpc-nav-icon">›</span>
+                <button type="button" class="mcs-nav-button mcs-nav-next wpmc-nav-button wpmc-nav-next">
+                    <span class="mcs-nav-text wpmc-nav-text"><?php _e('次月', 'wp-minpaku-connector'); ?></span>
+                    <span class="mcs-nav-icon wpmc-nav-icon">›</span>
                 </button>
             </div>
 
-            <!-- Responsive Months Grid Container: PC=2col, Mobile=1col -->
+            <!-- Calendar Grid Container -->
             <div class="mpc-calendar-months-grid mpc-responsive-grid">
-                <?php for ($i = 0; $i < $responsive_months; $i++): ?>
+                <?php for ($i = 0; $i < $responsive_months; $i++) { ?>
                     <?php
                     $month_date = new \DateTime();
                     $month_date->add(new \DateInterval('P' . $i . 'M'));
@@ -148,593 +153,67 @@ class MPC_Shortcodes_ConnectorCalendar {
                     $month = $month_date->format('n');
                     ?>
 
-                    <div class="mpc-calendar-month" data-year="<?php echo esc_attr($year); ?>" data-month="<?php echo esc_attr($month); ?>"
+                    <div class="mpc-calendar-month"
+                         data-year="<?php echo esc_attr($year); ?>"
+                         data-month="<?php echo esc_attr($month); ?>"
                          data-month-index="<?php echo esc_attr($i); ?>">
+
                         <h3 class="mpc-calendar-month-title">
                             <?php echo esc_html($month_date->format('Y年n月')); ?>
                         </h3>
 
-                        <div class="mpc-calendar-grid">
-                            <!-- Day headers as first row in grid -->
-                            <div class="mpc-calendar-day-header"><?php _e('日', 'wp-minpaku-connector'); ?></div>
-                            <div class="mpc-calendar-day-header"><?php _e('月', 'wp-minpaku-connector'); ?></div>
-                            <div class="mpc-calendar-day-header"><?php _e('火', 'wp-minpaku-connector'); ?></div>
-                            <div class="mpc-calendar-day-header"><?php _e('水', 'wp-minpaku-connector'); ?></div>
-                            <div class="mpc-calendar-day-header"><?php _e('木', 'wp-minpaku-connector'); ?></div>
-                            <div class="mpc-calendar-day-header"><?php _e('金', 'wp-minpaku-connector'); ?></div>
-                            <div class="mpc-calendar-day-header"><?php _e('土', 'wp-minpaku-connector'); ?></div>
+                        <div class="mpc-calendar-grid" style="display: grid !important; grid-template-columns: repeat(7, 1fr) !important; gap: 0 !important; width: 100% !important;">
+                            <!-- Day headers -->
+                            <div class="mpc-calendar-day-header" style="background: #f8fafc; padding: 12px 8px; text-align: center; font-weight: 600; border-bottom: 2px solid #e2e8f0; border-right: 1px solid #e2e8f0;"><?php _e('日', 'wp-minpaku-connector'); ?></div>
+                            <div class="mpc-calendar-day-header" style="background: #f8fafc; padding: 12px 8px; text-align: center; font-weight: 600; border-bottom: 2px solid #e2e8f0; border-right: 1px solid #e2e8f0;"><?php _e('月', 'wp-minpaku-connector'); ?></div>
+                            <div class="mpc-calendar-day-header" style="background: #f8fafc; padding: 12px 8px; text-align: center; font-weight: 600; border-bottom: 2px solid #e2e8f0; border-right: 1px solid #e2e8f0;"><?php _e('火', 'wp-minpaku-connector'); ?></div>
+                            <div class="mpc-calendar-day-header" style="background: #f8fafc; padding: 12px 8px; text-align: center; font-weight: 600; border-bottom: 2px solid #e2e8f0; border-right: 1px solid #e2e8f0;"><?php _e('水', 'wp-minpaku-connector'); ?></div>
+                            <div class="mpc-calendar-day-header" style="background: #f8fafc; padding: 12px 8px; text-align: center; font-weight: 600; border-bottom: 2px solid #e2e8f0; border-right: 1px solid #e2e8f0;"><?php _e('木', 'wp-minpaku-connector'); ?></div>
+                            <div class="mpc-calendar-day-header" style="background: #f8fafc; padding: 12px 8px; text-align: center; font-weight: 600; border-bottom: 2px solid #e2e8f0; border-right: 1px solid #e2e8f0;"><?php _e('金', 'wp-minpaku-connector'); ?></div>
+                            <div class="mpc-calendar-day-header" style="background: #f8fafc; padding: 12px 8px; text-align: center; font-weight: 600; border-bottom: 2px solid #e2e8f0;"><?php _e('土', 'wp-minpaku-connector'); ?></div>
 
                             <?php echo self::generate_calendar_days($year, $month, $property_id, $show_prices); ?>
                         </div>
                     </div>
-                <?php endfor; ?>
+                <?php } ?>
             </div>
 
-            <!-- Quote Panel (initially hidden) -->
-            <div class="mpc-quote-panel" style="display: none;">
-                <div class="mpc-quote-header">
-                    <h3><?php echo esc_html__('見積り', 'wp-minpaku-connector'); ?></h3>
-                    <button class="mpc-quote-close" aria-label="<?php echo esc_attr__('閉じる', 'wp-minpaku-connector'); ?>">×</button>
-                </div>
-                <div class="mpc-quote-content">
-                    <div class="mpc-quote-loading" style="display: none;">
-                        <span class="mpc-loading-spinner"></span>
-                        <?php echo esc_html__('見積り計算中...', 'wp-minpaku-connector'); ?>
-                    </div>
-                    <div class="mpc-quote-result" style="display: none;">
-                        <div class="mpc-quote-summary">
-                            <div class="mpc-quote-dates"></div>
-                            <div class="mpc-quote-total"></div>
-                        </div>
-                        <div class="mpc-quote-breakdown">
-                            <h4><?php echo esc_html__('内訳', 'wp-minpaku-connector'); ?></h4>
-                            <div class="mpc-quote-breakdown-content"></div>
-                        </div>
-                        <div class="mpc-quote-note">
-                            <?php echo esc_html__('※ 最終合計は予約時に確定します', 'wp-minpaku-connector'); ?>
-                        </div>
-                    </div>
-                    <div class="mpc-quote-error" style="display: none;">
-                        <div class="mpc-error-message"></div>
-                    </div>
-                </div>
-            </div>
         </div>
 
-        <!-- Connector Calendar CSS - Portal Parity Design with Responsive Support -->
-        <style>
-        .connector-calendar {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
-        }
+        <!-- Connector Calendar: CSS/JS loaded via enqueue_modern_assets() -->
 
-        /* Responsive Layout: PC=2col, Mobile=1col */
-        .connector-calendar .mpc-calendar-months-grid.mpc-responsive-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr; /* 2 columns on PC */
-            gap: 24px;
-            margin-top: 20px;
-        }
-
-        /* Mobile: 1 column */
-        @media (max-width: 768px) {
-            .connector-calendar .mpc-calendar-months-grid.mpc-responsive-grid {
-                grid-template-columns: 1fr; /* 1 column on mobile */
-                gap: 16px;
-            }
-        }
-
-        .connector-calendar .mpc-calendar-month {
-            width: 100%;
-            max-width: 700px; /* Slightly wider for better readability */
-            margin: 0 auto 32px auto; /* Center and space months vertically */
-            background: white;
-            border-radius: 8px; /* Less rounded for portal parity */
-            overflow: hidden;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Lighter shadow */
-            border: 1px solid #dee2e6; /* Lighter border */
-        }
-
-        .connector-calendar .mpc-calendar-legend {
-            background: white;
-            border: 1px solid #e0e0e0;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 24px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        }
-
-        .connector-calendar .mpc-calendar-legend h4 {
-            margin: 0 0 16px 0;
-            font-size: 16px;
-            font-weight: 600;
-            color: #2c3e50;
-        }
-
-        .connector-calendar .mpc-legend-items {
-            display: flex;
-            gap: 24px;
-            flex-wrap: wrap;
-        }
-
-        .connector-calendar .mpc-legend-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .connector-calendar .mpc-legend-color {
-            width: 20px;
-            height: 20px;
-            border-radius: 4px;
-            border: 1px solid rgba(0,0,0,0.15);
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
-
-        .connector-calendar .mpc-legend-label {
-            font-size: 14px;
-            color: #555;
-            font-weight: 500;
-        }
-
-        .connector-calendar .mpc-calendar-container {
-            max-width: 100%;
-            margin: 0;
-        }
-
-
-        .connector-calendar .mpc-calendar-month-title {
-            background: #f8f9fa;
-            color: #495057;
-            margin: 0;
-            padding: 16px 20px;
-            text-align: center;
-            font-size: 18px;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-            border-bottom: 1px solid #dee2e6;
-        }
-
-        .connector-calendar .mpc-calendar-grid {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 0;
-            background: #fafafa;
-        }
-
-        .connector-calendar .mpc-calendar-header {
-            display: contents;
-        }
-
-        .connector-calendar .mpc-calendar-day-header {
-            background: #f8fafc;
-            color: #64748b;
-            padding: 16px 8px;
-            text-align: center;
-            font-weight: 600;
-            font-size: 13px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            border-bottom: 2px solid #e2e8f0;
-            border-right: 1px solid #e2e8f0;
-        }
-
-        .connector-calendar .mpc-calendar-day-header:last-child {
-            border-right: none;
-        }
-
-        .connector-calendar .mpc-calendar-week {
-            display: contents;
-        }
-
-        .connector-calendar .mcs-day {
-            position: relative;
-            min-height: 80px;
-            padding: 8px 6px 6px 6px;
-            border-right: 1px solid #dee2e6;
-            border-bottom: 1px solid #dee2e6;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            background: white;
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            justify-content: space-between;
-            overflow: hidden;
-        }
-
-        .connector-calendar .mcs-day:nth-child(7n) {
-            border-right: none;
-        }
-
-        .connector-calendar .mcs-day:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            z-index: 2;
-        }
-
-        .connector-calendar .mcs-day--empty {
-            background: #f8fafc !important;
-            cursor: default;
-            opacity: 0.5;
-        }
-
-        .connector-calendar .mcs-day--empty:hover {
-            transform: none;
-            box-shadow: none;
-        }
-
-        .connector-calendar .mcs-day--weekday {
-            background: #f0fdf4 !important;
-            border-left: 3px solid #22c55e;
-        }
-
-        .connector-calendar .mcs-day--sat {
-            background: #eff6ff !important;
-            border-left: 3px solid #3b82f6;
-        }
-
-        .connector-calendar .mcs-day--sun {
-            background: #fef2f2 !important;
-            border-left: 3px solid #ef4444;
-        }
-
-        .connector-calendar .mcs-day--full,
-        .connector-calendar .mcs-day--blackout {
-            background: #f1f5f9 !important;
-            cursor: not-allowed !important;
-            opacity: 0.6;
-            border-left: 3px solid #64748b;
-        }
-
-        .connector-calendar .mcs-day--booked {
-            cursor: pointer !important;
-        }
-
-        .connector-calendar .mcs-day--full:hover,
-        .connector-calendar .mcs-day--blackout:hover {
-            transform: none;
-            box-shadow: none;
-        }
-
-        .connector-calendar .mcs-day--booked:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
-
-        .connector-calendar .mcs-day--past {
-            background: #f8fafc !important;
-            color: #94a3b8;
-            cursor: not-allowed;
-            opacity: 0.5;
-        }
-
-        .connector-calendar .mcs-day--past:hover {
-            transform: none;
-            box-shadow: none;
-        }
-
-        .connector-calendar .mcs-day-number {
-            font-weight: 700;
-            font-size: 16px;
-            line-height: 1.2;
-            color: #1e293b;
-            margin-bottom: auto;
-        }
-
-        .connector-calendar .mcs-day--past .mcs-day-number {
-            color: #94a3b8;
-        }
-
-        .connector-calendar .mcs-day-price {
-            align-self: stretch;
-            margin-top: 8px;
-            padding: 6px 8px;
-            border-radius: 6px;
-            background: linear-gradient(135deg, #1e293b 0%, #334155 100%) !important;
-            color: white !important;
-            font-weight: 600 !important;
-            font-size: 12px !important;
-            text-align: center !important;
-            line-height: 1.2 !important;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
-            white-space: nowrap !important;
-            overflow: hidden !important;
-            text-overflow: ellipsis !important;
-            display: block !important;
-            visibility: visible !important;
-            opacity: 1 !important;
-            min-height: 20px !important;
-        }
-
-        .connector-calendar .mcs-day-full-badge {
-            align-self: stretch;
-            margin-top: 8px;
-            padding: 6px 8px;
-            border-radius: 6px;
-            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
-            color: white;
-            font-weight: 600;
-            font-size: 12px;
-            text-align: center;
-            line-height: 1.2;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        /* Responsive Design */
-        @media (max-width: 768px) {
-            .connector-calendar .mpc-calendar-month-title {
-                padding: 16px 20px;
-                font-size: 18px;
-            }
-
-            .connector-calendar .mpc-calendar-day-header {
-                padding: 12px 4px;
-                font-size: 11px;
-            }
-
-            .connector-calendar .mcs-day {
-                min-height: 75px;
-                padding: 8px 6px 6px 6px;
-            }
-
-            .connector-calendar .mcs-day-number {
-                font-size: 14px;
-            }
-
-            .connector-calendar .mcs-day-price {
-                padding: 4px 6px;
-                font-size: 11px;
-                margin-top: 6px;
-            }
-
-            .connector-calendar .mcs-day-full-badge {
-                padding: 4px 6px;
-                font-size: 11px;
-                margin-top: 6px;
-            }
-
-            .connector-calendar .mpc-legend-items {
-                gap: 16px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .connector-calendar .mcs-day {
-                min-height: 65px;
-                padding: 6px 4px 4px 4px;
-            }
-
-            .connector-calendar .mcs-day-number {
-                font-size: 13px;
-            }
-
-            .connector-calendar .mcs-day-price {
-                padding: 3px 4px;
-                font-size: 10px;
-                margin-top: 4px;
-            }
-
-            .connector-calendar .mcs-day-full-badge {
-                padding: 3px 4px;
-                font-size: 10px;
-                margin-top: 4px;
-            }
-
-            .connector-calendar .mpc-calendar-day-header {
-                padding: 10px 2px;
-                font-size: 10px;
-            }
-        }
-
-        /* Navigation buttons */
-        .connector-calendar .mpc-calendar-nav {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            gap: 16px;
-        }
-
-        .connector-calendar .mpc-nav-button {
-            background: #f8f9fa;
-            color: #495057;
-            border: 1px solid #dee2e6;
-            border-radius: 4px;
-            padding: 8px 16px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            transition: all 0.2s ease;
-        }
-
-        .connector-calendar .mpc-nav-button:hover {
-            background: #e9ecef;
-            border-color: #adb5bd;
-            color: #212529;
-        }
-
-        .connector-calendar .mpc-nav-button:disabled {
-            background: #e9ecef;
-            color: #6c757d;
-            cursor: not-allowed;
-            border-color: #dee2e6;
-        }
-
-        .connector-calendar .mpc-nav-icon {
-            font-size: 18px;
-            line-height: 1;
-        }
-
-        .connector-calendar .mpc-calendar-subtitle {
-            text-align: center;
-            font-size: 16px;
-            color: #2c3e50;
-            font-weight: 600;
-            margin-bottom: 20px;
-        }
-        </style>
-
-        <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            <?php
-            $settings = \WP_Minpaku_Connector::get_settings();
-            $portal_url = '';
-            if (!empty($settings['portal_url'])) {
-                if (class_exists('MinpakuConnector\Admin\MPC_Admin_Settings')) {
-                    $portal_url = \MinpakuConnector\Admin\MPC_Admin_Settings::normalize_portal_url($settings['portal_url']);
-                    if ($portal_url === false) {
-                        $portal_url = $settings['portal_url'];
-                    }
-                } else {
-                    $portal_url = $settings['portal_url'];
-                }
-            }
-            ?>
-            var connectorPortalUrl = "<?php echo esc_js(untrailingslashit($portal_url)); ?>";
-
-            var calendar = document.getElementById('<?php echo esc_js($calendar_id); ?>');
-            if (!calendar) return;
-
-            var currentStartMonth = 0;
-            var maxMonths = 12;
-            var visibleMonths = 2;
-
-            var prevBtn = calendar.querySelector('.mpc-nav-prev');
-            var nextBtn = calendar.querySelector('.mpc-nav-next');
-            var monthsGrid = calendar.querySelector('.mpc-calendar-months-grid');
-
-            if (!prevBtn || !nextBtn || !monthsGrid) {
-                console.warn('[ConnectorCalendar] Missing navigation elements');
-                return;
-            }
-
-            function updateNavigation() {
-                prevBtn.disabled = currentStartMonth <= 0;
-                nextBtn.disabled = currentStartMonth + visibleMonths >= maxMonths;
-
-                if (currentStartMonth <= 0) {
-                    prevBtn.classList.add('mpc-nav-disabled');
-                } else {
-                    prevBtn.classList.remove('mpc-nav-disabled');
-                }
-
-                if (currentStartMonth + visibleMonths >= maxMonths) {
-                    nextBtn.classList.add('mpc-nav-disabled');
-                } else {
-                    nextBtn.classList.remove('mpc-nav-disabled');
-                }
-            }
-
-            function generateMonth(monthOffset) {
-                var date = new Date();
-                date.setMonth(date.getMonth() + monthOffset);
-                var year = date.getFullYear();
-                var month = date.getMonth() + 1;
-                var monthTitle = year + '年' + month + '月';
-
-                var monthHtml = '<div class="mpc-calendar-month" data-year="' + year + '" data-month="' + month + '">';
-                monthHtml += '<h3 class="mpc-calendar-month-title">' + monthTitle + '</h3>';
-                monthHtml += '<div class="mpc-calendar-grid">';
-                // Day headers as first row in grid
-                monthHtml += '<div class="mpc-calendar-day-header">日</div>';
-                monthHtml += '<div class="mpc-calendar-day-header">月</div>';
-                monthHtml += '<div class="mpc-calendar-day-header">火</div>';
-                monthHtml += '<div class="mpc-calendar-day-header">水</div>';
-                monthHtml += '<div class="mpc-calendar-day-header">木</div>';
-                monthHtml += '<div class="mpc-calendar-day-header">金</div>';
-                monthHtml += '<div class="mpc-calendar-day-header">土</div>';
-
-                var firstDay = new Date(year, month - 1, 1);
-                var lastDay = new Date(year, month, 0);
-                var startOfWeek = new Date(firstDay);
-                startOfWeek.setDate(startOfWeek.getDate() - firstDay.getDay());
-                var endOfWeek = new Date(lastDay);
-                endOfWeek.setDate(endOfWeek.getDate() + (6 - lastDay.getDay()));
-
-                var currentDate = new Date(startOfWeek);
-
-                while (currentDate <= endOfWeek) {
-                    var isCurrentMonth = currentDate.getMonth() === month - 1;
-                    var isPast = currentDate < new Date().setHours(0, 0, 0, 0);
-                    var dateString = currentDate.toISOString().split('T')[0];
-                    var dayOfWeek = currentDate.getDay();
-
-                    var dayClasses = ['mcs-day'];
-                    if (!isCurrentMonth) dayClasses.push('mcs-day--empty');
-                    if (isPast) dayClasses.push('mcs-day--past');
-
-                    if (isCurrentMonth && !isPast) {
-                        if (dayOfWeek === 0) {
-                            dayClasses.push('mcs-day--sun');
-                        } else if (dayOfWeek === 6) {
-                            dayClasses.push('mcs-day--sat');
-                        } else {
-                            dayClasses.push('mcs-day--weekday');
-                        }
-                    }
-
-                    monthHtml += '<div class="' + dayClasses.join(' ') + '" data-ymd="' + dateString + '">';
-                    monthHtml += '<span class="mcs-day-number">' + currentDate.getDate() + '</span>';
-
-                    if (isCurrentMonth && !isPast) {
-                        var price = 15000;
-                        if (dayOfWeek === 6) price += 2000;
-                        if (dayOfWeek === 0) price += 1000;
-                        monthHtml += '<span class="mcs-day-price">¥' + price.toLocaleString() + '</span>';
-                    }
-
-                    monthHtml += '</div>';
-                    currentDate.setDate(currentDate.getDate() + 1);
-                }
-
-                monthHtml += '</div></div>';
-                return monthHtml;
-            }
-
-            function updateCalendar() {
-                var newHtml = '';
-                for (var i = 0; i < visibleMonths; i++) {
-                    newHtml += generateMonth(currentStartMonth + i);
-                }
-
-                monthsGrid.style.opacity = '0.6';
-                monthsGrid.style.transition = 'opacity 0.3s ease';
-
-                setTimeout(function() {
-                    monthsGrid.innerHTML = newHtml;
-                    monthsGrid.style.opacity = '1';
-                    updateNavigation();
-                }, 150);
-            }
-
-            prevBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                if (currentStartMonth > 0) {
-                    currentStartMonth--;
-                    updateCalendar();
-                }
-            });
-
-            nextBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                if (currentStartMonth + visibleMonths < maxMonths) {
-                    currentStartMonth++;
-                    updateCalendar();
-                }
-            });
-
-            updateNavigation();
-        });
-        </script>
         <?php
+        $calendar_html = ob_get_clean();
 
-        return ob_get_clean();
+        // Include unified quote panel template
+        ob_start();
+        $texts = [
+            'quote_title' => __('見積り', 'wp-minpaku-connector'),
+            'clear_selection' => __('選択をクリア', 'wp-minpaku-connector'),
+            'select_dates_placeholder' => __('日程を選択すると見積が表示されます', 'wp-minpaku-connector'),
+            'loading' => __('読み込み中...', 'wp-minpaku-connector'),
+            'breakdown_title' => __('内訳', 'wp-minpaku-connector'),
+            'accommodation_fee' => __('宿泊料金', 'wp-minpaku-connector'),
+            'cleaning_fee' => __('清掃料金', 'wp-minpaku-connector'),
+            'total_amount' => __('合計金額', 'wp-minpaku-connector'),
+            'final_notice' => __('※ 最終合計は予約時に確定します', 'wp-minpaku-connector'),
+            'error_title' => __('エラー', 'wp-minpaku-connector')
+        ];
+        include plugin_dir_path(__FILE__) . '../../templates/connector/quote-panel.php';
+        $quote_panel_html = ob_get_clean();
+
+        return $calendar_html . $quote_panel_html;
+
+        } catch (\Exception $e) {
+            // Log the error for debugging
+            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                error_log('[ConnectorCalendar] Fatal error: ' . $e->getMessage() . ' in ' . $e->getFile() . ' on line ' . $e->getLine());
+            }
+
+            return '<div class="mpc-error" style="background: #fef2f2; border: 1px solid #fca5a5; color: #b91c1c; padding: 12px; border-radius: 6px; margin: 16px 0;">' .
+                   '<strong>Calendar Error:</strong> ' . esc_html($e->getMessage()) .
+                   '</div>';
+        }
     }
 
     /**
@@ -751,15 +230,16 @@ class MPC_Shortcodes_ConnectorCalendar {
             return intval($_GET['property_id']);
         }
 
-        return 0; // No property ID found
+        return 0; // Default fallback
     }
 
     /**
      * Generate calendar days for a specific month with portal parity
      */
-    private static function generate_calendar_days($year, $month, $property_id, $show_prices, $api) {
-        $first_day = new \DateTime("$year-$month-01");
+    private static function generate_calendar_days($year, $month, $property_id, $show_prices = true) {
+        $first_day = new \DateTime("{$year}-{$month}-01");
         $last_day = new \DateTime($first_day->format('Y-m-t'));
+
         $start_of_week = clone $first_day;
         $start_of_week->modify('last sunday');
 
@@ -773,25 +253,42 @@ class MPC_Shortcodes_ConnectorCalendar {
             $end_of_week->modify('+7 days');
         }
 
-        $current_date = clone $start_of_week;
-        $output = '';
-
-        // Get availability data from portal API
-        $availability_result = $api->get_availability($property_id, 2, null, true);
-        $availability_data = [];
+        // Get availability data from API
+        $api = new \MinpakuConnector\Client\MPC_Client_Api();
+        $availability_result = $api->get_availability($property_id, 2);
 
         if ($availability_result['success']) {
             $availability_data = isset($availability_result['data']) ? $availability_result['data'] : [];
-
         } else {
+            $availability_data = [];
         }
 
-        while ($current_date <= $end_of_week) {
-            $is_current_month = ($current_date->format('n') == $month);
-            $is_past = ($current_date < new \DateTime('today'));
-            $date_string = $current_date->format('Y-m-d');
+        // Extract pricing data from availability result
+        $pricing_data = [];
+        if (isset($availability_result['pricing']) && is_array($availability_result['pricing'])) {
+            foreach ($availability_result['pricing'] as $price_entry) {
+                if (isset($price_entry['date']) && isset($price_entry['price'])) {
+                    $pricing_data[$price_entry['date']] = $price_entry['price'];
+                }
+            }
+            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                error_log('[Connector Calendar] Extracted pricing data: ' . count($pricing_data) . ' prices for property ' . $property_id);
+            }
+        } else {
+            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                error_log('[Connector Calendar] No pricing data found in availability result for property ' . $property_id);
+            }
+        }
 
-            // Get availability status
+        $output = '';
+        $current_date = clone $start_of_week;
+
+        while ($current_date <= $end_of_week) {
+            $date_string = $current_date->format('Y-m-d');
+            $is_current_month = ($current_date->format('Y-m') === $first_day->format('Y-m'));
+            $is_past = ($current_date < new \DateTime('today'));
+
+            // Get availability status for this date
             $availability_status = self::get_availability_status($date_string, $availability_data);
 
             // Get day classification for colors - Portal Parity
@@ -808,13 +305,18 @@ class MPC_Shortcodes_ConnectorCalendar {
                 $cell_classes[] = 'mcs-day--past';
             }
 
+            $inline_day_style = sprintf(
+                'min-height: 70px; padding: 8px 6px 6px 6px; border-right: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; cursor: pointer; background: %s; display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between; overflow: hidden;',
+                esc_attr($day_classification['background_color'])
+            );
+
             $output .= sprintf(
-                '<div class="%s" data-ymd="%s" data-property="%s" data-disabled="%d" style="background-color: %s;">',
+                '<div class="%s" data-ymd="%s" data-property="%s" data-disabled="%d" style="%s">',
                 esc_attr(implode(' ', $cell_classes)),
                 esc_attr($date_string),
                 esc_attr($property_id),
                 $is_disabled ? 1 : 0,
-                esc_attr($day_classification['background_color'])
+                $inline_day_style
             );
 
             $output .= '<span class="mcs-day-number">' . $current_date->format('j') . '</span>';
@@ -822,26 +324,43 @@ class MPC_Shortcodes_ConnectorCalendar {
             // Add price badge for available days, or 満室 badge for booked days
             if ($is_current_month && !$is_past) {
                 if ($availability_status === 'available' && $show_prices) {
-                    // Simple pricing based on day of week
-                    $day_of_week = $current_date->format('w');
-                    $base_price = 15000;
+                    // Use real pricing data if available, otherwise fall back to simple pricing
+                    $price = null;
 
-                    if ($day_of_week == 6) { // Saturday
-                        $price = $base_price + 2000;
-                    } elseif ($day_of_week == 0) { // Sunday
-                        $price = $base_price + 1000;
+                    // First try to get price from pricing data
+                    if (isset($pricing_data[$date_string])) {
+                        $price = $pricing_data[$date_string];
                     } else {
-                        $price = $base_price;
+                        // Try to get price from availability data
+                        foreach ($availability_data as $avail_entry) {
+                            if (isset($avail_entry['date']) && $avail_entry['date'] === $date_string &&
+                                isset($avail_entry['price']) && !empty($avail_entry['price'])) {
+                                $price = $avail_entry['price'];
+                                break;
+                            }
+                        }
+                    }
+
+                    // Fall back to default pricing if no real price found
+                    if ($price === null || $price === '' || $price === 0) {
+                        $day_of_week = $current_date->format('w');
+                        $base_price = self::get_base_price_for_property($property_id);
+                        if ($day_of_week == 6) { // Saturday
+                            $price = $base_price + 2000;
+                        } elseif ($day_of_week == 0) { // Sunday
+                            $price = $base_price + 1000;
+                        } else {
+                            $price = $base_price;
+                        }
                     }
 
                     $output .= '<span class="mcs-day-price" style="background: #1e293b !important; color: white !important; display: block !important;">¥' . number_format($price) . '</span>';
-                } elseif ($availability_status === 'full') {
+                } elseif ($availability_status === 'full' || $availability_status === 'booked') {
                     $output .= '<span class="mcs-day-full-badge">満室</span>';
                 }
             }
 
             $output .= '</div>';
-
             $current_date->add(new \DateInterval('P1D'));
         }
 
@@ -861,11 +380,11 @@ class MPC_Shortcodes_ConnectorCalendar {
                     if (!$available) {
                         switch ($status) {
                             case 'booked':
-                            case 'FULL':
+                            case 'reserved':
                                 return 'full';
-                            case 'partial':
-                            case 'PARTIAL':
-                                return 'pending';
+                            case 'unavailable':
+                            case 'blocked':
+                                return 'unavailable';
                             default:
                                 return 'full';
                         }
@@ -911,17 +430,17 @@ class MPC_Shortcodes_ConnectorCalendar {
                 $background_color = '#eff6ff'; // Light blue
             } else { // Next day is weekday
                 $css_classes[] = 'mcs-day--weekday';
-                $background_color = '#f0fdf4'; // Light green
+                $background_color = '#FFFFFF'; // White
             }
         } elseif ($availability_status === 'full') {
             $css_classes[] = 'mcs-day--booked';
-            $background_color = '#f1f5f9'; // Light gray
+            $background_color = '#f3f4f6'; // Light gray
         }
 
-        return array(
+        return [
             'css_classes' => $css_classes,
             'background_color' => $background_color
-        );
+        ];
     }
 
     /**
@@ -929,850 +448,270 @@ class MPC_Shortcodes_ConnectorCalendar {
      */
     private static function isJapaneseHoliday($date_string) {
         $holidays = [
-            // 2025 holidays
-            '2025-01-01', '2025-01-13', '2025-02-11', '2025-02-23',
-            '2025-03-20', '2025-04-29', '2025-05-03', '2025-05-04',
-            '2025-05-05', '2025-07-21', '2025-08-11', '2025-09-15',
-            '2025-09-23', '2025-10-13', '2025-11-03', '2025-11-23',
-            // 2024 holidays (for historical data)
-            '2024-01-01', '2024-01-08', '2024-02-11', '2024-02-23',
-            '2024-03-20', '2024-04-29', '2024-05-03', '2024-05-04',
-            '2024-05-05', '2024-07-15', '2024-08-11', '2024-09-16',
-            '2024-09-22', '2024-10-14', '2024-11-03', '2024-11-23',
-            // 2026 holidays (for future bookings)
-            '2026-01-01', '2026-01-12', '2026-02-11', '2026-02-23',
-            '2026-03-20', '2026-04-29', '2026-05-03', '2026-05-04',
-            '2026-05-05', '2026-07-20', '2026-08-11', '2026-09-21',
-            '2026-09-22', '2026-10-12', '2026-11-03', '2026-11-23'
+            '2024-01-01', '2024-01-08', '2024-02-11', '2024-02-12', '2024-02-23',
+            '2024-03-20', '2024-04-29', '2024-05-03', '2024-05-04', '2024-05-05',
+            '2024-07-15', '2024-08-11', '2024-08-12', '2024-09-16', '2024-09-22',
+            '2024-09-23', '2024-10-14', '2024-11-03', '2024-11-04', '2024-11-23',
+            '2025-01-01', '2025-01-13', '2025-02-11', '2025-02-23', '2025-02-24',
+            '2025-03-20', '2025-04-29', '2025-05-03', '2025-05-04', '2025-05-05',
+            '2025-07-21', '2025-08-11', '2025-09-15', '2025-09-22', '2025-09-23',
+            '2025-10-13', '2025-11-03', '2025-11-23', '2025-11-24'
         ];
-
         return in_array($date_string, $holidays);
     }
 
     /**
-     * Get price for a specific date with weekend/holiday pricing
+     * Get base price for a property
      */
-    private static function get_price_for_day($date_string, $availability_data, $property_id) {
-        try {
-
-            // First, check the pricing array for date-specific pricing from portal
-            if (isset($availability_data['pricing']) && is_array($availability_data['pricing'])) {
-                foreach ($availability_data['pricing'] as $pricing_data) {
-                    if (isset($pricing_data['date']) && $pricing_data['date'] === $date_string) {
-                        // Check multiple possible price fields
-                        $possible_price_fields = ['price', 'nightly_price', 'total_price', 'base_price', 'amount'];
-                        foreach ($possible_price_fields as $field) {
-                            if (isset($pricing_data[$field]) && is_numeric($pricing_data[$field])) {
-                                $price = floatval($pricing_data[$field]);
-                                if ($price > 0) {
-                                    return $price;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Then check availability array for pricing from portal
-            if (isset($availability_data['availability']) && is_array($availability_data['availability'])) {
-                foreach ($availability_data['availability'] as $day_data) {
-                    if (isset($day_data['date']) && $day_data['date'] === $date_string) {
-                        // Check multiple possible price fields
-                        $possible_price_fields = ['price', 'nightly_price', 'total_price', 'base_price', 'min_price', 'amount'];
-                        foreach ($possible_price_fields as $field) {
-                            if (isset($day_data[$field]) && is_numeric($day_data[$field])) {
-                                $price = floatval($day_data[$field]);
-                                if ($price > 0) {
-                                    return $price;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Check root level pricing data if available
-            if (isset($availability_data['rates']) && is_array($availability_data['rates'])) {
-                foreach ($availability_data['rates'] as $rate_data) {
-                    if (isset($rate_data['date']) && $rate_data['date'] === $date_string) {
-                        $possible_price_fields = ['price', 'nightly_price', 'rate', 'amount'];
-                        foreach ($possible_price_fields as $field) {
-                            if (isset($rate_data[$field]) && is_numeric($rate_data[$field])) {
-                                $price = floatval($rate_data[$field]);
-                                if ($price > 0) {
-                                    return $price;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // If no portal pricing available, return 0 to use local calculation
-            return 0;
-
-        } catch (Exception $e) {
-            return 0;
-        }
+    private static function get_base_price_for_property($property_id) {
+        return 15000; // Default base price
     }
 
     /**
-     * Detect if portal pricing is uniform (all the same price)
-     * If all prices are the same, it likely means the portal is returning
-     * pre-calculated uniform pricing instead of dynamic weekend/holiday pricing
+     * Render properties list
      */
-    private static function detect_uniform_portal_pricing($availability_data, $current_price) {
-        $all_prices = [];
+    private static function render_properties_list($atts) {
+        $limit = max(1, min(50, intval($atts['limit'])));
 
-        // Collect all prices from pricing array
-        if (isset($availability_data['pricing']) && is_array($availability_data['pricing'])) {
-            foreach ($availability_data['pricing'] as $pricing_data) {
-                $possible_price_fields = ['price', 'nightly_price', 'total_price', 'base_price', 'amount'];
-                foreach ($possible_price_fields as $field) {
-                    if (isset($pricing_data[$field]) && is_numeric($pricing_data[$field])) {
-                        $price = floatval($pricing_data[$field]);
-                        if ($price > 0) {
-                            $all_prices[] = $price;
-                            break; // Use first valid price found for this date
-                        }
-                    }
-                }
-            }
+        if (!class_exists('MinpakuConnector\Client\MPC_Client_Api')) {
+            return '<div class="mpc-error" style="background: #fef2f2; border: 1px solid #fca5a5; color: #b91c1c; padding: 12px; border-radius: 6px; margin: 16px 0;">' .
+                   __('API client not available.', 'wp-minpaku-connector') .
+                   '</div>';
         }
 
-        // Collect prices from availability array
-        if (isset($availability_data['availability']) && is_array($availability_data['availability'])) {
-            foreach ($availability_data['availability'] as $day_data) {
-                $possible_price_fields = ['price', 'nightly_price', 'total_price', 'base_price', 'min_price', 'amount'];
-                foreach ($possible_price_fields as $field) {
-                    if (isset($day_data[$field]) && is_numeric($day_data[$field])) {
-                        $price = floatval($day_data[$field]);
-                        if ($price > 0) {
-                            $all_prices[] = $price;
-                            break; // Use first valid price found for this date
-                        }
-                    }
-                }
-            }
+        $api = new \MinpakuConnector\Client\MPC_Client_Api();
+        if (!$api->is_configured()) {
+            return '<div class="mpc-error" style="background: #fef2f2; border: 1px solid #fca5a5; color: #b91c1c; padding: 12px; border-radius: 6px; margin: 16px 0;">' .
+                   __('Portal connection not configured. Please check the connector settings.', 'wp-minpaku-connector') .
+                   '</div>';
         }
 
-        // If we have multiple prices, check if they're all the same
-        if (count($all_prices) >= 3) { // Need at least 3 data points to detect uniformity
-            $unique_prices = array_unique($all_prices);
-            $is_uniform = (count($unique_prices) === 1);
-
-
-            return $is_uniform;
+        $properties_response = $api->get_properties();
+        if (!$properties_response['success']) {
+            return '<div class="mpc-error" style="background: #fef2f2; border: 1px solid #fca5a5; color: #b91c1c; padding: 12px; border-radius: 6px; margin: 16px 0;">' .
+                   __('Failed to load properties: ', 'wp-minpaku-connector') . esc_html($properties_response['message'] ?? 'Unknown error') .
+                   '</div>';
         }
 
-        // If we have insufficient data, assume non-uniform (use portal pricing)
-        return false;
-    }
+        $properties = isset($properties_response['data']) ? $properties_response['data'] : [];
 
-    /**
-     * Get property pricing data from portal API
-     */
-    private static function get_property_pricing_data($property_id) {
-        try {
-            // Check if API client is available
-            if (!class_exists('MinpakuConnector\Client\MPC_Client_Api')) {
-                return null;
-            }
-
-            $api = new \MinpakuConnector\Client\MPC_Client_Api();
-            if (!$api->is_configured()) {
-                return null;
-            }
-
-            // Get property details which should include pricing data
-            $response = $api->get_property($property_id);
-            if (!$response['success']) {
-                return null;
-            }
-
-            $property_data = $response['data'];
-
-            // Extract pricing information from property data
-            $pricing_data = [];
-
-            // Check if pricing is directly in property data
-            if (isset($property_data['pricing'])) {
-                $pricing_data = $property_data['pricing'];
-            }
-            // Check for meta pricing data
-            elseif (isset($property_data['meta']['pricing'])) {
-                $pricing_data = $property_data['meta']['pricing'];
-            }
-            // Check for individual pricing fields
-            else {
-                $pricing_data = [
-                    'base_nightly_price' => isset($property_data['base_nightly_price']) ? $property_data['base_nightly_price'] : (isset($property_data['meta']['base_nightly_price']) ? $property_data['meta']['base_nightly_price'] : null),
-                    'eve_surcharge_sat' => isset($property_data['eve_surcharge_sat']) ? $property_data['eve_surcharge_sat'] : (isset($property_data['meta']['eve_surcharge_sat']) ? $property_data['meta']['eve_surcharge_sat'] : null),
-                    'eve_surcharge_sun' => isset($property_data['eve_surcharge_sun']) ? $property_data['eve_surcharge_sun'] : (isset($property_data['meta']['eve_surcharge_sun']) ? $property_data['meta']['eve_surcharge_sun'] : null),
-                    'eve_surcharge_holiday' => isset($property_data['eve_surcharge_holiday']) ? $property_data['eve_surcharge_holiday'] : (isset($property_data['meta']['eve_surcharge_holiday']) ? $property_data['meta']['eve_surcharge_holiday'] : null),
-                    'seasonal_rules' => isset($property_data['seasonal_rules']) ? $property_data['seasonal_rules'] : (isset($property_data['meta']['seasonal_rules']) ? $property_data['meta']['seasonal_rules'] : [])
-                ];
-            }
-
-            // Validate that we have at least base pricing
-            if (empty($pricing_data['base_nightly_price']) && !isset($pricing_data['base_nightly_price'])) {
-                return null;
-            }
-
-            return $pricing_data;
-
-        } catch (Exception $e) {
-            return null;
-        }
-    }
-
-    /**
-     * Apply seasonal rules (portal parity) using REAL property data
-     * Returns seasonal price if rule applies, otherwise returns base price
-     */
-    private static function applySeasonalRules($date_string, $base_price, $seasonal_rules) {
-        if (empty($seasonal_rules) || !is_array($seasonal_rules)) {
-            return $base_price;
+        if (empty($properties)) {
+            return '<div class="mpc-notice" style="background: #fef9e7; border: 1px solid #f59e0b; color: #92400e; padding: 12px; border-radius: 6px; margin: 16px 0;">' .
+                   __('No properties found.', 'wp-minpaku-connector') .
+                   '</div>';
         }
 
-        foreach ($seasonal_rules as $rule) {
-            if (!isset($rule['date_from']) || !isset($rule['date_to']) || !isset($rule['mode']) || !isset($rule['amount'])) {
-                continue;
-            }
-
-            if ($date_string >= $rule['date_from'] && $date_string <= $rule['date_to']) {
-                $amount = floatval($rule['amount']);
-
-                if ($rule['mode'] === 'override') {
-                    return $amount;
-                } elseif ($rule['mode'] === 'add') {
-                    $seasonal_price = $base_price + $amount;
-                    return $seasonal_price;
-                }
-            }
+        // Inline CSS for immediate layout
+        $inline_styles = '
+        <style>
+        .mpc-properties-grid {
+            display: grid !important;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)) !important;
+            gap: 20px !important;
+            margin: 20px 0 !important;
         }
-
-        return $base_price; // No seasonal rule applies
-    }
-
-    /**
-     * Calculate local pricing for date with portal parity logic
-     * Follows exact portal pricing priorities: Seasonal > Eve Surcharge > Base
-     * Uses REAL property pricing data from portal
-     */
-    private static function calculate_local_pricing_for_date($date_string, $property_id) {
-        try {
-            // Get REAL pricing data from portal for this property
-            $pricing_data = self::get_property_pricing_data($property_id);
-
-            if (!$pricing_data) {
-                // Fallback rates if API fails
-                $base_price = 15000.0;
-                $eve_surcharges = ['sat' => 2000, 'sun' => 1000, 'holiday' => 1500];
-                $seasonal_rules = [];
-            } else {
-                $base_price = floatval(isset($pricing_data['base_nightly_price']) ? $pricing_data['base_nightly_price'] : 15000.0);
-                $eve_surcharges = [
-                    'sat' => floatval(isset($pricing_data['eve_surcharge_sat']) ? $pricing_data['eve_surcharge_sat'] : 2000),
-                    'sun' => floatval(isset($pricing_data['eve_surcharge_sun']) ? $pricing_data['eve_surcharge_sun'] : 1000),
-                    'holiday' => floatval(isset($pricing_data['eve_surcharge_holiday']) ? $pricing_data['eve_surcharge_holiday'] : 1500)
-                ];
-                $seasonal_rules = isset($pricing_data['seasonal_rules']) ? $pricing_data['seasonal_rules'] : [];
-            }
-
-            // 日付解析（チェックイン日）
-            $checkin_date = new \DateTime($date_string);
-
-            // 1. PRIORITY 1: Check for seasonal rules first (highest priority)
-            $seasonal_price = self::applySeasonalRules($date_string, $base_price, $seasonal_rules);
-            if ($seasonal_price !== $base_price) {
-                // Seasonal rule applied, don't add eve surcharges (portal parity)
-                return $seasonal_price;
-            }
-
-            // 2. PRIORITY 2: Check for eve surcharges (next day logic)
-            $checkout_date = clone $checkin_date;
-            $checkout_date->add(new \DateInterval('P1D'));
-
-            $checkout_day_of_week = (int)$checkout_date->format('w'); // 0 = Sunday, 6 = Saturday
-            $checkout_date_string = $checkout_date->format('Y-m-d');
-            $is_checkout_holiday = self::isJapaneseHoliday($checkout_date_string);
-
-            // Calculate eve surcharge based on next day
-            $surcharge = 0;
-            $surcharge_reason = 'next-day-weekday';
-
-            // Check if tomorrow is holiday (highest priority for eve surcharges)
-            if ($is_checkout_holiday) {
-                $surcharge = $eve_surcharges['holiday'];
-                $surcharge_reason = 'next-day-holiday';
-            }
-            // Check if tomorrow is Saturday
-            elseif ($checkout_day_of_week === 6) {
-                $surcharge = $eve_surcharges['sat'];
-                $surcharge_reason = 'next-day-saturday';
-            }
-            // Check if tomorrow is Sunday
-            elseif ($checkout_day_of_week === 0) {
-                $surcharge = $eve_surcharges['sun'];
-                $surcharge_reason = 'next-day-sunday';
-            }
-
-            $final_price = $base_price + $surcharge;
-
-            return $final_price;
-
-        } catch (Exception $e) {
-            // エラー時は基本料金のみ返す
-            $property_base_rates = [17 => 18000.0, 16 => 16000.0, 15 => 14000.0];
-            return isset($property_base_rates[$property_id]) ? $property_base_rates[$property_id] : 15000.0;
+        .mpc-property-card {
+            border: 1px solid #ddd !important;
+            border-radius: 8px !important;
+            padding: 20px !important;
+            background: white !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
         }
-    }
-
-    /**
-     * Apply seasonal rules to base price
-     */
-    private static function apply_seasonal_rules_to_price($date, $base_price, $seasonal_rules) {
-        if (empty($seasonal_rules) || !is_array($seasonal_rules)) {
-            return $base_price;
+        .mpc-property-title {
+            font-size: 18px !important;
+            font-weight: bold !important;
+            margin-bottom: 10px !important;
+            color: #333 !important;
         }
-
-        foreach ($seasonal_rules as $rule) {
-            if (!isset($rule['date_from']) || !isset($rule['date_to']) || !isset($rule['mode']) || !isset($rule['amount'])) {
-                continue;
-            }
-
-            $date_from = $rule['date_from'];
-            $date_to = $rule['date_to'];
-
-            // Check if date falls within this rule's range
-            if ($date >= $date_from && $date <= $date_to) {
-                $amount = floatval($rule['amount']);
-
-                if ($rule['mode'] === 'override') {
-                    return $amount; // Replace base price
-                } elseif ($rule['mode'] === 'add') {
-                    return $base_price + $amount; // Add to base price
-                }
-            }
+        .mpc-property-meta {
+            font-size: 14px !important;
+            color: #666 !important;
+            margin-bottom: 10px !important;
         }
-
-        return $base_price; // No seasonal rule applied
-    }
-
-    /**
-     * Get pricing settings
-     */
-    private static function get_pricing_settings() {
-        if (class_exists('MinpakuConnector\Admin\MPC_Admin_Settings')) {
-            return \MinpakuConnector\Admin\MPC_Admin_Settings::get_pricing_settings();
+        .mpc-property-summary {
+            font-size: 14px !important;
+            color: #555 !important;
+            margin-bottom: 15px !important;
+            line-height: 1.4 !important;
         }
-
-        // Fallback defaults with proper weekend/holiday surcharges
-        return array(
-            'base_nightly_price' => 15000,
-            'cleaning_fee_per_booking' => 3000,
-            'eve_surcharge_sat' => 2000,
-            'eve_surcharge_sun' => 1000,
-            'eve_surcharge_holiday' => 1500,
-            'seasonal_rules' => array(),
-            'blackout_ranges' => array()
-        );
-    }
-
-    /**
-     * Render modal calendar button
-     */
-    private static function render_modal_button($property_id, $months, $show_prices, $property_title, $interactions = 'modern') {
-        // Enqueue modal scripts and styles
-        self::enqueue_modal_assets();
-
-        $button_id = 'connector-calendar-btn-' . uniqid();
+        .mpc-property-amenities {
+            margin-bottom: 15px !important;
+        }
+        .mpc-amenity-tag {
+            display: inline-block !important;
+            background: #f0f0f0 !important;
+            padding: 2px 8px !important;
+            border-radius: 4px !important;
+            font-size: 11px !important;
+            margin: 2px 4px 2px 0 !important;
+        }
+        .mpc-property-actions {
+            text-align: center !important;
+        }
+        .mpc-property-external-btn {
+            display: inline-block !important;
+            padding: 8px 16px !important;
+            background: #007cba !important;
+            color: white !important;
+            text-decoration: none !important;
+            border-radius: 4px !important;
+            font-size: 14px !important;
+        }
+        .mpc-property-external-btn:hover {
+            background: #005a87 !important;
+        }
+        </style>';
 
         ob_start();
+        echo $inline_styles;
         ?>
-        <div class="connector-calendar-modal-wrapper">
-            <div class="connector-calendar-button-container">
-                <button id="<?php echo esc_attr($button_id); ?>"
-                        class="connector-calendar-modal-button"
-                        data-property-id="<?php echo esc_attr($property_id); ?>"
-                        data-property-title="<?php echo esc_attr($property_title); ?>"
-                        data-months="<?php echo esc_attr($months); ?>"
-                        data-show-prices="<?php echo $show_prices ? '1' : '0'; ?>">
-                    <span class="connector-calendar-icon">📅</span>
-                    <span class="connector-calendar-text"><?php echo esc_html__('カレンダーを表示', 'wp-minpaku-connector'); ?></span>
-                </button>
-            </div>
-        </div>
+        <div class="mpc-properties-grid">
+            <?php foreach (array_slice($properties, 0, $limit) as $property) { ?>
+                <?php
+                $property_id = isset($property['id']) ? $property['id'] : 0;
+                $property_title = isset($property['title']) ? $property['title'] : (isset($property['name']) ? $property['name'] : __('Untitled Property', 'wp-minpaku-connector'));
+                $property_summary = isset($property['excerpt']) ? $property['excerpt'] : (isset($property['description']) ? $property['description'] : (isset($property['content']) ? $property['content'] : ''));
 
-        <!-- Modal Structure -->
-        <div id="connector-calendar-modal-<?php echo esc_attr($property_id); ?>" class="connector-calendar-modal-overlay" style="display: none;">
-            <div class="connector-calendar-modal-content">
-                <div class="connector-calendar-modal-header">
-                    <h3 class="connector-calendar-modal-title"><?php echo esc_html($property_title); ?> - <?php echo esc_html__('空室カレンダー', 'wp-minpaku-connector'); ?></h3>
-                    <button class="connector-calendar-modal-close">&times;</button>
-                </div>
-                <div class="connector-calendar-modal-body">
-                    <div class="connector-calendar-modal-loading">
-                        <div class="connector-calendar-loading-spinner"></div>
-                        <p><?php echo esc_html__('カレンダーを読み込み中...', 'wp-minpaku-connector'); ?></p>
+                // Debug: Log property data structure for troubleshooting
+                if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                    error_log('[Connector Properties List] Property #' . ($property['id'] ?? 'unknown') . ' data keys: ' . implode(', ', array_keys($property)));
+                    if (isset($property['meta']) && is_array($property['meta'])) {
+                        error_log('[Connector Properties List] Property #' . ($property['id'] ?? 'unknown') . ' meta keys: ' . implode(', ', array_keys($property['meta'])));
+                    }
+                    if (isset($property['acf']) && is_array($property['acf'])) {
+                        error_log('[Connector Properties List] Property #' . ($property['id'] ?? 'unknown') . ' acf keys: ' . implode(', ', array_keys($property['acf'])));
+                    }
+                    // Log any field containing 'url', 'link', 'bathroom', 'bath'
+                    $debug_fields = [];
+                    foreach ($property as $key => $value) {
+                        if (stripos($key, 'url') !== false || stripos($key, 'link') !== false ||
+                            stripos($key, 'bathroom') !== false || stripos($key, 'bath') !== false) {
+                            $debug_fields[$key] = $value;
+                        }
+                    }
+                    if (!empty($debug_fields)) {
+                        error_log('[Connector Properties List] Property #' . ($property['id'] ?? 'unknown') . ' relevant fields: ' . print_r($debug_fields, true));
+                    }
+                }
+
+                // Enhanced external URL detection with actual field names from logs
+                $external_url = '';
+                $external_button_text = '';
+
+                // Check for _mcs_external_detail_url in meta (from debug logs)
+                if (isset($property['meta']['_mcs_external_detail_url']) && !empty($property['meta']['_mcs_external_detail_url'])) {
+                    $external_url = $property['meta']['_mcs_external_detail_url'];
+                }
+
+                // Check for button text
+                if (isset($property['meta']['_mcs_external_button_text']) && !empty($property['meta']['_mcs_external_button_text'])) {
+                    $external_button_text = $property['meta']['_mcs_external_button_text'];
+                }
+
+                // Fallback URL keys if the primary ones don't exist
+                if (empty($external_url)) {
+                    $url_keys = [
+                        'external_detail_url', 'external_url', 'detail_url', 'booking_url', 'property_url', 'link_url', 'website_url', 'site_url',
+                        'meta.external_detail_url', 'meta.external_url', 'meta.detail_url', 'meta.booking_url', 'meta.property_url', 'meta.link_url', 'meta.website_url', 'meta.site_url',
+                        'acf.external_detail_url', 'acf.external_url', 'acf.detail_url', 'acf.booking_url', 'acf.property_url', 'acf.link_url', 'acf.website_url', 'acf.site_url'
+                    ];
+
+                    foreach ($url_keys as $key) {
+                        if (strpos($key, '.') !== false) {
+                            list($parent, $child) = explode('.', $key, 2);
+                            if (isset($property[$parent][$child]) && !empty($property[$parent][$child])) {
+                                $external_url = $property[$parent][$child];
+                                break;
+                            }
+                        } else {
+                            if (isset($property[$key]) && !empty($property[$key])) {
+                                $external_url = $property[$key];
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // Default button text if not specified
+                if (empty($external_button_text)) {
+                    $external_button_text = '外部サイトで見る';
+                }
+
+                // Enhanced property data extraction with more fallbacks
+                $amenities = $property['amenities'] ?? $property['meta']['amenities'] ?? $property['acf']['amenities'] ?? array();
+                $max_guests = $property['max_guests'] ?? $property['meta']['max_guests'] ?? $property['acf']['max_guests'] ?? $property['capacity'] ?? $property['guest_capacity'] ?? $property['定員'] ?? '';
+                $bedrooms = $property['bedrooms'] ?? $property['meta']['bedrooms'] ?? $property['acf']['bedrooms'] ?? $property['bedroom_count'] ?? $property['寝室数'] ?? '';
+                $bathrooms = $property['bathrooms'] ?? $property['meta']['bathrooms'] ?? $property['acf']['bathrooms'] ?? $property['bathroom_count'] ?? $property['バスルーム数'] ?? $property['bath_count'] ?? $property['baths'] ?? '';
+                $living_rooms = $property['living_rooms'] ?? $property['meta']['living_rooms'] ?? $property['acf']['living_rooms'] ?? $property['living_room_count'] ?? $property['リビング数'] ?? '';
+                $floor_size = $property['floor_size'] ?? $property['meta']['floor_size'] ?? $property['acf']['floor_size'] ?? $property['size'] ?? $property['area'] ?? $property['広さ'] ?? '';
+                ?>
+                <div class="mpc-property-card">
+                    <h3 class="mpc-property-title"><?php echo esc_html($property_title); ?></h3>
+
+                    <?php if ($max_guests || $bedrooms || $bathrooms || $living_rooms || $floor_size) { ?>
+                        <div class="mpc-property-meta">
+                            <?php
+                            $meta_items = [];
+                            if ($max_guests) {
+                                $meta_items[] = sprintf(__('最大 %d名', 'wp-minpaku-connector'), intval($max_guests));
+                            }
+                            if ($bedrooms) {
+                                $meta_items[] = sprintf(__('%d寝室', 'wp-minpaku-connector'), intval($bedrooms));
+                            }
+                            if ($bathrooms) {
+                                $meta_items[] = sprintf(__('%dバスルーム', 'wp-minpaku-connector'), intval($bathrooms));
+                            }
+                            if ($living_rooms) {
+                                $meta_items[] = sprintf(__('%dリビング', 'wp-minpaku-connector'), intval($living_rooms));
+                            }
+                            if ($floor_size) {
+                                $meta_items[] = sprintf(__('%s㎡', 'wp-minpaku-connector'), esc_html($floor_size));
+                            }
+                            echo implode(' • ', $meta_items);
+                            ?>
+                        </div>
+                    <?php } ?>
+
+                    <?php if ($property_summary) { ?>
+                        <div class="mpc-property-summary">
+                            <?php echo esc_html(wp_trim_words($property_summary, 20)); ?>
+                        </div>
+                    <?php } ?>
+
+                    <?php if (!empty($amenities) && is_array($amenities)) { ?>
+                        <div class="mpc-property-amenities">
+                            <?php foreach (array_slice($amenities, 0, 5) as $amenity) { ?>
+                                <span class="mpc-amenity-tag"><?php echo esc_html($amenity); ?></span>
+                            <?php } ?>
+                            <?php if (count($amenities) > 5) { ?>
+                                <span class="mpc-amenity-tag">+<?php echo count($amenities) - 5; ?></span>
+                            <?php } ?>
+                        </div>
+                    <?php } ?>
+
+                    <div class="mpc-property-actions">
+                        <?php if ($external_url) { ?>
+                            <a href="<?php echo esc_url($external_url); ?>"
+                               class="mpc-property-external-btn"
+                               target="_blank"
+                               rel="noopener">
+                                <?php echo esc_html($external_button_text); ?>
+                            </a>
+                        <?php } else { ?>
+                            <span class="mpc-property-external-btn" style="background: #6c757d !important; cursor: not-allowed !important;">
+                                <?php _e('外部URLが未設定', 'wp-minpaku-connector'); ?>
+                            </span>
+                        <?php } ?>
                     </div>
-                    <div class="connector-calendar-modal-calendar-content" style="display: none;"></div>
                 </div>
-            </div>
+            <?php } ?>
         </div>
-
-        <style>
-        .connector-calendar-modal-wrapper {
-            margin: 20px 0;
-        }
-
-        .connector-calendar-modal-button {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        .connector-calendar-modal-button:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-        }
-
-        .connector-calendar-icon {
-            font-size: 18px;
-        }
-
-        .connector-calendar-modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            z-index: 999999;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .connector-calendar-modal-content {
-            background: white;
-            border-radius: 12px;
-            max-width: 90vw;
-            max-height: 90vh;
-            width: 900px;
-            overflow: hidden;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-        }
-
-        .connector-calendar-modal-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 20px 24px;
-            border-bottom: 1px solid #eee;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-
-        .connector-calendar-modal-title {
-            margin: 0;
-            font-size: 18px;
-            font-weight: 600;
-        }
-
-        .connector-calendar-modal-close {
-            background: none;
-            border: none;
-            font-size: 24px;
-            color: white;
-            cursor: pointer;
-            padding: 4px;
-            border-radius: 4px;
-            transition: background-color 0.2s ease;
-            line-height: 1;
-        }
-
-        .connector-calendar-modal-close:hover {
-            background: rgba(255, 255, 255, 0.2);
-        }
-
-        .connector-calendar-modal-body {
-            padding: 24px;
-            max-height: calc(90vh - 80px);
-            overflow-y: auto;
-        }
-
-        .connector-calendar-modal-loading {
-            text-align: center;
-            padding: 40px;
-        }
-
-        .connector-calendar-loading-spinner {
-            width: 40px;
-            height: 40px;
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #667eea;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 16px;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        body.connector-calendar-modal-open {
-            overflow: hidden;
-        }
-        </style>
-
-        <script>
-        document.addEventListener('DOMContentLoaded', function() {
-
-            // Modal button click handler
-            var button = document.getElementById('<?php echo esc_js($button_id); ?>');
-            if (button) {
-                button.addEventListener('click', function(e) {
-                    e.preventDefault();
-
-                    var propertyId = this.getAttribute('data-property-id');
-                    var propertyTitle = this.getAttribute('data-property-title');
-                    var months = this.getAttribute('data-months');
-                    var showPrices = this.getAttribute('data-show-prices');
-
-                    openConnectorCalendarModal(propertyId, propertyTitle, months, showPrices);
-                });
-            }
-
-            // Modal close handlers
-            document.addEventListener('click', function(e) {
-                if (e.target.classList.contains('connector-calendar-modal-close') ||
-                    e.target.classList.contains('connector-calendar-modal-overlay')) {
-                    closeConnectorCalendarModal();
-                }
-            });
-
-            // ESC key handler
-            document.addEventListener('keydown', function(e) {
-                if (e.key === 'Escape') {
-                    closeConnectorCalendarModal();
-                }
-            });
-        });
-
-        function openConnectorCalendarModal(propertyId, propertyTitle, months, showPrices) {
-            var modal = document.getElementById('connector-calendar-modal-' + propertyId);
-
-            if (!modal) {
-                return;
-            }
-
-            var loadingDiv = modal.querySelector('.connector-calendar-modal-loading');
-            var contentDiv = modal.querySelector('.connector-calendar-modal-calendar-content');
-
-            // Show modal
-            modal.style.display = 'flex';
-            document.body.classList.add('connector-calendar-modal-open');
-
-            // Show loading
-            if (loadingDiv) loadingDiv.style.display = 'block';
-            if (contentDiv) {
-                contentDiv.style.display = 'none';
-                contentDiv.innerHTML = '';
-            }
-
-            // Generate calendar content via AJAX
-            setTimeout(function() {
-                var formData = new FormData();
-                formData.append('action', 'connector_calendar_modal_content');
-                formData.append('property_id', propertyId);
-                formData.append('months', months);
-                formData.append('show_prices', showPrices);
-                formData.append('nonce', '<?php echo wp_create_nonce('connector_calendar_modal'); ?>');
-
-                fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (loadingDiv) loadingDiv.style.display = 'none';
-                    if (data.success) {
-                        if (contentDiv) {
-                            contentDiv.innerHTML = data.data;
-                            contentDiv.style.display = 'block';
-                        }
-                    } else {
-                        if (contentDiv) {
-                            contentDiv.innerHTML = '<div class="connector-calendar-error">カレンダーの読み込みに失敗しました。</div>';
-                            contentDiv.style.display = 'block';
-                        }
-                    }
-                })
-                .catch(error => {
-                    if (loadingDiv) loadingDiv.style.display = 'none';
-                    if (contentDiv) {
-                        contentDiv.innerHTML = '<div class="connector-calendar-error">ネットワークエラーが発生しました。</div>';
-                        contentDiv.style.display = 'block';
-                    }
-                });
-            }, 100);
-        }
-
-        function closeConnectorCalendarModal() {
-            var modals = document.querySelectorAll('.connector-calendar-modal-overlay');
-            modals.forEach(function(modal) {
-                if (modal.style.display !== 'none') {
-                    modal.style.display = 'none';
-                }
-            });
-            document.body.classList.remove('connector-calendar-modal-open');
-        }
-        </script>
         <?php
         return ob_get_clean();
     }
 
     /**
-     * Enqueue modal assets
-     */
-    private static function enqueue_modal_assets() {
-        // Enqueue jQuery if not already loaded
-        wp_enqueue_script('jquery');
-    }
-
-    /**
-     * AJAX handler for modal calendar content
-     */
-    public static function ajax_modal_content() {
-        // Verify nonce
-        if (!wp_verify_nonce(isset($_POST['nonce']) ? $_POST['nonce'] : '', 'mpc_calendar_nonce')) {
-            wp_send_json_error('Invalid nonce');
-            return;
-        }
-
-        $property_id = intval(isset($_POST['property_id']) ? $_POST['property_id'] : 0);
-        $months = intval(isset($_POST['months']) ? $_POST['months'] : 2);
-        $show_prices = true; // Always show prices in modal
-
-        if (!$property_id) {
-            wp_send_json_error('Invalid property ID');
-            return;
-        }
-
-        // Generate calendar content with CSS included for modal
-        ob_start();
-
-        // Include CSS for modal display
-        echo '<style>';
-        echo self::get_calendar_css();
-        echo '</style>';
-
-        // Include JavaScript for modal display
-        echo '<script>';
-        echo self::get_calendar_javascript();
-        echo '</script>';
-
-        // Generate calendar HTML
-        $calendar_html = self::render_calendar([
-            'property_id' => $property_id,
-            'months' => $months,
-            'show_prices' => $show_prices ? 'true' : 'false',
-            'modal' => 'false' // Prevent recursive modal rendering
-        ]);
-
-        // Remove the style and script tags from the calendar HTML since we're adding them separately
-        $calendar_html = preg_replace('/<style[^>]*>.*?<\/style>/is', '', $calendar_html);
-        $calendar_html = preg_replace('/<script[^>]*>.*?<\/script>/is', '', $calendar_html);
-
-        echo $calendar_html;
-
-        $calendar_content = ob_get_clean();
-
-        wp_send_json_success($calendar_content);
-    }
-
-    /**
-     * Get calendar CSS
-     */
-    private static function get_calendar_css() {
-        return '
-        .connector-calendar {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
-        }
-
-        .connector-calendar .mpc-calendar-container {
-            max-width: 100%;
-            margin: 0;
-        }
-
-
-        .connector-calendar .mpc-calendar-month-title {
-            background: #f8f9fa;
-            color: #495057;
-            margin: 0;
-            padding: 16px 20px;
-            text-align: center;
-            font-size: 18px;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-            border-bottom: 1px solid #dee2e6;
-        }
-
-        .connector-calendar .mpc-calendar-grid {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 0;
-            background: #fafafa;
-        }
-
-        .connector-calendar .mpc-calendar-header {
-            display: contents;
-        }
-
-        .connector-calendar .mpc-calendar-day-header {
-            background: #f8fafc;
-            color: #64748b;
-            padding: 16px 8px;
-            text-align: center;
-            font-weight: 600;
-            font-size: 13px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            border-bottom: 2px solid #e2e8f0;
-            border-right: 1px solid #e2e8f0;
-        }
-
-        .connector-calendar .mcs-day {
-            position: relative;
-            min-height: 80px;
-            padding: 8px 6px 6px 6px;
-            border-right: 1px solid #dee2e6;
-            border-bottom: 1px solid #dee2e6;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            background: white;
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            justify-content: space-between;
-            overflow: hidden;
-        }
-
-        .connector-calendar .mcs-day:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            z-index: 2;
-        }
-
-        .connector-calendar .mcs-day--weekday {
-            background: #f0fdf4 !important;
-            border-left: 3px solid #22c55e;
-        }
-
-        .connector-calendar .mcs-day--sat {
-            background: #eff6ff !important;
-            border-left: 3px solid #3b82f6;
-        }
-
-        .connector-calendar .mcs-day--sun {
-            background: #fef2f2 !important;
-            border-left: 3px solid #ef4444;
-        }
-
-        .connector-calendar .mcs-day--full,
-        .connector-calendar .mcs-day--blackout {
-            background: #f1f5f9 !important;
-            cursor: not-allowed !important;
-            opacity: 0.6;
-            border-left: 3px solid #64748b;
-        }
-
-        .connector-calendar .mcs-day-number {
-            font-weight: 700;
-            font-size: 16px;
-            line-height: 1.2;
-            color: #1e293b;
-            margin-bottom: auto;
-        }
-
-        .connector-calendar .mcs-day-price {
-            align-self: stretch;
-            margin-top: 8px;
-            padding: 6px 8px;
-            border-radius: 6px;
-            background: linear-gradient(135deg, #1e293b 0%, #334155 100%) !important;
-            color: white !important;
-            font-weight: 600 !important;
-            font-size: 12px !important;
-            text-align: center !important;
-            line-height: 1.2 !important;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
-            white-space: nowrap !important;
-            overflow: hidden !important;
-            text-overflow: ellipsis !important;
-            display: block !important;
-            visibility: visible !important;
-            opacity: 1 !important;
-            min-height: 20px !important;
-        }
-
-        .connector-calendar .mcs-day-full-badge {
-            align-self: stretch;
-            margin-top: 8px;
-            padding: 6px 8px;
-            border-radius: 6px;
-            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
-            color: white;
-            font-weight: 600;
-            font-size: 12px;
-            text-align: center;
-            line-height: 1.2;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        ';
-    }
-
-    /**
-     * Get calendar JavaScript
-     */
-    private static function get_calendar_javascript() {
-        $settings = \WP_Minpaku_Connector::get_settings();
-        $portal_url = '';
-        if (!empty($settings['portal_url'])) {
-            if (class_exists('MinpakuConnector\Admin\MPC_Admin_Settings')) {
-                $portal_url = \MinpakuConnector\Admin\MPC_Admin_Settings::normalize_portal_url($settings['portal_url']);
-                if ($portal_url === false) {
-                    $portal_url = $settings['portal_url'];
-                }
-            } else {
-                $portal_url = $settings['portal_url'];
-            }
-        }
-
-        return '
-        // Ensure portal URL is available
-        var connectorPortalUrl = "' . esc_js(untrailingslashit($portal_url)) . '";
-
-        // Direct navigation removed - clicks now handled by unified calendar interactions
-        ';
-    }
-
-    /**
-     * Enqueue modern unified assets
+     * Enqueue modern assets
      */
     private static function enqueue_modern_assets() {
         // Use absolute plugin URL for reliability
@@ -1818,350 +757,47 @@ class MPC_Shortcodes_ConnectorCalendar {
                 true
             );
 
-            // Localize script for connector with debug support
-            $is_admin = current_user_can('manage_options');
-            wp_localize_script(
-                'wpmc-calendar-interactions',
-                'wpmcCalendarData',
-                [
-                    'restUrl' => rest_url('minpaku-connector/v1/'),
-                    'nonce' => wp_create_nonce('wp_rest'),
-                    'isAdmin' => $is_admin,
-                    'texts' => [
-                        'loading' => __('読み込み中...', 'wp-minpaku-connector'),
-                        'nightsLabel' => __('泊', 'wp-minpaku-connector'),
-                        'adultsLabel' => __('大人', 'wp-minpaku-connector'),
-                        'childrenLabel' => __('子供', 'wp-minpaku-connector'),
-                        'totalLabel' => __('合計金額', 'wp-minpaku-connector'),
-                        'getQuoteLabel' => __('見積を取得', 'wp-minpaku-connector'),
-                        'clearSelectionLabel' => __('選択をクリア', 'wp-minpaku-connector'),
-                        'bookingDisabled' => __('予約機能は準備中です', 'wp-minpaku-connector'),
-                        'quotePreview' => __('見積プレビュー', 'wp-minpaku-connector'),
-                        'accommodationFee' => __('宿泊料金', 'wp-minpaku-connector'),
-                        'cleaningFee' => __('清掃料金', 'wp-minpaku-connector'),
-                        'extraGuestFee' => __('追加人数料金', 'wp-minpaku-connector'),
-                        'errorTitle' => __('エラー', 'wp-minpaku-connector'),
-                        'dateUnavailable' => __('この日程は満室です', 'wp-minpaku-connector'),
-                        'occupancyExceeded' => __('定員を超えています', 'wp-minpaku-connector'),
-                        'networkError' => __('ネットワークエラーが発生しました', 'wp-minpaku-connector'),
-                        'selectDates' => __('日程を選択すると見積が表示されます', 'wp-minpaku-connector'),
-                        'clearSelection' => __('選択をクリア', 'wp-minpaku-connector')
-                    ]
-                ]
-            );
+            // Pass portal URL and settings to JavaScript
+            $settings = \WP_Minpaku_Connector::get_settings();
+            $portal_url = '';
+            if (!empty($settings['portal_url'])) {
+                if (class_exists('MinpakuConnector\Admin\MPC_Admin_Settings')) {
+                    $portal_url = \MinpakuConnector\Admin\MPC_Admin_Settings::normalize_portal_url($settings['portal_url']);
+                    if ($portal_url === false) {
+                        $portal_url = $settings['portal_url'];
+                    }
+                } else {
+                    $portal_url = $settings['portal_url'];
+                }
+            }
+
+            wp_localize_script('wpmc-calendar-interactions', 'wpmc_calendar_settings', [
+                'ajax_url' => admin_url('admin-ajax.php'),
+                'portal_url' => $portal_url,
+                'quote_api_url' => rest_url('minpaku-connector/v1/quote'),
+                'nonce' => wp_create_nonce('mpc_calendar_nonce')
+            ]);
         }
     }
 
     /**
-     * Enqueue legacy assets
+     * Enqueue legacy assets (fallback)
      */
     private static function enqueue_legacy_assets() {
         // Legacy calendar CSS (simplified)
-        $legacy_css_file = plugin_dir_url(__FILE__) . '../../assets/css/wpmc-calendar.css';
-        $legacy_css_path = plugin_dir_path(__FILE__) . '../../assets/css/wpmc-calendar.css';
+        $plugin_url = untrailingslashit(plugin_dir_url(__FILE__ . '/../..'));
+        $plugin_path = untrailingslashit(plugin_dir_path(__FILE__ . '/../..'));
+
+        $legacy_css_file = $plugin_url . '/assets/css/calendar.css';
+        $legacy_css_path = $plugin_path . '/assets/css/calendar.css';
 
         if (file_exists($legacy_css_path)) {
             wp_enqueue_style(
-                'wpmc-calendar-legacy',
+                'mpc-legacy-calendar',
                 $legacy_css_file,
                 [],
                 filemtime($legacy_css_path)
             );
         }
-
-        // Legacy JavaScript - basic navigation only
-        wp_add_inline_script('jquery', '
-            jQuery(document).ready(function($) {
-                // Basic legacy calendar navigation
-                $(".connector-calendar .mcs-day:not(.mcs-day--disabled)").on("click", function() {
-                    var propertyId = $(this).closest(".connector-calendar").data("property-id");
-                    var dateYmd = $(this).data("ymd");
-
-                    // Legacy behavior: navigate to booking form
-                    if (propertyId && dateYmd) {
-                        var bookingUrl = "/new-booking?property=" + propertyId + "&date=" + dateYmd;
-                        window.location.href = bookingUrl;
-                    }
-                });
-            });
-        ');
-    }
-
-    /**
-     * Render properties list
-     */
-    private static function render_properties_list($atts) {
-        $limit = max(1, min(50, intval($atts['limit'])));
-        $columns = max(1, min(4, intval($atts['columns'])));
-
-        // Check API configuration
-        if (!class_exists('MinpakuConnector\Client\MPC_Client_Api')) {
-            return '<div class="mpc-error" style="background: #fef2f2; border: 1px solid #fca5a5; color: #b91c1c; padding: 12px; border-radius: 6px; margin: 16px 0;">' .
-                   __('API client not available.', 'wp-minpaku-connector') .
-                   '</div>';
-        }
-
-        $api = new \MinpakuConnector\Client\MPC_Client_Api();
-        if (!$api->is_configured()) {
-            return '<div class="mpc-error" style="background: #fef2f2; border: 1px solid #fca5a5; color: #b91c1c; padding: 12px; border-radius: 6px; margin: 16px 0;">' .
-                   __('Portal connection not configured. Please check the connector settings.', 'wp-minpaku-connector') .
-                   '</div>';
-        }
-
-        // Get properties from portal
-        $properties_response = $api->get_properties(['per_page' => $limit]);
-
-        if (!$properties_response['success']) {
-            return '<div class="mpc-error" style="background: #fef2f2; border: 1px solid #fca5a5; color: #b91c1c; padding: 12px; border-radius: 6px; margin: 16px 0;">' .
-                   __('Failed to load properties. Please check your connection settings.', 'wp-minpaku-connector') .
-                   '</div>';
-        }
-
-        $properties = isset($properties_response['data']) ? $properties_response['data'] : [];
-
-        if (empty($properties)) {
-            return '<div class="mpc-notice" style="background: #fff3cd; border: 1px solid #ffeaa7; color: #856404; padding: 12px; border-radius: 6px; margin: 16px 0;">' .
-                   __('No properties found.', 'wp-minpaku-connector') .
-                   '</div>';
-        }
-
-        // Inline styles for reliable display
-        $inline_styles = '
-        <style>
-            .mpc-properties-grid {
-                display: grid !important;
-                grid-template-columns: repeat(' . $columns . ', 1fr) !important;
-                gap: 20px !important;
-                margin: 20px 0 !important;
-                max-width: 100% !important;
-            }
-            @media (max-width: 768px) {
-                .mpc-properties-grid {
-                    grid-template-columns: 1fr !important;
-                    gap: 15px !important;
-                }
-            }
-            .mpc-property-card {
-                border: 1px solid #e5e7eb !important;
-                border-radius: 8px !important;
-                padding: 20px !important;
-                background: white !important;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
-                transition: transform 0.2s ease !important;
-                display: block !important;
-                width: 100% !important;
-                box-sizing: border-box !important;
-            }
-            .mpc-property-card:hover {
-                transform: translateY(-2px) !important;
-                box-shadow: 0 8px 20px rgba(0,0,0,0.15) !important;
-            }
-            .mpc-property-title {
-                font-size: 18px !important;
-                font-weight: 600 !important;
-                margin: 0 0 10px 0 !important;
-                color: #1f2937 !important;
-                line-height: 1.3 !important;
-            }
-            .mpc-property-summary {
-                color: #6b7280 !important;
-                margin-bottom: 15px !important;
-                line-height: 1.5 !important;
-                font-size: 14px !important;
-            }
-            .mpc-property-external-btn {
-                display: inline-block !important;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-                color: white !important;
-                text-decoration: none !important;
-                padding: 12px 24px !important;
-                border-radius: 6px !important;
-                font-weight: 500 !important;
-                transition: all 0.2s ease !important;
-                border: none !important;
-                cursor: pointer !important;
-                font-size: 14px !important;
-            }
-            .mpc-property-external-btn:hover {
-                transform: translateY(-1px) !important;
-                box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3) !important;
-                color: white !important;
-                text-decoration: none !important;
-            }
-            .mpc-property-external-btn:visited {
-                color: white !important;
-            }
-            .mpc-property-meta {
-                margin-bottom: 15px !important;
-                font-size: 13px !important;
-                color: #9ca3af !important;
-            }
-            .mpc-property-amenities {
-                margin: 10px 0 15px 0 !important;
-            }
-            .mpc-amenity-tag {
-                display: inline-block !important;
-                background: #f3f4f6 !important;
-                color: #374151 !important;
-                padding: 3px 8px !important;
-                border-radius: 4px !important;
-                font-size: 11px !important;
-                margin: 2px 4px 2px 0 !important;
-            }
-        </style>';
-
-        ob_start();
-        echo $inline_styles;
-        ?>
-        <div class="mpc-properties-grid">
-            <?php foreach (array_slice($properties, 0, $limit) as $property): ?>
-                <?php
-                $property_id = isset($property['id']) ? $property['id'] : 0;
-                $property_title = isset($property['title']) ? $property['title'] : (isset($property['name']) ? $property['name'] : __('Untitled Property', 'wp-minpaku-connector'));
-                $property_summary = isset($property['excerpt']) ? $property['excerpt'] : (isset($property['description']) ? $property['description'] : (isset($property['content']) ? $property['content'] : ''));
-                $external_url = isset($property['external_detail_url']) ? $property['external_detail_url'] : (isset($property['external_url']) ? $property['external_url'] : '');
-                $amenities = isset($property['amenities']) ? $property['amenities'] : array();
-                $max_guests = isset($property['max_guests']) ? $property['max_guests'] : '';
-                $bedrooms = isset($property['bedrooms']) ? $property['bedrooms'] : '';
-                ?>
-                <div class="mpc-property-card">
-                    <h3 class="mpc-property-title"><?php echo esc_html($property_title); ?></h3>
-
-                    <?php if ($max_guests || $bedrooms): ?>
-                        <div class="mpc-property-meta">
-                            <?php if ($max_guests): ?>
-                                <?php printf(__('最大 %d名', 'wp-minpaku-connector'), intval($max_guests)); ?>
-                            <?php endif; ?>
-                            <?php if ($bedrooms): ?>
-                                <?php if ($max_guests): echo ' • '; ?>
-                                <?php printf(__('%d寝室', 'wp-minpaku-connector'), intval($bedrooms)); ?>
-                            <?php endif; ?>
-                        </div>
-                    <?php endif; ?>
-
-                    <?php if ($property_summary): ?>
-                        <div class="mpc-property-summary">
-                            <?php echo esc_html(wp_trim_words($property_summary, 20)); ?>
-                        </div>
-                    <?php endif; ?>
-
-                    <?php if (!empty($amenities) && is_array($amenities)): ?>
-                        <div class="mpc-property-amenities">
-                            <?php foreach (array_slice($amenities, 0, 5) as $amenity): ?>
-                                <span class="mpc-amenity-tag"><?php echo esc_html($amenity); ?></span>
-                            <?php endforeach; ?>
-                            <?php if (count($amenities) > 5): ?>
-                                <span class="mpc-amenity-tag">+<?php echo count($amenities) - 5; ?></span>
-                            <?php endif; ?>
-                        </div>
-                    <?php endif; ?>
-
-                    <?php if ($external_url): ?>
-                        <a href="<?php echo esc_url($external_url); ?>"
-                           class="mpc-property-external-btn"
-                           target="_blank"
-                           rel="noopener">
-                            <?php _e('外部サイトで見る', 'wp-minpaku-connector'); ?>
-                        </a>
-                    <?php else: ?>
-                        <span class="mpc-property-external-btn" style="background: #6c757d !important; cursor: not-allowed !important;">
-                            <?php _e('外部URLが未設定', 'wp-minpaku-connector'); ?>
-                        </span>
-                    <?php endif; ?>
-                </div>
-            <?php endforeach; ?>
-        </div>
-        <?php
-        return ob_get_clean();
-    }
-
-    /**
-     * Render property detail
-     */
-    private static function render_property_detail($atts) {
-        $property_id = self::get_property_id($atts['property_id']);
-
-        if (!$property_id) {
-            return '<div class="mpc-error" style="background: #fef2f2; border: 1px solid #fca5a5; color: #b91c1c; padding: 12px; border-radius: 6px; margin: 16px 0;">' .
-                   __('Property ID is required for property detail display. Please specify property_id="X" in the shortcode.', 'wp-minpaku-connector') .
-                   '</div>';
-        }
-
-        // Check API configuration
-        if (!class_exists('MinpakuConnector\Client\MPC_Client_Api')) {
-            return '<div class="mpc-error" style="background: #fef2f2; border: 1px solid #fca5a5; color: #b91c1c; padding: 12px; border-radius: 6px; margin: 16px 0;">' .
-                   __('API client not available.', 'wp-minpaku-connector') .
-                   '</div>';
-        }
-
-        $api = new \MinpakuConnector\Client\MPC_Client_Api();
-        if (!$api->is_configured()) {
-            return '<div class="mpc-error" style="background: #fef2f2; border: 1px solid #fca5a5; color: #b91c1c; padding: 12px; border-radius: 6px; margin: 16px 0;">' .
-                   __('Portal connection not configured. Please check the connector settings.', 'wp-minpaku-connector') .
-                   '</div>';
-        }
-
-        // Get property details from portal
-        $property_response = $api->get_property($property_id);
-
-        if (!$property_response['success']) {
-            return '<div class="mpc-error" style="background: #fef2f2; border: 1px solid #fca5a5; color: #b91c1c; padding: 12px; border-radius: 6px; margin: 16px 0;">' .
-                   sprintf(__('Failed to load property %d. Please check your connection settings.', 'wp-minpaku-connector'), $property_id) .
-                   '</div>';
-        }
-
-        $property = $property_response['data'];
-
-        ob_start();
-        ?>
-        <div class="mpc-property-detail">
-            <h2><?php echo esc_html(isset($property['title']) ? $property['title'] : __('Property Details', 'wp-minpaku-connector')); ?></h2>
-
-            <?php if (!empty($property['content'])): ?>
-                <div class="mpc-property-content">
-                    <?php echo wp_kses_post($property['content']); ?>
-                </div>
-            <?php endif; ?>
-
-            <?php if (!empty($property['amenities'])): ?>
-                <div class="mpc-property-amenities">
-                    <h3><?php _e('Amenities', 'wp-minpaku-connector'); ?></h3>
-                    <div class="mpc-amenities-list">
-                        <?php foreach ($property['amenities'] as $amenity): ?>
-                            <span class="mpc-amenity-tag"><?php echo esc_html($amenity); ?></span>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-            <?php endif; ?>
-        </div>
-
-        <style>
-        .mpc-property-detail {
-            margin: 20px 0;
-            padding: 20px;
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
-            background: white;
-        }
-        .mpc-property-content {
-            margin: 15px 0;
-            line-height: 1.6;
-        }
-        .mpc-amenities-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-top: 10px;
-        }
-        .mpc-amenity-tag {
-            background: #f3f4f6;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 12px;
-            color: #374151;
-        }
-        </style>
-        <?php
-        return ob_get_clean();
     }
 }
