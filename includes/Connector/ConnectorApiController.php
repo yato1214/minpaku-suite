@@ -197,19 +197,17 @@ class ConnectorApiController
                     'maximum' => 20,
                     'sanitize_callback' => 'absint'
                 ],
-                'infants' => [
+                'pets' => [
                     'required' => false,
                     'default' => 0,
                     'type' => 'integer',
                     'minimum' => 0,
-                    'maximum' => 10,
+                    'maximum' => 5,
                     'sanitize_callback' => 'absint'
                 ],
-                'currency' => [
+                'addons' => [
                     'required' => false,
-                    'default' => 'JPY',
                     'type' => 'string',
-                    'enum' => ['JPY', 'USD', 'EUR', 'CNY'],
                     'sanitize_callback' => 'sanitize_text_field'
                 ]
             ]
@@ -611,32 +609,71 @@ class ConnectorApiController
             $checkout = $request->get_param('checkout');
             $adults = $request->get_param('adults');
             $children = $request->get_param('children');
-            $infants = $request->get_param('infants');
-            $currency = $request->get_param('currency');
+            $pets = $request->get_param('pets') ?: 0;
+            $addons_param = $request->get_param('addons');
+
+            // Parse addons parameter (JSON string)
+            $addons = [];
+            if (!empty($addons_param)) {
+                $decoded_addons = json_decode($addons_param, true);
+                if (is_array($decoded_addons)) {
+                    $addons = $decoded_addons;
+                }
+            }
 
             // Debug logging
             $debug_message = '[' . date('Y-m-d H:i:s') . '] Quote request: property_id=' . $property_id .
                 ', checkin=' . $checkin . ', checkout=' . $checkout .
-                ', adults=' . $adults . ', children=' . $children . ', infants=' . $infants .
-                ', currency=' . $currency . PHP_EOL;
+                ', adults=' . $adults . ', children=' . $children . ', pets=' . $pets .
+                ', addons=' . json_encode($addons) . PHP_EOL;
             file_put_contents($debug_file, $debug_message, FILE_APPEND | LOCK_EX);
 
             // Verify property exists
             $property = get_post($property_id);
             if (!$property || $property->post_type !== 'mcs_property') {
                 return new \WP_REST_Response([
-                    'success' => false,
-                    'message' => __('Property not found.', 'minpaku-suite'),
+                    'error' => __('物件が見つかりません。', 'minpaku-suite'),
                     'code' => 'property_not_found'
-                ], 404);
+                ], 422);
+            }
+
+            // Calculate nights
+            $checkin_date = new \DateTime($checkin);
+            $checkout_date = new \DateTime($checkout);
+            $nights = $checkin_date->diff($checkout_date)->days;
+
+            // Validate dates
+            if ($checkin >= $checkout) {
+                return new \WP_REST_Response([
+                    'error' => __('チェックアウト日はチェックイン日より後である必要があります。', 'minpaku-suite'),
+                    'code' => 'invalid_dates'
+                ], 422);
+            }
+
+            if ($nights > 366) {
+                return new \WP_REST_Response([
+                    'error' => __('最大宿泊期間は366日です。', 'minpaku-suite'),
+                    'code' => 'max_nights_exceeded'
+                ], 422);
+            }
+
+            // Check occupancy limits
+            $max_occupancy = intval(get_post_meta($property_id, 'capacity', true) ?: 10);
+            $base_occupancy = intval(get_post_meta($property_id, 'base_capacity', true) ?: $max_occupancy);
+            $total_guests = $adults + $children;
+
+            if ($total_guests > $max_occupancy) {
+                return new \WP_REST_Response([
+                    'error' => sprintf(__('ベース定員を超えています。最大定員は %d 名です。', 'minpaku-suite'), $max_occupancy),
+                    'code' => 'occupancy_exceeded'
+                ], 422);
             }
 
             // Check cache first
-            $context = new \MinpakuSuite\Pricing\RateContext(
-                $property_id, $checkin, $checkout, $adults, $children, $infants, $currency
+            $cache_key = sprintf(
+                'connector_quote_%d_%s_%s_%d_%d_%d_%s',
+                $property_id, $checkin, $checkout, $adults, $children, $pets, md5(json_encode($addons))
             );
-
-            $cache_key = $context->getCacheKey();
             $cached_quote = get_transient($cache_key);
 
             if ($cached_quote !== false && defined('WP_DEBUG') && !WP_DEBUG) {
@@ -646,25 +683,92 @@ class ConnectorApiController
                 return new \WP_REST_Response($cached_quote, 200);
             }
 
+            // Use existing pricing engine with infants = 0 for compatibility
+            $context = new \MinpakuSuite\Pricing\RateContext(
+                $property_id, $checkin, $checkout, $adults, $children, 0, 'JPY'
+            );
+
+            // Check availability first
+            if (class_exists('MinpakuSuite\Availability\AvailabilityService')) {
+                $availability_map = \MinpakuSuite\Availability\AvailabilityService::getPropertyOccupancyMap(
+                    $property_id, $checkin, $checkout
+                );
+
+                foreach ($availability_map as $date => $status) {
+                    if ($status === \MinpakuSuite\Availability\AvailabilityService::STATUS_FULL) {
+                        return new \WP_REST_Response([
+                            'error' => sprintf(__('選択された日程は満室です: %s', 'minpaku-suite'), $date),
+                            'code' => 'dates_not_available'
+                        ], 422);
+                    }
+                }
+            }
+
             // Create pricing engine and calculate quote
             $engine = new \MinpakuSuite\Pricing\PricingEngine($context);
             $quote = $engine->calculateQuote();
 
-            // Transform to API response format
+            // Calculate breakdown for each night
+            $breakdown = [];
+            $current_date = clone $checkin_date;
+            $base_nightly_total = 0;
+
+            while ($current_date < $checkout_date) {
+                $date_string = $current_date->format('Y-m-d');
+
+                // Get nightly price from RateRules
+                $daily_rate = $engine->getRules()->getDailyRate($current_date);
+                $breakdown[] = [
+                    'date' => $date_string,
+                    'nightly_price' => intval($daily_rate)
+                ];
+                $base_nightly_total += $daily_rate;
+
+                $current_date->add(new \DateInterval('P1D'));
+            }
+
+            // Calculate fees
+            $cleaning_fee = intval($engine->getFees()->cleaning_fee);
+            $extra_guest_total = intval($engine->getFees()->calculateExtraGuestFee($total_guests, $nights));
+
+            // Calculate addons (simplified for now)
+            $addons_total = 0;
+            $addons_breakdown = [];
+            foreach ($addons as $addon) {
+                if (isset($addon['code']) && isset($addon['qty'])) {
+                    // This would need to be implemented based on actual addon system
+                    $addon_amount = 0; // Placeholder
+                    $addons_breakdown[] = [
+                        'code' => $addon['code'],
+                        'label' => $addon['code'], // Would be localized
+                        'qty' => intval($addon['qty']),
+                        'pricing_model' => 'per_booking', // Default
+                        'amount' => $addon_amount,
+                        'subtotal' => $addon_amount * intval($addon['qty'])
+                    ];
+                    $addons_total += $addon_amount * intval($addon['qty']);
+                }
+            }
+
+            // Calculate total
+            $total = intval($base_nightly_total + $cleaning_fee + $extra_guest_total + $addons_total);
+
+            // Build response according to spec
             $response = [
-                'currency' => $quote['currency'],
-                'nights' => $quote['nights'],
-                'guests' => $quote['guests'],
-                'dates' => $quote['dates'],
-                'line_items' => $quote['line_items'],
-                'taxes' => $quote['taxes'],
-                'total_excl_tax' => $quote['totals']['total_excl_tax'],
-                'total_incl_tax' => $quote['totals']['total_incl_tax'],
-                'constraints' => $quote['constraints']
+                'nights' => $nights,
+                'currency' => 'JPY',
+                'breakdown' => $breakdown,
+                'base_nightly_total' => intval($base_nightly_total),
+                'cleaning_fee' => $cleaning_fee,
+                'extra_guest_total' => $extra_guest_total,
+                'addons_total' => $addons_total,
+                'addons_breakdown' => $addons_breakdown,
+                'total' => $total,
+                'notes' => []
             ];
 
             // Cache the response for 60 seconds (only for stays <= 31 days)
-            if ($context->nights <= 31) {
+            if ($nights <= 31) {
                 set_transient($cache_key, $response, 60);
             }
 
@@ -677,26 +781,24 @@ class ConnectorApiController
             return new \WP_REST_Response($response, 200);
 
         } catch (\InvalidArgumentException $e) {
-            // Validation errors (400)
+            // Validation errors (422)
             $debug_message = '[' . date('Y-m-d H:i:s') . '] Quote validation error: ' . $e->getMessage() . PHP_EOL;
             file_put_contents($debug_file, $debug_message, FILE_APPEND | LOCK_EX);
 
             return new \WP_REST_Response([
-                'success' => false,
-                'message' => $e->getMessage(),
+                'error' => $e->getMessage(),
                 'code' => 'validation_error'
-            ], 400);
+            ], 422);
 
         } catch (\DomainException $e) {
-            // Business logic errors - constraints/availability (409)
+            // Business logic errors - constraints/availability (422)
             $debug_message = '[' . date('Y-m-d H:i:s') . '] Quote constraint error: ' . $e->getMessage() . PHP_EOL;
             file_put_contents($debug_file, $debug_message, FILE_APPEND | LOCK_EX);
 
             return new \WP_REST_Response([
-                'success' => false,
-                'message' => $e->getMessage(),
+                'error' => $e->getMessage(),
                 'code' => 'constraint_violation'
-            ], 409);
+            ], 422);
 
         } catch (\Exception $e) {
             // System errors (500)
@@ -706,8 +808,7 @@ class ConnectorApiController
             file_put_contents($debug_file, $debug_message, FILE_APPEND | LOCK_EX);
 
             return new \WP_REST_Response([
-                'success' => false,
-                'message' => __('Unable to generate quote. Please try again later.', 'minpaku-suite'),
+                'error' => __('見積の生成に失敗しました。しばらくしてから再度お試しください。', 'minpaku-suite'),
                 'code' => 'quote_generation_error'
             ], 500);
         }
@@ -792,20 +893,14 @@ class ConnectorApiController
      */
     private static function process_property_shortcodes(string $content, int $property_id): string
     {
-        // Replace [mcs_availability] with [mcs_availability id="property_id"]
+        // Replace [mcs_availability] with [portal_calendar property_id="property_id"]
         $content = preg_replace_callback(
             '/\[mcs_availability([^\]]*)\]/',
             function ($matches) use ($property_id) {
                 $attributes = $matches[1];
 
-                // Check if id parameter is already set
-                if (strpos($attributes, 'id=') !== false) {
-                    return $matches[0]; // Return unchanged if id is already set
-                }
-
-                // Add the property id to the shortcode
-                $new_attributes = trim($attributes . ' id="' . $property_id . '"');
-                return '[mcs_availability' . ($new_attributes ? ' ' . $new_attributes : ' id="' . $property_id . '"') . ']';
+                // Convert to portal_calendar shortcode
+                return '[portal_calendar property_id="' . $property_id . '" months="4" show_prices="true"' . $attributes . ']';
             },
             $content
         );
@@ -871,11 +966,30 @@ class ConnectorApiController
     }
 
     /**
-     * Get price for a specific date
+     * Get price for a specific date with seasonal rules and eve surcharges
      */
     private static function get_price_for_date(int $property_id, string $date_str): int
     {
-        return self::get_unified_display_price($property_id);
+        // Use the same pricing calculation as portal calendar
+        if (class_exists('MinpakuSuite\Calendar\DayClassifier')) {
+            $calculated_price = \MinpakuSuite\Calendar\DayClassifier::calculatePriceForDate($date_str, $property_id);
+
+            // Debug logging for pricing calculation
+            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                error_log("[minpaku-suite] Price calculation for property {$property_id} on {$date_str}: ¥{$calculated_price}");
+            }
+
+            return $calculated_price;
+        }
+
+        // Fallback to unified display price
+        $fallback_price = self::get_unified_display_price($property_id);
+
+        if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+            error_log("[minpaku-suite] Using fallback price for property {$property_id} on {$date_str}: ¥{$fallback_price}");
+        }
+
+        return $fallback_price;
     }
 
     /**

@@ -1,0 +1,530 @@
+/*
+ * WP Minpaku Connector - Responsive Availability Calendar
+ * PC: 2-column grid, Mobile: 1-column grid
+ */
+
+/* Main Calendar Container */
+.wpmc-availability {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+    max-width: 100%;
+    margin: 20px 0;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+/* Navigation Header */
+.wpmc-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.wpmc-nav__prev,
+.wpmc-nav__next {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 80px;
+}
+
+.wpmc-nav__prev:hover,
+.wpmc-nav__next:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-1px);
+}
+
+.wpmc-nav__prev:disabled,
+.wpmc-nav__next:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.wpmc-nav__prev:disabled:hover,
+.wpmc-nav__next:disabled:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: none;
+}
+
+.wpmc-nav__icon {
+    font-size: 18px;
+    font-weight: bold;
+    line-height: 1;
+}
+
+.wpmc-nav__label {
+    text-align: center;
+    flex: 1;
+    margin: 0 20px;
+}
+
+.wpmc-nav__title {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0 0 4px 0;
+    letter-spacing: 0.5px;
+}
+
+.wpmc-nav__date-range {
+    font-size: 14px;
+    opacity: 0.9;
+    font-weight: 400;
+}
+
+/* Calendar Grid - Responsive Layout */
+.wpmc-calendar-grid {
+    display: grid;
+    grid-template-columns: 1fr; /* Mobile: 1 column */
+    gap: 16px;
+    padding: 24px;
+    background: #fafafa;
+}
+
+/* PC Layout: 2 columns (min-width: 768px) */
+@media (min-width: 768px) {
+    .wpmc-calendar-grid {
+        grid-template-columns: repeat(2, 1fr); /* PC: 2 columns */
+        gap: 24px;
+        padding: 32px;
+    }
+}
+
+/* Individual Month Container */
+.wpmc-month {
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border: 1px solid #e5e7eb;
+    transition: transform 0.2s ease;
+}
+
+.wpmc-month:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+/* Month Header */
+.wpmc-month__header {
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    padding: 16px 20px;
+    text-align: center;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.wpmc-month__title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1e293b;
+    margin: 0;
+    letter-spacing: 0.5px;
+}
+
+/* Calendar Day Headers */
+.wpmc-calendar__headers {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.wpmc-calendar__header {
+    padding: 12px 8px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 12px;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-right: 1px solid #e2e8f0;
+}
+
+.wpmc-calendar__header:last-child {
+    border-right: none;
+}
+
+/* Calendar Week Rows */
+.wpmc-calendar__week {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+}
+
+/* Calendar Day Cells */
+.wpmc-day {
+    position: relative;
+    min-height: 70px;
+    padding: 8px 6px;
+    border-right: 1px solid #e2e8f0;
+    border-bottom: 1px solid #e2e8f0;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    text-align: center;
+    overflow: hidden;
+}
+
+.wpmc-day:nth-child(7n) {
+    border-right: none;
+}
+
+.wpmc-day:hover {
+    background: #f1f5f9;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    z-index: 2;
+}
+
+/* Day Number */
+.wpmc-day__number {
+    font-weight: 700;
+    font-size: 14px;
+    line-height: 1.2;
+    color: #1e293b;
+    margin-bottom: 4px;
+    display: block;
+}
+
+/* Price Badge */
+.wpmc-day__price {
+    font-size: 10px;
+    font-weight: 600;
+    color: white;
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    padding: 3px 6px;
+    border-radius: 3px;
+    white-space: nowrap;
+    line-height: 1;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    margin-top: auto;
+    min-width: 45px;
+}
+
+/* Day States */
+.wpmc-day--outside-month {
+    background: #f8fafc !important;
+    color: #cbd5e1;
+    cursor: default;
+    opacity: 0.5;
+}
+
+.wpmc-day--outside-month:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+.wpmc-day--available {
+    background: #f0fdf4 !important;
+    border-left: 3px solid #22c55e;
+}
+
+.wpmc-day--available:hover {
+    background: #dcfce7 !important;
+}
+
+.wpmc-day--occupied {
+    background: #fef2f2 !important;
+    border-left: 3px solid #ef4444;
+    cursor: not-allowed;
+}
+
+.wpmc-day--occupied:hover {
+    background: #fee2e2 !important;
+    transform: none;
+}
+
+.wpmc-day--pending {
+    background: #fffbeb !important;
+    border-left: 3px solid #f59e0b;
+}
+
+.wpmc-day--pending:hover {
+    background: #fef3c7 !important;
+}
+
+.wpmc-day--closed {
+    background: #f1f5f9 !important;
+    border-left: 3px solid #64748b;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.wpmc-day--closed:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+.wpmc-day--past {
+    background: #f8fafc !important;
+    color: #94a3b8;
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.wpmc-day--past:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+/* Selected State */
+.wpmc-day--selected {
+    background: #dbeafe !important;
+    border: 2px solid #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.wpmc-day--range-start,
+.wpmc-day--range-end {
+    background: #1e40af !important;
+    color: white;
+}
+
+.wpmc-day--range-middle {
+    background: #bfdbfe !important;
+    border-color: #3b82f6;
+}
+
+/* Quote Panel */
+.wpmc-quote-panel {
+    margin-top: 20px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e5e7eb;
+    overflow: hidden;
+}
+
+.wpmc-quote-panel__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.wpmc-quote-panel__title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1e293b;
+    margin: 0;
+}
+
+.wpmc-quote-panel__close {
+    background: none;
+    border: none;
+    font-size: 20px;
+    color: #64748b;
+    cursor: pointer;
+    padding: 4px;
+    line-height: 1;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.wpmc-quote-panel__close:hover {
+    background: #e2e8f0;
+    color: #1e293b;
+}
+
+.wpmc-quote-panel__content {
+    padding: 20px;
+}
+
+/* Loading State */
+.wpmc-loading {
+    text-align: center;
+    padding: 40px 20px;
+    color: #64748b;
+}
+
+.wpmc-loading__spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid #e2e8f0;
+    border-top: 3px solid #667eea;
+    border-radius: 50%;
+    animation: wpmc-spin 1s linear infinite;
+    margin: 0 auto 16px;
+}
+
+@keyframes wpmc-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.wpmc-loading__text {
+    font-size: 14px;
+    margin: 0;
+}
+
+/* Error State */
+.wpmc-error {
+    background: #fef2f2;
+    border: 1px solid #fca5a5;
+    color: #b91c1c;
+    padding: 16px;
+    border-radius: 8px;
+    margin: 16px 0;
+}
+
+.wpmc-error--availability {
+    max-width: 600px;
+}
+
+/* Mobile Optimizations */
+@media (max-width: 767px) {
+    .wpmc-nav {
+        flex-direction: column;
+        gap: 12px;
+        padding: 16px 20px;
+        text-align: center;
+    }
+
+    .wpmc-nav__label {
+        order: -1;
+        margin: 0;
+    }
+
+    .wpmc-nav__prev,
+    .wpmc-nav__next {
+        min-width: 60px;
+        padding: 8px 12px;
+        font-size: 13px;
+    }
+
+    .wpmc-nav__text {
+        display: none;
+    }
+
+    .wpmc-nav__icon {
+        font-size: 20px;
+    }
+
+    .wpmc-calendar-grid {
+        padding: 16px;
+        gap: 16px;
+    }
+
+    .wpmc-day {
+        min-height: 60px;
+        padding: 6px 4px;
+    }
+
+    .wpmc-day__number {
+        font-size: 13px;
+    }
+
+    .wpmc-day__price {
+        font-size: 9px;
+        padding: 2px 4px;
+        min-width: 40px;
+    }
+
+    .wpmc-month__header {
+        padding: 12px 16px;
+    }
+
+    .wpmc-month__title {
+        font-size: 14px;
+    }
+
+    .wpmc-calendar__header {
+        padding: 10px 4px;
+        font-size: 11px;
+    }
+}
+
+/* Accessibility Improvements */
+.wpmc-day:focus {
+    outline: 2px solid #667eea;
+    outline-offset: -2px;
+    z-index: 3;
+}
+
+.wpmc-nav__prev:focus,
+.wpmc-nav__next:focus {
+    outline: 2px solid rgba(255, 255, 255, 0.5);
+    outline-offset: 2px;
+}
+
+/* Color Universal Design - Additional indicators beyond color */
+.wpmc-day--available::after {
+    content: "○";
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    font-size: 8px;
+    color: #22c55e;
+    font-weight: bold;
+}
+
+.wpmc-day--occupied::after {
+    content: "×";
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    font-size: 8px;
+    color: #ef4444;
+    font-weight: bold;
+}
+
+.wpmc-day--pending::after {
+    content: "?";
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    font-size: 8px;
+    color: #f59e0b;
+    font-weight: bold;
+}
+
+.wpmc-day--closed::after {
+    content: "－";
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    font-size: 8px;
+    color: #64748b;
+    font-weight: bold;
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+    .wpmc-day {
+        border-width: 2px;
+    }
+
+    .wpmc-day--available {
+        border-left-width: 4px;
+    }
+
+    .wpmc-day--occupied {
+        border-left-width: 4px;
+    }
+
+    .wpmc-day--pending {
+        border-left-width: 4px;
+    }
+
+    .wpmc-day--closed {
+        border-left-width: 4px;
+    }
+}

@@ -73,3 +73,13 @@ logs/
 Thumbs.db
 
 .claude/
+# connector build artifacts
+connectors/.pack/
+connectors/dist/
+connectors/wp-minpaku-connector/dist/
+connectors/**/*.zip
+# connector build artifacts
+connectors/.pack/
+connectors/dist/
+connectors/wp-minpaku-connector/dist/
+connectors/**/*.zip

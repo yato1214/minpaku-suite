@@ -63,16 +63,23 @@ Once configured, you can use these shortcodes in your posts and pages:
 
 #### Property Listings
 
-Display a grid of properties:
+Display a grid of properties with base nightly rates:
 
 ```
-[minpaku_connector type="properties" limit="12" columns="3"]
+[minpaku_connector type="properties" limit="6" columns="2" modal="true"]
 ```
 
 **Parameters:**
 - `limit`: Number of properties to show (default: 12)
-- `columns`: Grid columns (1-4, default: 3)
+- `columns`: Grid columns (1-6, default: 3)
+- `modal`: Enable modal calendar popups (default: "false")
 - `class`: Additional CSS class
+
+**Features:**
+- Property cards showing base nightly rates (例：料金：15,000円～)
+- Amenities display with Japanese labels
+- Modal calendar popups for checking availability
+- Responsive grid layout
 
 #### Availability Calendar
 
@@ -88,17 +95,29 @@ Show availability for a specific property:
 - `start_date`: Start date (optional, format: YYYY-MM-DD)
 - `class`: Additional CSS class
 
-#### Property Details
+#### Portal-Style Calendar
 
-Display full details for a property:
+Display a calendar with the exact same styling and functionality as the Minpaku Suite portal:
 
 ```
-[minpaku_connector type="property" property_id="123"]
+[minpaku_connector type="availability" property_id="123" months="4" show_prices="true" modal="false"]
 ```
 
 **Parameters:**
 - `property_id`: Property ID (required)
-- `class`: Additional CSS class
+- `months`: Number of months to display (default: 2, max: 12)
+- `show_prices`: Show price badges on available days (default: "true")
+- `modal`: Display as modal popup button instead of inline calendar (default: "false")
+
+**Features:**
+- Real-time availability and pricing data from portal
+- Color-coded calendar (weekdays green, Saturdays blue, Sundays/holidays red)
+- Price badges showing nightly rates
+- "満室" (full) badges for booked dates
+- Responsive design matching portal styling
+- Click-to-book functionality (redirects to portal booking page)
+- Modal popup option for compact display
+
 
 ### CSS Customization
 

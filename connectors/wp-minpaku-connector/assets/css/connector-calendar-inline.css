@@ -1,0 +1,469 @@
+/*
+ * Connector Calendar Inline CSS - Responsive Layout with Month Navigation
+ * Fixes CSS loading issues by providing inline styles
+ */
+
+.connector-calendar {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+    max-width: 100%;
+    margin: 0;
+}
+
+/* Calendar header with navigation and subtitle */
+.connector-calendar .mpc-calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    padding: 0 4px;
+}
+
+.connector-calendar .mpc-calendar-nav {
+    display: flex;
+    gap: 12px;
+}
+
+.connector-calendar .mpc-nav-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 80px;
+}
+
+.connector-calendar .mpc-nav-button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.connector-calendar .mpc-nav-button:active {
+    transform: translateY(0);
+}
+
+.connector-calendar .mpc-nav-icon {
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.connector-calendar .mpc-calendar-subtitle {
+    font-size: 14px;
+    color: #64748b;
+    font-weight: 500;
+}
+
+/* Responsive grid for months */
+.connector-calendar .mpc-calendar-months-grid {
+    display: grid;
+    gap: 24px;
+    /* Default: 2 columns on desktop (≥1024px) */
+    grid-template-columns: repeat(2, 1fr);
+}
+
+/* Mobile: 1 column on screens < 1024px */
+@media (max-width: 1023px) {
+    .connector-calendar .mpc-calendar-months-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .connector-calendar .mpc-calendar-header {
+        flex-direction: column;
+        gap: 12px;
+        text-align: center;
+    }
+
+    .connector-calendar .mpc-calendar-nav {
+        order: 2;
+    }
+
+    .connector-calendar .mpc-calendar-subtitle {
+        order: 1;
+    }
+}
+
+/* Month container styling */
+.connector-calendar .mpc-calendar-month {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    border: 1px solid #e5e7eb;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.connector-calendar .mpc-calendar-month:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+}
+
+.connector-calendar .mpc-calendar-month-title {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    margin: 0;
+    padding: 20px 24px;
+    text-align: center;
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+/* Calendar grid for days */
+.connector-calendar .mpc-calendar-grid {
+    background: #fafafa;
+}
+
+.connector-calendar .mpc-calendar-day-headers {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0;
+}
+
+.connector-calendar .mpc-calendar-day-header {
+    background: #f8fafc;
+    color: #64748b;
+    padding: 12px 8px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-bottom: 2px solid #e2e8f0;
+    border-right: 1px solid #e2e8f0;
+}
+
+.connector-calendar .mpc-calendar-day-header:last-child {
+    border-right: none;
+}
+
+/* Calendar weeks and days */
+.connector-calendar .mpc-calendar-week {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0;
+}
+
+.connector-calendar .mcs-day {
+    position: relative;
+    min-height: 80px;
+    padding: 10px 6px 6px 6px;
+    border-right: 1px solid #e2e8f0;
+    border-bottom: 1px solid #e2e8f0;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: white;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: space-between;
+    overflow: hidden;
+}
+
+.connector-calendar .mcs-day:nth-child(7n) {
+    border-right: none;
+}
+
+.connector-calendar .mcs-day:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    z-index: 2;
+}
+
+/* Day states */
+.connector-calendar .mcs-day--empty {
+    background: #f8fafc !important;
+    cursor: default;
+    opacity: 0.5;
+}
+
+.connector-calendar .mcs-day--empty:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+.connector-calendar .mcs-day--weekday {
+    background: #f0fdf4 !important;
+    border-left: 3px solid #22c55e;
+}
+
+.connector-calendar .mcs-day--sat {
+    background: #eff6ff !important;
+    border-left: 3px solid #3b82f6;
+}
+
+.connector-calendar .mcs-day--sun {
+    background: #fef2f2 !important;
+    border-left: 3px solid #ef4444;
+}
+
+.connector-calendar .mcs-day--full,
+.connector-calendar .mcs-day--blackout {
+    background: #f1f5f9 !important;
+    cursor: not-allowed !important;
+    opacity: 0.6;
+    border-left: 3px solid #64748b;
+}
+
+.connector-calendar .mcs-day--booked {
+    cursor: pointer !important;
+}
+
+.connector-calendar .mcs-day--full:hover,
+.connector-calendar .mcs-day--blackout:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+.connector-calendar .mcs-day--booked:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.connector-calendar .mcs-day--past {
+    background: #f8fafc !important;
+    color: #94a3b8;
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.connector-calendar .mcs-day--past:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+/* Day content */
+.connector-calendar .mcs-day-number {
+    font-weight: 700;
+    font-size: 14px;
+    line-height: 1.2;
+    color: #1e293b;
+    margin-bottom: auto;
+}
+
+.connector-calendar .mcs-day--past .mcs-day-number {
+    color: #94a3b8;
+}
+
+.connector-calendar .mcs-day-price {
+    align-self: stretch;
+    margin-top: 6px;
+    padding: 4px 6px;
+    border-radius: 4px;
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%) !important;
+    color: white !important;
+    font-weight: 600 !important;
+    font-size: 10px !important;
+    text-align: center !important;
+    line-height: 1.2 !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+.connector-calendar .mcs-day-full-badge {
+    align-self: stretch;
+    margin-top: 6px;
+    padding: 4px 6px;
+    border-radius: 4px;
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    color: white;
+    font-weight: 600;
+    font-size: 10px;
+    text-align: center;
+    line-height: 1.2;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Mobile adjustments (< 768px) */
+@media (max-width: 767px) {
+    .connector-calendar .mpc-calendar-months-grid {
+        gap: 16px;
+    }
+
+    .connector-calendar .mpc-calendar-month-title {
+        padding: 14px 16px;
+        font-size: 15px;
+    }
+
+    .connector-calendar .mpc-calendar-day-header {
+        padding: 8px 4px;
+        font-size: 10px;
+    }
+
+    .connector-calendar .mcs-day {
+        min-height: 60px;
+        padding: 6px 4px 4px 4px;
+    }
+
+    .connector-calendar .mcs-day-number {
+        font-size: 12px;
+    }
+
+    .connector-calendar .mcs-day-price {
+        padding: 2px 4px;
+        font-size: 8px;
+        margin-top: 4px;
+    }
+
+    .connector-calendar .mcs-day-full-badge {
+        padding: 2px 4px;
+        font-size: 8px;
+        margin-top: 4px;
+    }
+
+    .connector-calendar .mpc-nav-button {
+        padding: 6px 10px;
+        font-size: 13px;
+        min-width: 70px;
+    }
+
+    .connector-calendar .mpc-nav-button .mpc-nav-text {
+        display: none;
+    }
+
+    .connector-calendar .mpc-nav-button .mpc-nav-icon {
+        font-size: 18px;
+    }
+
+    .connector-calendar .mpc-calendar-subtitle {
+        font-size: 13px;
+    }
+}
+
+/* Focus styles for accessibility */
+.connector-calendar .mpc-nav-button:focus,
+.connector-calendar .mcs-day:focus {
+    outline: 2px solid #667eea;
+    outline-offset: 2px;
+}
+
+/* Ensure price badges are always visible */
+.connector-calendar .mcs-day-price,
+.connector-calendar .mcs-day-full-badge {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* Inline compact styles for property cards */
+.connector-calendar.wmc-inline-compact {
+    margin: 0;
+    background: transparent;
+}
+
+.connector-calendar.wmc-inline-compact .mpc-calendar-header {
+    margin-bottom: 16px;
+}
+
+.connector-calendar.wmc-inline-compact .mpc-calendar-months-grid {
+    gap: 16px;
+    grid-template-columns: 1fr; /* Always single column for inline */
+}
+
+.connector-calendar.wmc-inline-compact .mpc-calendar-month {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.connector-calendar.wmc-inline-compact .mpc-calendar-month-title {
+    padding: 12px 16px;
+    font-size: 14px;
+}
+
+.connector-calendar.wmc-inline-compact .mcs-day {
+    min-height: 50px;
+    padding: 6px 4px 4px 4px;
+}
+
+.connector-calendar.wmc-inline-compact .mcs-day-number {
+    font-size: 11px;
+}
+
+.connector-calendar.wmc-inline-compact .mcs-day-price {
+    padding: 2px 3px;
+    font-size: 8px;
+    margin-top: 3px;
+}
+
+.connector-calendar.wmc-inline-compact .mpc-nav-button {
+    padding: 4px 8px;
+    font-size: 12px;
+    min-width: 60px;
+}
+
+/* Inline calendar for property cards */
+.wmc-inline-calendar {
+    margin-top: 16px !important;
+    padding: 16px !important;
+    background: #f8fafc !important;
+    border-radius: 8px !important;
+    border: 1px solid #e2e8f0 !important;
+    overflow: hidden !important;
+    transition: all 0.3s ease !important;
+}
+
+.wmc-inline-calendar-loading {
+    text-align: center !important;
+    padding: 20px !important;
+    color: #64748b !important;
+}
+
+.wmc-availability-toggle {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    color: white !important;
+    border: none !important;
+    padding: 10px 16px !important;
+    border-radius: 6px !important;
+    cursor: pointer !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    transition: all 0.3s ease !important;
+    text-decoration: none !important;
+    width: 100% !important;
+    justify-content: space-between !important;
+    z-index: 10 !important;
+    position: relative !important;
+}
+
+.wmc-availability-toggle:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4) !important;
+    color: white !important;
+}
+
+.wmc-availability-toggle.wmc-active {
+    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%) !important;
+}
+
+.wmc-availability-toggle.wmc-active .wmc-availability-chevron {
+    transform: rotate(180deg) !important;
+}
+
+.wmc-availability-icon {
+    display: inline-block !important;
+    font-size: 16px !important;
+}
+
+.wmc-availability-text {
+    font-weight: 500 !important;
+}
+
+.wmc-availability-chevron {
+    transition: transform 0.3s ease !important;
+    font-size: 12px !important;
+}

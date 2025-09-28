@@ -198,9 +198,9 @@ $my_properties = MinpakuSuite\Admin\AdminDashboardService::get_my_properties();
                     </div>
                     <h3 class="mcs-empty-title"><?php esc_html_e('No recent bookings', 'minpaku-suite'); ?></h3>
                     <p class="mcs-empty-text"><?php esc_html_e('When you have bookings, they will appear here.', 'minpaku-suite'); ?></p>
-                    <a href="<?php echo esc_url(admin_url('post-new.php?post_type=mcs_booking')); ?>" class="mcs-empty-action">
-                        <?php esc_html_e('Add First Booking', 'minpaku-suite'); ?>
-                    </a>
+                    <span class="mcs-empty-action mcs-action-disabled" title="<?php esc_attr_e('Use property calendar to create bookings', 'minpaku-suite'); ?>">
+                        <?php esc_html_e('Add First Booking', 'minpaku-suite'); ?> (<?php esc_html_e('Use Calendar', 'minpaku-suite'); ?>)
+                    </span>
                 </div>
             <?php endif; ?>
         </div>

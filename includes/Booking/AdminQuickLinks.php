@@ -68,7 +68,7 @@ class AdminQuickLinks
                 </a>
             </p>
 
-            <?php if (has_shortcode(get_post_field('post_content', $property_id), 'mcs_availability')): ?>
+            <?php if (has_shortcode(get_post_field('post_content', $property_id), 'portal_calendar')): ?>
             <p>
                 <a href="<?php echo esc_url(get_permalink($property_id)); ?>" class="button button-secondary" style="width: 100%; text-align: center;" target="_blank">
                     <span class="dashicons dashicons-calendar" style="vertical-align: middle; margin-right: 5px;"></span>
