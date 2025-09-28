@@ -32,10 +32,21 @@ class MPC_Shortcodes_ConnectorCalendar {
             'show_prices' => 'true',
             'modal' => 'false',
             'interactions' => 'modern',
-            'type' => 'availability'
+            'type' => 'availability',
+            'limit' => 6,
+            'columns' => 2
         ], $atts, 'connector_calendar');
 
-        // Auto-detect property ID if not provided
+        $calendar_type = $atts['type'];
+
+        // Handle different shortcode types
+        if ($calendar_type === 'properties') {
+            return self::render_properties_list($atts);
+        } elseif ($calendar_type === 'property') {
+            return self::render_property_detail($atts);
+        }
+
+        // For availability calendar, property_id is required
         $property_id = self::get_property_id($atts['property_id']);
 
         if (!$property_id) {
@@ -90,6 +101,11 @@ class MPC_Shortcodes_ConnectorCalendar {
             self::enqueue_modern_assets();
         } else {
             self::enqueue_legacy_assets();
+        }
+
+        // For modern interactions, include quote panel template
+        if ($interactions === 'modern') {
+            $quote_panel_template = WP_MINPAKU_CONNECTOR_PATH . 'templates/connector/quote-panel.php';
         }
 
         // Use template if available for modern interactions
@@ -1778,9 +1794,13 @@ class MPC_Shortcodes_ConnectorCalendar {
      * Enqueue modern unified assets
      */
     private static function enqueue_modern_assets() {
+        // Use absolute plugin URL for reliability
+        $plugin_url = untrailingslashit(plugin_dir_url(WP_MINPAKU_CONNECTOR_FILE));
+        $plugin_path = untrailingslashit(plugin_dir_path(WP_MINPAKU_CONNECTOR_FILE));
+
         // Calendar CSS
-        $calendar_css_file = plugin_dir_url(__FILE__) . '../../assets/css/wpmc-calendar.css';
-        $calendar_css_path = plugin_dir_path(__FILE__) . '../../assets/css/wpmc-calendar.css';
+        $calendar_css_file = $plugin_url . '/assets/css/wpmc-calendar.css';
+        $calendar_css_path = $plugin_path . '/assets/css/wpmc-calendar.css';
 
         if (file_exists($calendar_css_path)) {
             wp_enqueue_style(
@@ -1792,8 +1812,8 @@ class MPC_Shortcodes_ConnectorCalendar {
         }
 
         // Quote panel CSS
-        $quote_css_file = plugin_dir_url(__FILE__) . '../../assets/css/wpmc-quote-panel.css';
-        $quote_css_path = plugin_dir_path(__FILE__) . '../../assets/css/wpmc-quote-panel.css';
+        $quote_css_file = $plugin_url . '/assets/css/wpmc-quote-panel.css';
+        $quote_css_path = $plugin_path . '/assets/css/wpmc-quote-panel.css';
 
         if (file_exists($quote_css_path)) {
             wp_enqueue_style(
@@ -1805,14 +1825,14 @@ class MPC_Shortcodes_ConnectorCalendar {
         }
 
         // JavaScript
-        $js_file = plugin_dir_url(__FILE__) . '../../assets/js/connector-calendar-interactions.js';
-        $js_path = plugin_dir_path(__FILE__) . '../../assets/js/connector-calendar-interactions.js';
+        $js_file = $plugin_url . '/assets/js/connector-calendar-interactions.js';
+        $js_path = $plugin_path . '/assets/js/connector-calendar-interactions.js';
 
         if (file_exists($js_path)) {
             wp_enqueue_script(
                 'wpmc-calendar-interactions',
                 $js_file,
-                [],
+                ['jquery'],
                 filemtime($js_path),
                 true
             );
@@ -1884,5 +1904,225 @@ class MPC_Shortcodes_ConnectorCalendar {
                 });
             });
         ');
+    }
+
+    /**
+     * Render properties list
+     */
+    private static function render_properties_list($atts) {
+        $limit = max(1, min(50, intval($atts['limit'])));
+        $columns = max(1, min(4, intval($atts['columns'])));
+
+        // Check API configuration
+        if (!class_exists('MinpakuConnector\Client\MPC_Client_Api')) {
+            return '<div class="mpc-error" style="background: #fef2f2; border: 1px solid #fca5a5; color: #b91c1c; padding: 12px; border-radius: 6px; margin: 16px 0;">' .
+                   __('API client not available.', 'wp-minpaku-connector') .
+                   '</div>';
+        }
+
+        $api = new \MinpakuConnector\Client\MPC_Client_Api();
+        if (!$api->is_configured()) {
+            return '<div class="mpc-error" style="background: #fef2f2; border: 1px solid #fca5a5; color: #b91c1c; padding: 12px; border-radius: 6px; margin: 16px 0;">' .
+                   __('Portal connection not configured. Please check the connector settings.', 'wp-minpaku-connector') .
+                   '</div>';
+        }
+
+        // Get properties from portal
+        $properties_response = $api->get_properties(['per_page' => $limit]);
+
+        if (!$properties_response['success']) {
+            return '<div class="mpc-error" style="background: #fef2f2; border: 1px solid #fca5a5; color: #b91c1c; padding: 12px; border-radius: 6px; margin: 16px 0;">' .
+                   __('Failed to load properties. Please check your connection settings.', 'wp-minpaku-connector') .
+                   '</div>';
+        }
+
+        $properties = $properties_response['data'] ?? [];
+
+        if (empty($properties)) {
+            return '<div class="mpc-notice" style="background: #fff3cd; border: 1px solid #ffeaa7; color: #856404; padding: 12px; border-radius: 6px; margin: 16px 0;">' .
+                   __('No properties found.', 'wp-minpaku-connector') .
+                   '</div>';
+        }
+
+        // Enqueue basic styles
+        wp_add_inline_style('wp-block-library', '
+            .mpc-properties-grid {
+                display: grid;
+                grid-template-columns: repeat(' . $columns . ', 1fr);
+                gap: 20px;
+                margin: 20px 0;
+            }
+            @media (max-width: 768px) {
+                .mpc-properties-grid {
+                    grid-template-columns: 1fr;
+                }
+            }
+            .mpc-property-card {
+                border: 1px solid #e5e7eb;
+                border-radius: 8px;
+                padding: 20px;
+                background: white;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                transition: transform 0.2s ease;
+            }
+            .mpc-property-card:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            }
+            .mpc-property-title {
+                font-size: 18px;
+                font-weight: 600;
+                margin: 0 0 10px 0;
+                color: #1f2937;
+            }
+            .mpc-property-summary {
+                color: #6b7280;
+                margin-bottom: 15px;
+                line-height: 1.5;
+            }
+            .mpc-property-external-btn {
+                display: inline-block;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                text-decoration: none;
+                padding: 10px 20px;
+                border-radius: 6px;
+                font-weight: 500;
+                transition: all 0.2s ease;
+            }
+            .mpc-property-external-btn:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+                color: white;
+                text-decoration: none;
+            }
+        ');
+
+        ob_start();
+        ?>
+        <div class="mpc-properties-grid">
+            <?php foreach (array_slice($properties, 0, $limit) as $property): ?>
+                <?php
+                $property_id = $property['id'] ?? 0;
+                $property_title = $property['title'] ?? __('Untitled Property', 'wp-minpaku-connector');
+                $property_summary = $property['excerpt'] ?? '';
+                $external_url = $property['external_detail_url'] ?? '';
+                ?>
+                <div class="mpc-property-card">
+                    <h3 class="mpc-property-title"><?php echo esc_html($property_title); ?></h3>
+
+                    <?php if ($property_summary): ?>
+                        <div class="mpc-property-summary">
+                            <?php echo esc_html(wp_trim_words($property_summary, 20)); ?>
+                        </div>
+                    <?php endif; ?>
+
+                    <?php if ($external_url): ?>
+                        <a href="<?php echo esc_url($external_url); ?>"
+                           class="mpc-property-external-btn"
+                           target="_blank"
+                           rel="noopener">
+                            <?php _e('外部サイトで見る', 'wp-minpaku-connector'); ?>
+                        </a>
+                    <?php else: ?>
+                        <span class="mpc-property-external-btn" style="background: #6c757d; cursor: not-allowed;">
+                            <?php _e('外部URLが未設定', 'wp-minpaku-connector'); ?>
+                        </span>
+                    <?php endif; ?>
+                </div>
+            <?php endforeach; ?>
+        </div>
+        <?php
+        return ob_get_clean();
+    }
+
+    /**
+     * Render property detail
+     */
+    private static function render_property_detail($atts) {
+        $property_id = self::get_property_id($atts['property_id']);
+
+        if (!$property_id) {
+            return '<div class="mpc-error" style="background: #fef2f2; border: 1px solid #fca5a5; color: #b91c1c; padding: 12px; border-radius: 6px; margin: 16px 0;">' .
+                   __('Property ID is required for property detail display. Please specify property_id="X" in the shortcode.', 'wp-minpaku-connector') .
+                   '</div>';
+        }
+
+        // Check API configuration
+        if (!class_exists('MinpakuConnector\Client\MPC_Client_Api')) {
+            return '<div class="mpc-error" style="background: #fef2f2; border: 1px solid #fca5a5; color: #b91c1c; padding: 12px; border-radius: 6px; margin: 16px 0;">' .
+                   __('API client not available.', 'wp-minpaku-connector') .
+                   '</div>';
+        }
+
+        $api = new \MinpakuConnector\Client\MPC_Client_Api();
+        if (!$api->is_configured()) {
+            return '<div class="mpc-error" style="background: #fef2f2; border: 1px solid #fca5a5; color: #b91c1c; padding: 12px; border-radius: 6px; margin: 16px 0;">' .
+                   __('Portal connection not configured. Please check the connector settings.', 'wp-minpaku-connector') .
+                   '</div>';
+        }
+
+        // Get property details from portal
+        $property_response = $api->get_property($property_id);
+
+        if (!$property_response['success']) {
+            return '<div class="mpc-error" style="background: #fef2f2; border: 1px solid #fca5a5; color: #b91c1c; padding: 12px; border-radius: 6px; margin: 16px 0;">' .
+                   sprintf(__('Failed to load property %d. Please check your connection settings.', 'wp-minpaku-connector'), $property_id) .
+                   '</div>';
+        }
+
+        $property = $property_response['data'];
+
+        ob_start();
+        ?>
+        <div class="mpc-property-detail">
+            <h2><?php echo esc_html($property['title'] ?? __('Property Details', 'wp-minpaku-connector')); ?></h2>
+
+            <?php if (!empty($property['content'])): ?>
+                <div class="mpc-property-content">
+                    <?php echo wp_kses_post($property['content']); ?>
+                </div>
+            <?php endif; ?>
+
+            <?php if (!empty($property['amenities'])): ?>
+                <div class="mpc-property-amenities">
+                    <h3><?php _e('Amenities', 'wp-minpaku-connector'); ?></h3>
+                    <div class="mpc-amenities-list">
+                        <?php foreach ($property['amenities'] as $amenity): ?>
+                            <span class="mpc-amenity-tag"><?php echo esc_html($amenity); ?></span>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            <?php endif; ?>
+        </div>
+
+        <style>
+        .mpc-property-detail {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background: white;
+        }
+        .mpc-property-content {
+            margin: 15px 0;
+            line-height: 1.6;
+        }
+        .mpc-amenities-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .mpc-amenity-tag {
+            background: #f3f4f6;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #374151;
+        }
+        </style>
+        <?php
+        return ob_get_clean();
     }
 }
