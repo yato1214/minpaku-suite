@@ -85,6 +85,10 @@ class OwnerHelpers
             'posts_per_page' => 20,
             'meta_query' => [],
             'author' => 0,
+            'no_found_rows' => true,
+            'update_post_meta_cache' => false,
+            'update_post_term_cache' => false,
+            'cache_results' => false
         ];
 
         // Administrators see all properties

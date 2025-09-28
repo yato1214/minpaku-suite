@@ -47,6 +47,11 @@ class OwnerDashboard
         $period = $url_period > 0 ? max(1, min(365, $url_period)) : max(1, min(365, absint($atts['period'])));
 
         try {
+            // Clear cache for fresh data on dashboard load
+            if (isset($_GET['refresh']) || is_admin()) {
+                wp_cache_flush();
+            }
+
             return self::render_dashboard($current_user_id, $period);
         } catch (Exception $e) {
             error_log('Minpaku Suite Dashboard Error: ' . $e->getMessage());
@@ -103,7 +108,9 @@ class OwnerDashboard
             'summary' => OwnerHelpers::get_owner_summary($user_id, $period),
             'properties_query' => OwnerHelpers::get_user_properties($user_id, [
                 'posts_per_page' => 20,
-                'paged' => get_query_var('paged') ?: 1
+                'paged' => get_query_var('paged') ?: 1,
+                'cache_results' => false,
+                'no_found_rows' => false  // We need pagination
             ])
         ];
 
@@ -121,7 +128,9 @@ class OwnerDashboard
         $summary = OwnerHelpers::get_owner_summary($user_id, $period);
         $properties_query = OwnerHelpers::get_user_properties($user_id, [
             'posts_per_page' => 20,
-            'paged' => get_query_var('paged') ?: 1
+            'paged' => get_query_var('paged') ?: 1,
+            'cache_results' => false,
+            'no_found_rows' => false  // We need pagination
         ]);
 
         $output = '';
@@ -267,14 +276,65 @@ class OwnerDashboard
         $template_path = self::get_template_path('property-card.php');
         if ($template_path) {
             ob_start();
-            $property = get_post($property_id);
+
+            // Set up global post data for the template
+            global $post;
+            $original_post = $post;
+
+            // Force fresh data from database
+            wp_cache_delete($property_id, 'posts');
+            clean_post_cache($property_id);
+
+            // Get fresh data directly from database
+            global $wpdb;
+            $fresh_property = $wpdb->get_row($wpdb->prepare(
+                "SELECT * FROM {$wpdb->posts} WHERE ID = %d AND post_type = 'mcs_property'",
+                $property_id
+            ));
+
+            if (!$fresh_property) {
+                return '';
+            }
+
+            $property = new WP_Post($fresh_property);
+
+            if (!$property) {
+                return '';
+            }
+
+            $post = $property;
+            setup_postdata($property);
+
             $booking_counts = OwnerHelpers::get_property_booking_counts($property_id, $period);
             include $template_path;
+
+            // Restore original post data
+            $post = $original_post;
+            if ($original_post) {
+                setup_postdata($original_post);
+            }
+
             return ob_get_clean();
         }
 
         // Fallback card rendering using admin card classes
-        $property = get_post($property_id);
+        // Force fresh data from database
+        wp_cache_delete($property_id, 'posts');
+        clean_post_cache($property_id);
+
+        // Get fresh data directly from database
+        global $wpdb;
+        $fresh_property = $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM {$wpdb->posts} WHERE ID = %d AND post_type = 'mcs_property'",
+            $property_id
+        ));
+
+        if (!$fresh_property) {
+            return '';
+        }
+
+        $property = new WP_Post($fresh_property);
+
         $booking_counts = OwnerHelpers::get_property_booking_counts($property_id, $period);
         $thumbnail = get_the_post_thumbnail_url($property_id, 'medium');
 
