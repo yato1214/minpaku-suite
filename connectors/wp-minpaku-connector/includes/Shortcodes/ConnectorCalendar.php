@@ -30,7 +30,8 @@ class MPC_Shortcodes_ConnectorCalendar {
             'months' => 2,
             'show_prices' => 'true',
             'modal' => 'false',
-            'interactions' => 'modern'
+            'interactions' => 'modern',
+            'type' => 'availability'
         ], $atts, 'connector_calendar');
 
         // Auto-detect property ID if not provided
@@ -45,7 +46,15 @@ class MPC_Shortcodes_ConnectorCalendar {
         $months = max(1, min(12, intval($atts['months'])));
         $show_prices = ($atts['show_prices'] === 'true');
         $is_modal = false; // Modal functionality deprecated - always inline
-        $interactions = $atts['interactions'];
+        $interactions = $atts['interactions']; // Default to 'modern'
+        $calendar_type = $atts['type']; // availability or other types
+
+        // For availability calendar, ensure responsive design: PC=2col, Mobile=1col
+        if ($calendar_type === 'availability') {
+            $responsive_months = $months; // Keep original months setting
+        } else {
+            $responsive_months = $months;
+        }
 
         // Check API configuration
         if (!class_exists('MinpakuConnector\Client\MPC_Client_Api')) {
@@ -113,9 +122,9 @@ class MPC_Shortcodes_ConnectorCalendar {
                 </div>
             </div>
 
-            <!-- Months Grid Container -->
-            <div class="mpc-calendar-months-grid">
-                <?php for ($i = 0; $i < $months; $i++): ?>
+            <!-- Responsive Months Grid Container: PC=2col, Mobile=1col -->
+            <div class="mpc-calendar-months-grid mpc-responsive-grid">
+                <?php for ($i = 0; $i < $responsive_months; $i++): ?>
                     <?php
                     $month_date = new \DateTime();
                     $month_date->add(new \DateInterval('P' . $i . 'M'));
@@ -147,10 +156,26 @@ class MPC_Shortcodes_ConnectorCalendar {
             </div>
         </div>
 
-        <!-- Connector Calendar CSS - Portal Parity Design -->
+        <!-- Connector Calendar CSS - Portal Parity Design with Responsive Support -->
         <style>
         .connector-calendar {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+        }
+
+        /* Responsive Grid Layout: PC=2col, Mobile=1col */
+        .connector-calendar .mpc-calendar-months-grid.mpc-responsive-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr); /* PC: 2 columns */
+            gap: 24px;
+            margin-top: 20px;
+        }
+
+        /* Mobile: 1 column */
+        @media (max-width: 768px) {
+            .connector-calendar .mpc-calendar-months-grid.mpc-responsive-grid {
+                grid-template-columns: 1fr; /* Mobile: 1 column */
+                gap: 16px;
+            }
         }
 
         .connector-calendar .mpc-calendar-legend {
@@ -458,6 +483,9 @@ class MPC_Shortcodes_ConnectorCalendar {
 
         <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // Required console.log for initialization
+            console.log('[WPMC Calendar] init');
+
             <?php
             $settings = \WP_Minpaku_Connector::get_settings();
             $portal_url = '';
@@ -474,7 +502,7 @@ class MPC_Shortcodes_ConnectorCalendar {
             ?>
             var connectorPortalUrl = "<?php echo esc_js(untrailingslashit($portal_url)); ?>";
 
-            console.log('[ConnectorCalendar] Initializing simple month navigation');
+            console.log('[ConnectorCalendar] Initializing responsive calendar with modern interactions');
 
             var calendar = document.getElementById('<?php echo esc_js($calendar_id); ?>');
             if (!calendar) return;

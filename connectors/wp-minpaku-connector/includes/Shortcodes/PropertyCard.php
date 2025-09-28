@@ -168,9 +168,11 @@ class MPC_Shortcodes_PropertyCard {
             </div>
 
             <div class="mpc-property-actions">
-                <a href="<?php echo esc_url($property['url']); ?>" class="mpc-property-link">
-                    <?php _e('View Details', 'wp-minpaku-connector'); ?>
-                </a>
+                <?php if (!empty($property['external_detail_url'])): ?>
+                    <a href="<?php echo esc_url($property['external_detail_url']); ?>" class="mpc-property-link" target="_blank">
+                        <?php _e('詳細・予約', 'wp-minpaku-connector'); ?>
+                    </a>
+                <?php endif; ?>
             </div>
         </div>
 
