@@ -845,6 +845,10 @@ class ConnectorApiController
         // Primary price for backward compatibility
         $primary_price = $accommodation_rate;
 
+        // Get external integration fields
+        $external_detail_url = get_post_meta($property_id, '_mcs_external_detail_url', true);
+        $external_button_text = get_post_meta($property_id, '_mcs_external_button_text', true);
+
         // Get gallery images
         $gallery_ids = get_post_meta($property_id, 'gallery', true);
         $gallery = [];
@@ -874,6 +878,9 @@ class ConnectorApiController
                 'base_price' => floatval($primary_price),
                 'accommodation_rate' => floatval($accommodation_rate),
                 'cleaning_fee' => floatval($cleaning_fee),
+                // External integration fields
+                '_mcs_external_detail_url' => !empty($external_detail_url) ? esc_url($external_detail_url) : '',
+                '_mcs_external_button_text' => !empty($external_button_text) ? sanitize_text_field($external_button_text) : '',
                 // Legacy fields for backward compatibility
                 'test_base_rate' => floatval($accommodation_rate),
                 'test_cleaning_fee' => floatval($cleaning_fee)

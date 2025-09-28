@@ -38,10 +38,6 @@ class MPC_Shortcodes_Embed {
             'interactions' => 'modern'
         ), $atts, 'minpaku_connector');
 
-        // Log shortcode usage for debugging
-        if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
-            error_log('[minpaku-connector] Shortcode called: type=' . $atts['type'] . ', property_id=' . $atts['property_id']);
-        }
 
         // Check if API is configured
         try {
@@ -138,7 +134,6 @@ class MPC_Shortcodes_Embed {
         $css_class = sanitize_html_class($atts['class']);
         $modal = sanitize_text_field($atts['modal'] ?? 'false');
 
-        self::log_error("Fetching properties: limit=$limit, columns=$columns", 'shortcode');
 
         try {
             $response = $api->get_properties(array(
@@ -147,7 +142,6 @@ class MPC_Shortcodes_Embed {
             ));
 
             if (!$response['success']) {
-                self::log_error('Properties API failed: ' . $response['message'], 'shortcode');
 
                 // Provide user-friendly error based on the issue
                 if (strpos($response['message'], '401') !== false || strpos($response['message'], '403') !== false) {
@@ -173,14 +167,12 @@ class MPC_Shortcodes_Embed {
 
             $properties = $response['data'];
             if (empty($properties)) {
-                self::log_error('No properties returned from API', 'shortcode');
                 return '<div class="wmc-no-content">' .
                        '<p><strong>' . esc_html__('No properties available', 'wp-minpaku-connector') . '</strong></p>' .
                        '<p>' . esc_html__('There are currently no properties to display.', 'wp-minpaku-connector') . '</p>' .
                        '</div>';
             }
 
-            self::log_error('Successfully loaded ' . count($properties) . ' properties', 'shortcode');
 
             // Semantic HTML structure
             $output = '<section class="wmc-properties wmc-grid wmc-columns-' . esc_attr($columns) . ' ' . esc_attr($css_class) . '" aria-label="' . esc_attr__('Property listings', 'wp-minpaku-connector') . '">';
@@ -195,7 +187,6 @@ class MPC_Shortcodes_Embed {
             return $output;
 
         } catch (Exception $e) {
-            self::log_error('Properties rendering exception: ' . $e->getMessage(), 'shortcode');
             return self::render_error_notice(
                 __('System error', 'wp-minpaku-connector'),
                 __('Unable to display properties due to a technical issue.', 'wp-minpaku-connector'),
@@ -208,19 +199,19 @@ class MPC_Shortcodes_Embed {
      * Render availability calendar with responsive layout and quote integration
      */
     private static function render_availability($atts, $api) {
-        // Load the new Availability shortcode class
-        $availability_file = dirname(__FILE__) . '/Availability.php';
-        if (file_exists($availability_file)) {
-            require_once $availability_file;
+        // Load the ConnectorCalendar shortcode class
+        $calendar_file = dirname(__FILE__) . '/ConnectorCalendar.php';
+        if (file_exists($calendar_file)) {
+            require_once $calendar_file;
         }
 
-        // Check if the new Availability class exists
-        if (!class_exists('MinpakuConnector\Shortcodes\MPC_Shortcodes_Availability')) {
-            return '<div class="wmc-error">' . esc_html__('新しいカレンダー機能が利用できません。', 'wp-minpaku-connector') . '</div>';
+        // Check if the ConnectorCalendar class exists
+        if (!class_exists('MinpakuConnector\Shortcodes\MPC_Shortcodes_ConnectorCalendar')) {
+            return '<div class="wmc-error">' . esc_html__('カレンダー機能が利用できません。', 'wp-minpaku-connector') . '</div>';
         }
 
-        // Use the new responsive availability calendar
-        return \MinpakuConnector\Shortcodes\MPC_Shortcodes_Availability::render_calendar($atts, $api);
+        // Use the ConnectorCalendar for inline availability display
+        return \MinpakuConnector\Shortcodes\MPC_Shortcodes_ConnectorCalendar::render_calendar($atts);
     }
 
 
@@ -319,10 +310,6 @@ class MPC_Shortcodes_Embed {
         // Amenities in property card (instead of availability legend)
         $amenities = $property['amenities'] ?? [];
 
-        // Debug log for amenities data
-        if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
-            error_log('[Connector] Property ' . $property['id'] . ' amenities: ' . print_r($amenities, true));
-        }
 
         if (!empty($amenities) && is_array($amenities) && count($amenities) > 0) {
             $output .= '<div class="wmc-property-amenities-card">';
@@ -358,35 +345,177 @@ class MPC_Shortcodes_Embed {
         // Property action buttons - External URL link
         $output .= '<div class="wmc-property-actions">';
 
-        // Check for external detail URL first
+        // Check for external detail URL with comprehensive field mapping
         $external_url = '';
-        if (!empty($property['meta']['external_detail_url'])) {
-            $external_url = $property['meta']['external_detail_url'];
-        } elseif (!empty($property['external_url'])) {
-            $external_url = $property['external_url'];
-        } elseif (!empty($property['external_detail_url'])) {
-            $external_url = $property['external_detail_url'];
+        $button_text = '';
+
+        // Debug: Log complete property structure to identify exact field name
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('[Connector Debug] Property ID: ' . ($property['id'] ?? 'unknown'));
+            error_log('[Connector Debug] Complete property data: ' . print_r($property, true));
+            if (isset($property['meta'])) {
+                error_log('[Connector Debug] Property meta structure: ' . print_r($property['meta'], true));
+                // 特定のフィールド名をチェック
+                $common_external_fields = ['_mcs_external_detail_url', '_mcs_external_button_text', 'external_detail_url', 'custom_detail_url', 'third_party_url', '外部詳細URL'];
+                foreach ($common_external_fields as $field) {
+                    if (isset($property['meta'][$field])) {
+                        error_log('[Connector Debug] Found field: meta.' . $field . ' = ' . $property['meta'][$field]);
+                    }
+                }
+            }
         }
 
+        // Check various possible field names for external detail URL (expanded list)
+        $possible_url_fields = [
+            // ポータル側の標準フィールド名（優先順位高）
+            'meta._mcs_external_detail_url',  // ポータル側の正式フィールド名
+            'meta.external_detail_url',
+            'meta.custom_detail_url',
+            'meta.third_party_url',
+            'meta.detail_page_url',
+            'meta.property_website_url',
+            'meta.external_booking_url',
+            'meta.external_property_detail_url',
+            'meta.外部詳細URL',
+            'meta.外部URL',
+            // その他のメタフィールド
+            'meta.external_url',
+            'meta.detail_url',
+            'meta.external_property_url',
+            'meta.property_detail_url',
+            'meta.connector_external_url',
+            'meta.external_link',
+            'meta.property_link',
+            'meta.website_url',
+            'meta.booking_url',
+            'meta.reservation_url',
+            'meta.official_url',
+            'meta.homepage_url',
+            // Direct fields
+            'external_detail_url',
+            'custom_detail_url',
+            'third_party_url',
+            'detail_page_url',
+            'property_website_url',
+            'external_booking_url',
+            'external_property_detail_url',
+            'external_url',
+            'detail_url',
+            'external_property_url',
+            'property_detail_url',
+            'connector_external_url',
+            'external_link',
+            'property_link',
+            'website_url',
+            'booking_url',
+            'reservation_url',
+            'official_url',
+            'homepage_url',
+            'url'
+        ];
+
+        // Check for button text field
+        $possible_button_fields = [
+            // ポータル側の標準ボタンテキストフィールド名（優先順位順）
+            'meta._mcs_external_button_text',  // ポータル側の正式フィールド名
+            'meta.external_button_text',
+            'meta.custom_button_text',
+            'meta.detail_button_text',
+            'meta.外部ボタンテキスト',
+            'meta.ボタン文言',
+            'meta.外部リンクテキスト',
+            'meta.カスタムボタンテキスト',
+            // その他のフィールド
+            'meta.button_text',
+            'meta.link_text',
+            'meta.external_link_text',
+            'meta.button_label',
+            'meta.link_label',
+            'meta.cta_text',
+            'meta.action_text',
+            'external_button_text',
+            'custom_button_text',
+            'detail_button_text',
+            'button_text',
+            'link_text',
+            'button_label',
+            'link_label',
+            'cta_text',
+            'action_text'
+        ];
+
+        // Find external URL
+        foreach ($possible_url_fields as $field) {
+            $field_parts = explode('.', $field);
+
+            if (count($field_parts) == 2 && $field_parts[0] == 'meta') {
+                // meta.field_name format
+                $field_name = $field_parts[1];
+                if (!empty($property['meta'][$field_name])) {
+                    $external_url = $property['meta'][$field_name];
+                    if (defined('WP_DEBUG') && WP_DEBUG) {
+                        error_log('[Connector Debug] Found external URL in: meta.' . $field_name . ' = ' . $external_url);
+                    }
+                    break;
+                }
+            } else {
+                // direct field name
+                if (!empty($property[$field])) {
+                    $external_url = $property[$field];
+                    if (defined('WP_DEBUG') && WP_DEBUG) {
+                        error_log('[Connector Debug] Found external URL in: ' . $field . ' = ' . $external_url);
+                    }
+                    break;
+                }
+            }
+        }
+
+        // Find button text
+        foreach ($possible_button_fields as $field) {
+            $field_parts = explode('.', $field);
+
+            if (count($field_parts) == 2 && $field_parts[0] == 'meta') {
+                // meta.field_name format
+                $field_name = $field_parts[1];
+                if (!empty($property['meta'][$field_name])) {
+                    $button_text = $property['meta'][$field_name];
+                    break;
+                }
+            } else {
+                // direct field name
+                if (!empty($property[$field])) {
+                    $button_text = $property[$field];
+                    break;
+                }
+            }
+        }
+
+        // Default button text if not set
+        if (empty($button_text)) {
+            $button_text = __('外部サイトで見る', 'wp-minpaku-connector');
+        }
+
+        // Debug: Final URL and button text results
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('[Connector Debug] Final results for Property ID ' . ($property['id'] ?? 'unknown') . ':');
+            error_log('[Connector Debug] External URL: ' . ($external_url ?: 'NOT FOUND'));
+            error_log('[Connector Debug] Button Text: ' . ($button_text ?: 'DEFAULT'));
+        }
+
+        // Always show external link button
         if (!empty($external_url)) {
-            // External detail URL button (primary action)
-            $output .= '<a href="' . esc_url($external_url) . '" class="wmc-detail-button" target="_blank" rel="noopener noreferrer">';
+            // External detail URL button (primary action) with custom text
+            $output .= '<a href="' . esc_url($external_url) . '" class="wmc-detail-button" target="_self">';
             $output .= '<span class="wmc-detail-icon">🏠</span>';
-            $output .= '<span class="wmc-detail-text">' . esc_html__('詳細・予約', 'wp-minpaku-connector') . '</span>';
-            $output .= '<span class="wmc-external-icon">↗</span>';
+            $output .= '<span class="wmc-detail-text">' . esc_html($button_text) . '</span>';
             $output .= '</a>';
-        }
-
-        // Optional: Availability calendar link (secondary action)
-        if ($calendar_view === 'inline') {
-            $output .= '<button class="wmc-availability-toggle wmc-secondary-button" data-property-id="' . esc_attr($property['id']) . '" data-property-title="' . esc_attr($property['title']) . '" data-calendar-months="' . esc_attr($calendar_months) . '">';
-            $output .= '<span class="wmc-availability-icon">📅</span>';
-            $output .= '<span class="wmc-availability-text">' . esc_html__('空き状況', 'wp-minpaku-connector') . '</span>';
-            $output .= '<span class="wmc-availability-chevron">▼</span>';
-            $output .= '</button>';
-            $output .= '<div class="wmc-inline-calendar" data-property-id="' . esc_attr($property['id']) . '" style="display: none;">';
-            $output .= '<div class="wmc-inline-calendar-loading">' . esc_html__('読み込み中...', 'wp-minpaku-connector') . '</div>';
-            $output .= '</div>';
+        } else {
+            // Show disabled button when no external URL is set - include property ID for debugging
+            $property_id_debug = isset($property['id']) ? ' (物件ID: ' . $property['id'] . ')' : '';
+            $output .= '<span class="wmc-detail-button wmc-detail-button-disabled">';
+            $output .= '<span class="wmc-detail-icon">🏠</span>';
+            $output .= '<span class="wmc-detail-text">' . esc_html__('外部URLが未設定', 'wp-minpaku-connector') . $property_id_debug . '</span>';
+            $output .= '</span>';
         }
 
         $output .= '</div>';

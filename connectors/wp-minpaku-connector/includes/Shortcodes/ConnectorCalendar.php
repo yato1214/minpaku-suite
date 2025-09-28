@@ -101,25 +101,24 @@ class MPC_Shortcodes_ConnectorCalendar {
              data-interactions="<?php echo esc_attr($interactions); ?>"
              data-mode="<?php echo $is_modal ? 'modal' : 'inline'; ?>">
 
-            <!-- Calendar Header with Navigation -->
-            <div class="mpc-calendar-header">
-                <div class="mpc-calendar-nav">
-                    <button type="button" class="mpc-nav-button mpc-nav-prev" aria-label="<?php _e('前の月', 'wp-minpaku-connector'); ?>">
-                        <span class="mpc-nav-icon">‹</span>
-                        <span class="mpc-nav-text"><?php _e('前月', 'wp-minpaku-connector'); ?></span>
-                    </button>
-                    <button type="button" class="mpc-nav-button mpc-nav-next" aria-label="<?php _e('次の月', 'wp-minpaku-connector'); ?>">
-                        <span class="mpc-nav-text"><?php _e('次月', 'wp-minpaku-connector'); ?></span>
-                        <span class="mpc-nav-icon">›</span>
-                    </button>
-                </div>
+            <!-- Calendar Title -->
+            <div class="mpc-calendar-subtitle">
+                <?php if ($property_title): ?>
+                    <?php echo esc_html($property_title); ?> -
+                <?php endif; ?>
+                <?php _e('空室カレンダー', 'wp-minpaku-connector'); ?>
+            </div>
 
-                <div class="mpc-calendar-subtitle">
-                    <?php if ($property_title): ?>
-                        <?php echo esc_html($property_title); ?> -
-                    <?php endif; ?>
-                    <?php _e('空室カレンダー', 'wp-minpaku-connector'); ?>
-                </div>
+            <!-- Calendar Navigation - Outside of Grid for Portal Parity -->
+            <div class="mpc-calendar-nav">
+                <button type="button" class="mpc-nav-button mpc-nav-prev" aria-label="<?php _e('前の月', 'wp-minpaku-connector'); ?>">
+                    <span class="mpc-nav-icon">‹</span>
+                    <span class="mpc-nav-text"><?php _e('前月', 'wp-minpaku-connector'); ?></span>
+                </button>
+                <button type="button" class="mpc-nav-button mpc-nav-next" aria-label="<?php _e('次の月', 'wp-minpaku-connector'); ?>">
+                    <span class="mpc-nav-text"><?php _e('次月', 'wp-minpaku-connector'); ?></span>
+                    <span class="mpc-nav-icon">›</span>
+                </button>
             </div>
 
             <!-- Responsive Months Grid Container: PC=2col, Mobile=1col -->
@@ -139,15 +138,14 @@ class MPC_Shortcodes_ConnectorCalendar {
                         </h3>
 
                         <div class="mpc-calendar-grid">
-                            <div class="mpc-calendar-day-headers">
-                                <div class="mpc-calendar-day-header"><?php _e('日', 'wp-minpaku-connector'); ?></div>
-                                <div class="mpc-calendar-day-header"><?php _e('月', 'wp-minpaku-connector'); ?></div>
-                                <div class="mpc-calendar-day-header"><?php _e('火', 'wp-minpaku-connector'); ?></div>
-                                <div class="mpc-calendar-day-header"><?php _e('水', 'wp-minpaku-connector'); ?></div>
-                                <div class="mpc-calendar-day-header"><?php _e('木', 'wp-minpaku-connector'); ?></div>
-                                <div class="mpc-calendar-day-header"><?php _e('金', 'wp-minpaku-connector'); ?></div>
-                                <div class="mpc-calendar-day-header"><?php _e('土', 'wp-minpaku-connector'); ?></div>
-                            </div>
+                            <!-- Day headers as first row in grid -->
+                            <div class="mpc-calendar-day-header"><?php _e('日', 'wp-minpaku-connector'); ?></div>
+                            <div class="mpc-calendar-day-header"><?php _e('月', 'wp-minpaku-connector'); ?></div>
+                            <div class="mpc-calendar-day-header"><?php _e('火', 'wp-minpaku-connector'); ?></div>
+                            <div class="mpc-calendar-day-header"><?php _e('水', 'wp-minpaku-connector'); ?></div>
+                            <div class="mpc-calendar-day-header"><?php _e('木', 'wp-minpaku-connector'); ?></div>
+                            <div class="mpc-calendar-day-header"><?php _e('金', 'wp-minpaku-connector'); ?></div>
+                            <div class="mpc-calendar-day-header"><?php _e('土', 'wp-minpaku-connector'); ?></div>
 
                             <?php echo self::generate_calendar_days($year, $month, $property_id, $show_prices, $api); ?>
                         </div>
@@ -162,10 +160,10 @@ class MPC_Shortcodes_ConnectorCalendar {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
         }
 
-        /* Responsive Grid Layout: PC=2col, Mobile=1col */
+        /* Responsive Layout: PC=2col, Mobile=1col */
         .connector-calendar .mpc-calendar-months-grid.mpc-responsive-grid {
             display: grid;
-            grid-template-columns: repeat(2, 1fr); /* PC: 2 columns */
+            grid-template-columns: 1fr 1fr; /* 2 columns on PC */
             gap: 24px;
             margin-top: 20px;
         }
@@ -173,9 +171,20 @@ class MPC_Shortcodes_ConnectorCalendar {
         /* Mobile: 1 column */
         @media (max-width: 768px) {
             .connector-calendar .mpc-calendar-months-grid.mpc-responsive-grid {
-                grid-template-columns: 1fr; /* Mobile: 1 column */
+                grid-template-columns: 1fr; /* 1 column on mobile */
                 gap: 16px;
             }
+        }
+
+        .connector-calendar .mpc-calendar-month {
+            width: 100%;
+            max-width: 700px; /* Slightly wider for better readability */
+            margin: 0 auto 32px auto; /* Center and space months vertically */
+            background: white;
+            border-radius: 8px; /* Less rounded for portal parity */
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Lighter shadow */
+            border: 1px solid #dee2e6; /* Lighter border */
         }
 
         .connector-calendar .mpc-calendar-legend {
@@ -225,24 +234,17 @@ class MPC_Shortcodes_ConnectorCalendar {
             margin: 0;
         }
 
-        .connector-calendar .mpc-calendar-month {
-            margin-bottom: 32px;
-            background: white;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            border: 1px solid #e5e7eb;
-        }
 
         .connector-calendar .mpc-calendar-month-title {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            background: #f8f9fa;
+            color: #495057;
             margin: 0;
-            padding: 20px 24px;
+            padding: 16px 20px;
             text-align: center;
-            font-size: 20px;
+            font-size: 18px;
             font-weight: 600;
             letter-spacing: 0.5px;
+            border-bottom: 1px solid #dee2e6;
         }
 
         .connector-calendar .mpc-calendar-grid {
@@ -279,10 +281,10 @@ class MPC_Shortcodes_ConnectorCalendar {
 
         .connector-calendar .mcs-day {
             position: relative;
-            min-height: 90px;
-            padding: 12px 8px 8px 8px;
-            border-right: 1px solid #e2e8f0;
-            border-bottom: 1px solid #e2e8f0;
+            min-height: 80px;
+            padding: 8px 6px 6px 6px;
+            border-right: 1px solid #dee2e6;
+            border-bottom: 1px solid #dee2e6;
             cursor: pointer;
             transition: all 0.2s ease;
             background: white;
@@ -479,6 +481,56 @@ class MPC_Shortcodes_ConnectorCalendar {
                 font-size: 10px;
             }
         }
+
+        /* Navigation buttons */
+        .connector-calendar .mpc-calendar-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            gap: 16px;
+        }
+
+        .connector-calendar .mpc-nav-button {
+            background: #f8f9fa;
+            color: #495057;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .connector-calendar .mpc-nav-button:hover {
+            background: #e9ecef;
+            border-color: #adb5bd;
+            color: #212529;
+        }
+
+        .connector-calendar .mpc-nav-button:disabled {
+            background: #e9ecef;
+            color: #6c757d;
+            cursor: not-allowed;
+            border-color: #dee2e6;
+        }
+
+        .connector-calendar .mpc-nav-icon {
+            font-size: 18px;
+            line-height: 1;
+        }
+
+        .connector-calendar .mpc-calendar-subtitle {
+            text-align: center;
+            font-size: 16px;
+            color: #2c3e50;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
         </style>
 
         <script>
@@ -542,7 +594,7 @@ class MPC_Shortcodes_ConnectorCalendar {
                 var monthHtml = '<div class="mpc-calendar-month" data-year="' + year + '" data-month="' + month + '">';
                 monthHtml += '<h3 class="mpc-calendar-month-title">' + monthTitle + '</h3>';
                 monthHtml += '<div class="mpc-calendar-grid">';
-                monthHtml += '<div class="mpc-calendar-day-headers">';
+                // Day headers as first row in grid
                 monthHtml += '<div class="mpc-calendar-day-header">日</div>';
                 monthHtml += '<div class="mpc-calendar-day-header">月</div>';
                 monthHtml += '<div class="mpc-calendar-day-header">火</div>';
@@ -550,7 +602,6 @@ class MPC_Shortcodes_ConnectorCalendar {
                 monthHtml += '<div class="mpc-calendar-day-header">木</div>';
                 monthHtml += '<div class="mpc-calendar-day-header">金</div>';
                 monthHtml += '<div class="mpc-calendar-day-header">土</div>';
-                monthHtml += '</div>';
 
                 var firstDay = new Date(year, month - 1, 1);
                 var lastDay = new Date(year, month, 0);
@@ -562,43 +613,37 @@ class MPC_Shortcodes_ConnectorCalendar {
                 var currentDate = new Date(startOfWeek);
 
                 while (currentDate <= endOfWeek) {
-                    monthHtml += '<div class="mpc-calendar-week">';
+                    var isCurrentMonth = currentDate.getMonth() === month - 1;
+                    var isPast = currentDate < new Date().setHours(0, 0, 0, 0);
+                    var dateString = currentDate.toISOString().split('T')[0];
+                    var dayOfWeek = currentDate.getDay();
 
-                    for (var day = 0; day < 7; day++) {
-                        var isCurrentMonth = currentDate.getMonth() === month - 1;
-                        var isPast = currentDate < new Date().setHours(0, 0, 0, 0);
-                        var dateString = currentDate.toISOString().split('T')[0];
-                        var dayOfWeek = currentDate.getDay();
+                    var dayClasses = ['mcs-day'];
+                    if (!isCurrentMonth) dayClasses.push('mcs-day--empty');
+                    if (isPast) dayClasses.push('mcs-day--past');
 
-                        var dayClasses = ['mcs-day'];
-                        if (!isCurrentMonth) dayClasses.push('mcs-day--empty');
-                        if (isPast) dayClasses.push('mcs-day--past');
-
-                        if (isCurrentMonth && !isPast) {
-                            if (dayOfWeek === 0) {
-                                dayClasses.push('mcs-day--sun');
-                            } else if (dayOfWeek === 6) {
-                                dayClasses.push('mcs-day--sat');
-                            } else {
-                                dayClasses.push('mcs-day--weekday');
-                            }
+                    if (isCurrentMonth && !isPast) {
+                        if (dayOfWeek === 0) {
+                            dayClasses.push('mcs-day--sun');
+                        } else if (dayOfWeek === 6) {
+                            dayClasses.push('mcs-day--sat');
+                        } else {
+                            dayClasses.push('mcs-day--weekday');
                         }
+                    }
 
-                        monthHtml += '<div class="' + dayClasses.join(' ') + '" data-ymd="' + dateString + '">';
-                        monthHtml += '<span class="mcs-day-number">' + currentDate.getDate() + '</span>';
+                    monthHtml += '<div class="' + dayClasses.join(' ') + '" data-ymd="' + dateString + '">';
+                    monthHtml += '<span class="mcs-day-number">' + currentDate.getDate() + '</span>';
 
-                        if (isCurrentMonth && !isPast) {
-                            var price = 15000;
-                            if (dayOfWeek === 6) price += 2000;
-                            if (dayOfWeek === 0) price += 1000;
-                            monthHtml += '<span class="mcs-day-price">¥' + price.toLocaleString() + '</span>';
-                        }
-
-                        monthHtml += '</div>';
-                        currentDate.setDate(currentDate.getDate() + 1);
+                    if (isCurrentMonth && !isPast) {
+                        var price = 15000;
+                        if (dayOfWeek === 6) price += 2000;
+                        if (dayOfWeek === 0) price += 1000;
+                        monthHtml += '<span class="mcs-day-price">¥' + price.toLocaleString() + '</span>';
                     }
 
                     monthHtml += '</div>';
+                    currentDate.setDate(currentDate.getDate() + 1);
                 }
 
                 monthHtml += '</div></div>';
@@ -695,73 +740,62 @@ class MPC_Shortcodes_ConnectorCalendar {
         }
 
         while ($current_date <= $end_of_week) {
-            $output .= '<div class="mpc-calendar-week">';
+            $is_current_month = ($current_date->format('n') == $month);
+            $is_past = ($current_date < new \DateTime('today'));
+            $date_string = $current_date->format('Y-m-d');
 
-            for ($day = 0; $day < 7; $day++) {
-                $is_current_month = ($current_date->format('n') == $month);
-                $is_past = ($current_date < new \DateTime('today'));
-                $date_string = $current_date->format('Y-m-d');
+            // Get availability status
+            $availability_status = self::get_availability_status($date_string, $availability_data);
 
-                // Get availability status
-                $availability_status = self::get_availability_status($date_string, $availability_data);
+            // Get day classification for colors - Portal Parity
+            $day_classification = self::getSimpleDayClasses($date_string, $availability_status);
 
-                // Get day classification for colors - Portal Parity
-                $day_classification = self::getSimpleDayClasses($date_string, $availability_status);
+            $is_available = ($availability_status === 'available');
+            $is_disabled = $is_past || !$is_available;
 
-                $is_available = ($availability_status === 'available');
-                $is_disabled = $is_past || !$is_available;
+            $cell_classes = $day_classification['css_classes'];
+            if (!$is_current_month) {
+                $cell_classes[] = 'mcs-day--empty';
+            }
+            if ($is_past) {
+                $cell_classes[] = 'mcs-day--past';
+            }
 
-                $cell_classes = $day_classification['css_classes'];
-                if (!$is_current_month) {
-                    $cell_classes[] = 'mcs-day--empty';
-                }
-                if ($is_past) {
-                    $cell_classes[] = 'mcs-day--past';
-                }
+            $output .= sprintf(
+                '<div class="%s" data-ymd="%s" data-property="%s" data-disabled="%d" style="background-color: %s;">',
+                esc_attr(implode(' ', $cell_classes)),
+                esc_attr($date_string),
+                esc_attr($property_id),
+                $is_disabled ? 1 : 0,
+                esc_attr($day_classification['background_color'])
+            );
 
-                $output .= sprintf(
-                    '<div class="%s" data-ymd="%s" data-property="%s" data-disabled="%d" style="background-color: %s;">',
-                    esc_attr(implode(' ', $cell_classes)),
-                    esc_attr($date_string),
-                    esc_attr($property_id),
-                    $is_disabled ? 1 : 0,
-                    esc_attr($day_classification['background_color'])
-                );
+            $output .= '<span class="mcs-day-number">' . $current_date->format('j') . '</span>';
 
-                $output .= '<span class="mcs-day-number">' . $current_date->format('j') . '</span>';
+            // Add price badge for available days, or 満室 badge for booked days
+            if ($is_current_month && !$is_past) {
+                if ($availability_status === 'available' && $show_prices) {
+                    // Simple pricing based on day of week
+                    $day_of_week = $current_date->format('w');
+                    $base_price = 15000;
 
-                // Add price badge for available days, or 満室 badge for booked days
-                if ($is_current_month && !$is_past) {
-
-                    if ($availability_status === 'available' && $show_prices) {
-                        // Calculate local pricing
-                        $local_price = self::calculate_local_pricing_for_date($date_string, $property_id);
-
-                        // ポータルAPIから価格取得を試行
-                        $portal_price = self::get_price_for_day($date_string, $availability_data, $property_id);
-
-                        // 強制的にローカル価格計算を使用（土日祝割増を確実に表示するため）
-                        $price = $local_price;
-                        $price_source = 'local';
-
-                        // Price validation
-                        if ($price <= 0) {
-                            $price = ($property_id == 17) ? 20000 : (($property_id == 16) ? 18000 : 16000);
-                            $price_source = 'emergency';
-                        }
-
-                        $output .= '<span class="mcs-day-price" style="background: #1e293b !important; color: white !important; display: block !important;">¥' . number_format($price) . '</span>';
-                    } elseif ($availability_status === 'full') {
-                        $output .= '<span class="mcs-day-full-badge">満室</span>';
+                    if ($day_of_week == 6) { // Saturday
+                        $price = $base_price + 2000;
+                    } elseif ($day_of_week == 0) { // Sunday
+                        $price = $base_price + 1000;
+                    } else {
+                        $price = $base_price;
                     }
+
+                    $output .= '<span class="mcs-day-price" style="background: #1e293b !important; color: white !important; display: block !important;">¥' . number_format($price) . '</span>';
+                } elseif ($availability_status === 'full') {
+                    $output .= '<span class="mcs-day-full-badge">満室</span>';
                 }
-
-                $output .= '</div>';
-
-                $current_date->add(new \DateInterval('P1D'));
             }
 
             $output .= '</div>';
+
+            $current_date->add(new \DateInterval('P1D'));
         }
 
         return $output;
@@ -1538,24 +1572,17 @@ class MPC_Shortcodes_ConnectorCalendar {
             margin: 0;
         }
 
-        .connector-calendar .mpc-calendar-month {
-            margin-bottom: 32px;
-            background: white;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            border: 1px solid #e5e7eb;
-        }
 
         .connector-calendar .mpc-calendar-month-title {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            background: #f8f9fa;
+            color: #495057;
             margin: 0;
-            padding: 20px 24px;
+            padding: 16px 20px;
             text-align: center;
-            font-size: 20px;
+            font-size: 18px;
             font-weight: 600;
             letter-spacing: 0.5px;
+            border-bottom: 1px solid #dee2e6;
         }
 
         .connector-calendar .mpc-calendar-grid {
@@ -1584,10 +1611,10 @@ class MPC_Shortcodes_ConnectorCalendar {
 
         .connector-calendar .mcs-day {
             position: relative;
-            min-height: 90px;
-            padding: 12px 8px 8px 8px;
-            border-right: 1px solid #e2e8f0;
-            border-bottom: 1px solid #e2e8f0;
+            min-height: 80px;
+            padding: 8px 6px 6px 6px;
+            border-right: 1px solid #dee2e6;
+            border-bottom: 1px solid #dee2e6;
             cursor: pointer;
             transition: all 0.2s ease;
             background: white;

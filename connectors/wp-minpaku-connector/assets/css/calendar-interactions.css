@@ -381,6 +381,7 @@
 /* Calendar layout adjustments for quote panel */
 [data-mode="inline"] {
     display: flex;
+    flex-direction: column;
     gap: 24px;
     align-items: flex-start;
 }
