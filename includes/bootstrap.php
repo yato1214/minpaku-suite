@@ -509,6 +509,21 @@ class Bootstrap
                     \MinpakuSuite\Api\OwnerApiController::init();
                 }
             }
+
+            // Register Quote API
+            $quote_api_file = MCS_PATH . 'includes/Api/QuoteController.php';
+            if (file_exists($quote_api_file)) {
+                require_once $quote_api_file;
+                if (class_exists('MinpakuSuite\Api\QuoteController')) {
+                    \MinpakuSuite\Api\QuoteController::init();
+                }
+            }
+
+            // Register Rate Engine Service
+            $rate_engine_file = MCS_PATH . 'includes/Services/RateEngine.php';
+            if (file_exists($rate_engine_file)) {
+                require_once $rate_engine_file;
+            }
         } catch (Exception $e) {
             error_log('Minpaku Suite REST API Error: ' . $e->getMessage());
         }

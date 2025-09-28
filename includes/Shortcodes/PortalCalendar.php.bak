@@ -522,6 +522,7 @@ class PortalCalendar {
 
             calendars.forEach(function(calendar, index) {
                 const calendarId = calendar.id || 'calendar-' + index;
+                console.log('[PortalCalendar] Setting up calendar:', calendarId);
 
                 let currentStartMonth = 0;
                 const maxMonths = 12;
@@ -627,6 +628,7 @@ class PortalCalendar {
                 }
 
                 function updateCalendar() {
+                    console.log('[PortalCalendar] Updating calendar display - start month:', currentStartMonth);
 
                     let newHtml = '';
                     for (let i = 0; i < visibleMonths; i++) {
@@ -645,6 +647,7 @@ class PortalCalendar {
 
                 prevBtn.addEventListener('click', function(e) {
                     e.preventDefault();
+                    console.log('[PortalCalendar] Previous button clicked');
                     if (currentStartMonth > 0) {
                         currentStartMonth--;
                         updateCalendar();
@@ -653,6 +656,7 @@ class PortalCalendar {
 
                 nextBtn.addEventListener('click', function(e) {
                     e.preventDefault();
+                    console.log('[PortalCalendar] Next button clicked');
                     if (currentStartMonth + visibleMonths < maxMonths) {
                         currentStartMonth++;
                         updateCalendar();
@@ -660,6 +664,7 @@ class PortalCalendar {
                 });
 
                 updateNavigation();
+                console.log('[PortalCalendar] Calendar navigation setup complete for:', calendarId);
             });
         });
         </script>
@@ -1152,18 +1157,21 @@ class PortalCalendar {
 
         <script>
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('Portal Calendar Modal Script Loaded');
 
             // Modal button click handler
             var button = document.getElementById('<?php echo esc_js($button_id); ?>');
             if (button) {
                 button.addEventListener('click', function(e) {
                     e.preventDefault();
+                    console.log('Modal button clicked');
 
                     var propertyId = this.getAttribute('data-property-id');
                     var propertyTitle = this.getAttribute('data-property-title');
                     var months = this.getAttribute('data-months');
                     var showPrices = this.getAttribute('data-show-prices');
 
+                    console.log('Opening modal for property:', propertyId);
                     openPortalCalendarModal(propertyId, propertyTitle, months, showPrices);
                 });
             }
@@ -1185,10 +1193,13 @@ class PortalCalendar {
         });
 
         function openPortalCalendarModal(propertyId, propertyTitle, months, showPrices) {
+            console.log('openPortalCalendarModal called with:', propertyId, propertyTitle, months, showPrices);
 
             var modal = document.getElementById('portal-calendar-modal-' + propertyId);
+            console.log('Modal element found:', modal);
 
             if (!modal) {
+                console.error('Modal not found for ID: portal-calendar-modal-' + propertyId);
                 return;
             }
 
@@ -1199,6 +1210,7 @@ class PortalCalendar {
             modal.style.display = 'flex';
             document.body.classList.add('portal-calendar-modal-open');
 
+            console.log('Modal should now be visible');
 
             // Show loading
             if (loadingDiv) loadingDiv.style.display = 'block';
@@ -1254,6 +1266,7 @@ class PortalCalendar {
 
         function initModalCalendarHandlers(modalContent) {
             // Direct navigation removed - modal clicks now handled by unified calendar interactions
+            console.log('Modal calendar handlers - direct navigation disabled, using unified interactions');
         }
 
         function closePortalCalendarModal() {

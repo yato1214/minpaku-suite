@@ -821,6 +821,7 @@ class MPC_Admin_Settings {
 
                         // Log error for debugging
                         if (window.console && response.data.original) {
+                            console.log('WMC Connection Test Error:', response.data.original);
                         }
                     }
                 })
@@ -833,6 +834,7 @@ class MPC_Admin_Settings {
 
                     // Log error for debugging
                     if (window.console) {
+                        console.log('WMC AJAX Error:', xhr, status, error);
                     }
                 })
                 .always(function() {

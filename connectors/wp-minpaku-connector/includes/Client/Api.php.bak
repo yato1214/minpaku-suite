@@ -624,6 +624,7 @@ class MPC_Client_Api {
                 'redirection' => 2,
                 'is_dev_domain' => $is_dev_domain
             );
+            error_log('[minpaku-connector] Outgoing request: ' . json_encode($debug_request));
         }
 
         $start_time = microtime(true);
@@ -659,6 +660,7 @@ class MPC_Client_Api {
                     'request_time_ms' => $request_time,
                     'response_headers' => array_keys($response_headers->getAll())
                 );
+                error_log('[minpaku-connector] Request completed: ' . json_encode($debug_response));
             }
         }
 

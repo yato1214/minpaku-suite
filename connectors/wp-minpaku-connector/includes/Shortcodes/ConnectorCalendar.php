@@ -152,6 +152,36 @@ class MPC_Shortcodes_ConnectorCalendar {
                     </div>
                 <?php endfor; ?>
             </div>
+
+            <!-- Quote Panel (initially hidden) -->
+            <div class="mpc-quote-panel" style="display: none;">
+                <div class="mpc-quote-header">
+                    <h3><?php echo esc_html__('見積り', 'wp-minpaku-connector'); ?></h3>
+                    <button class="mpc-quote-close" aria-label="<?php echo esc_attr__('閉じる', 'wp-minpaku-connector'); ?>">×</button>
+                </div>
+                <div class="mpc-quote-content">
+                    <div class="mpc-quote-loading" style="display: none;">
+                        <span class="mpc-loading-spinner"></span>
+                        <?php echo esc_html__('見積り計算中...', 'wp-minpaku-connector'); ?>
+                    </div>
+                    <div class="mpc-quote-result" style="display: none;">
+                        <div class="mpc-quote-summary">
+                            <div class="mpc-quote-dates"></div>
+                            <div class="mpc-quote-total"></div>
+                        </div>
+                        <div class="mpc-quote-breakdown">
+                            <h4><?php echo esc_html__('内訳', 'wp-minpaku-connector'); ?></h4>
+                            <div class="mpc-quote-breakdown-content"></div>
+                        </div>
+                        <div class="mpc-quote-note">
+                            <?php echo esc_html__('※ 最終合計は予約時に確定します', 'wp-minpaku-connector'); ?>
+                        </div>
+                    </div>
+                    <div class="mpc-quote-error" style="display: none;">
+                        <div class="mpc-error-message"></div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Connector Calendar CSS - Portal Parity Design with Responsive Support -->
