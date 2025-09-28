@@ -355,24 +355,40 @@ class MPC_Shortcodes_Embed {
             $output .= '</div>';
         }
 
-        // Add calendar toggle for property listing (inline view)
+        // Property action buttons - External URL link
         $output .= '<div class="wmc-property-actions">';
+
+        // Check for external detail URL first
+        $external_url = '';
+        if (!empty($property['meta']['external_detail_url'])) {
+            $external_url = $property['meta']['external_detail_url'];
+        } elseif (!empty($property['external_url'])) {
+            $external_url = $property['external_url'];
+        } elseif (!empty($property['external_detail_url'])) {
+            $external_url = $property['external_detail_url'];
+        }
+
+        if (!empty($external_url)) {
+            // External detail URL button (primary action)
+            $output .= '<a href="' . esc_url($external_url) . '" class="wmc-detail-button" target="_blank" rel="noopener noreferrer">';
+            $output .= '<span class="wmc-detail-icon">🏠</span>';
+            $output .= '<span class="wmc-detail-text">' . esc_html__('詳細・予約', 'wp-minpaku-connector') . '</span>';
+            $output .= '<span class="wmc-external-icon">↗</span>';
+            $output .= '</a>';
+        }
+
+        // Optional: Availability calendar link (secondary action)
         if ($calendar_view === 'inline') {
-            $output .= '<button class="wmc-availability-toggle" data-property-id="' . esc_attr($property['id']) . '" data-property-title="' . esc_attr($property['title']) . '" data-calendar-months="' . esc_attr($calendar_months) . '">';
+            $output .= '<button class="wmc-availability-toggle wmc-secondary-button" data-property-id="' . esc_attr($property['id']) . '" data-property-title="' . esc_attr($property['title']) . '" data-calendar-months="' . esc_attr($calendar_months) . '">';
             $output .= '<span class="wmc-availability-icon">📅</span>';
-            $output .= '<span class="wmc-availability-text">' . esc_html__('空き状況を見る', 'wp-minpaku-connector') . '</span>';
+            $output .= '<span class="wmc-availability-text">' . esc_html__('空き状況', 'wp-minpaku-connector') . '</span>';
             $output .= '<span class="wmc-availability-chevron">▼</span>';
             $output .= '</button>';
             $output .= '<div class="wmc-inline-calendar" data-property-id="' . esc_attr($property['id']) . '" style="display: none;">';
             $output .= '<div class="wmc-inline-calendar-loading">' . esc_html__('読み込み中...', 'wp-minpaku-connector') . '</div>';
             $output .= '</div>';
-        } else {
-            // Fallback to modal for backward compatibility
-            $output .= '<button class="wmc-calendar-button" data-property-id="' . esc_attr($property['id']) . '" data-property-title="' . esc_attr($property['title']) . '">';
-            $output .= '<span class="wmc-calendar-icon">📅</span>';
-            $output .= '<span class="wmc-calendar-text">' . esc_html__('Check Availability', 'wp-minpaku-connector') . '</span>';
-            $output .= '</button>';
         }
+
         $output .= '</div>';
 
         $output .= '</div>';

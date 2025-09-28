@@ -185,7 +185,29 @@ class MPC_Shortcodes_Availability {
 
                 echo '<script type="text/javascript" id="wpmc-availability-calendar-js">';
                 echo 'var wpmcAvailability = ' . json_encode($localize_data) . ';';
+                echo 'console.log("[WPMC] Localized data:", wpmcAvailability);';
                 echo $js_content;
+                // Add immediate debug check
+                echo '
+                jQuery(document).ready(function($) {
+                    setTimeout(function() {
+                        console.log("[WPMC] Debug check after 2 seconds:");
+                        console.log("  - WPMCAvailabilityCalendar:", window.WPMCAvailabilityCalendar);
+                        console.log("  - Calendar count:", Object.keys(window.WPMCAvailabilityCalendar?.calendars || {}).length);
+                        console.log("  - Visible months:", window.WPMCAvailabilityCalendar?.visibleMonths);
+
+                        // Check if calendar containers exist
+                        $(".wpmc-availability").each(function() {
+                            var id = $(this).attr("id");
+                            var $grid = $(this).find(".wpmc-calendar-grid");
+                            console.log("  - Calendar " + id + ":");
+                            console.log("    - Container exists:", $(this).length > 0);
+                            console.log("    - Grid exists:", $grid.length > 0);
+                            console.log("    - Grid content:", $grid.html().substr(0, 100));
+                        });
+                    }, 2000);
+                });
+                ';
                 echo '</script>';
             }
         }
