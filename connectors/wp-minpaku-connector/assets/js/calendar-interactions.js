@@ -1,33 +1,25 @@
 /**
- * Unified Calendar Interactions for MinPaku Suite
- * Supports both portal and connector calendars with modal/inline modes
+ * Connector Calendar Interactions - Modern Quote API Integration
+ * Uses unified calendar interactions with REST API quote endpoint
  *
- * Features:
- * - Single click: 1-night quote preview
- * - Double click/drag/long press: Range selection with quote
- * - Accessibility: ARIA, keyboard navigation
- * - Mobile: Touch gestures with 500ms long press
- * - i18n: Japanese text support
- *
- * @package MinpakuSuite
+ * @package WP_Minpaku_Connector
  */
 
 (function(window, document) {
     'use strict';
 
     /**
-     * Unified Calendar Interactions Manager
+     * Connector Calendar Interactions Manager
      */
-    class CalendarInteractions {
+    class ConnectorCalendarInteractions {
         constructor(rootElement, options = {}) {
             this.root = rootElement;
             this.options = {
                 mode: options.mode || this.detectMode(),
                 canBook: options.canBook || false,
-                apiBase: options.apiBase || '/wp-json/minpaku/v1',
+                apiBase: options.apiBase || '/wp-json/minpaku-connector/v1',
                 propertyId: options.propertyId || null,
                 texts: options.texts || {},
-                isConnector: options.isConnector || false,
                 ...options
             };
 
@@ -46,19 +38,9 @@
             this.texts = {
                 loading: '読み込み中...',
                 nightsLabel: '泊',
-                adultsLabel: '大人',
-                childrenLabel: '子供',
                 totalLabel: '合計金額',
-                getQuoteLabel: '見積を取得',
                 clearSelectionLabel: '選択をクリア',
-                bookingDisabled: '予約機能は準備中です',
-                quotePreview: '見積プレビュー',
-                accommodationFee: '宿泊料金',
-                cleaningFee: '清掃料金',
-                extraGuestFee: '追加人数料金',
                 errorTitle: 'エラー',
-                dateUnavailable: 'この日程は満室です',
-                occupancyExceeded: '定員を超えています',
                 networkError: 'ネットワークエラーが発生しました',
                 ...this.options.texts
             };
@@ -70,19 +52,24 @@
          * Initialize calendar interactions
          */
         init() {
+            // Guard: Only initialize on modern interactions
+            const interactions = this.root.getAttribute('data-interactions');
+            if (interactions !== 'modern') {
+                return;
+            }
+
             this.setupAccessibility();
             this.bindEvents();
             this.createQuotePanel();
 
-            // Set data attributes (preserve existing interactions setting)
-            const currentInteractions = this.root.getAttribute('data-interactions') || 'modern';
-            this.root.setAttribute('data-interactions', currentInteractions);
+            // Set data attributes
+            this.root.setAttribute('data-interactions', 'modern');
             this.root.setAttribute('data-mode', this.options.mode);
 
-            console.log('[Calendar] Unified interactions initialized', {
-                mode: this.options.mode,
-                propertyId: this.options.propertyId,
-                canBook: this.options.canBook
+            // Required debug output
+            console.debug('[quote] init', {
+                el: this.root,
+                propertyId: this.options.propertyId
             });
         }
 
@@ -98,24 +85,20 @@
          * Setup accessibility attributes
          */
         setupAccessibility() {
-            // Set calendar as grid
             this.root.setAttribute('role', 'grid');
             this.root.setAttribute('aria-label', 'カレンダー');
 
-            // Setup grid cells
             const cells = this.root.querySelectorAll('.mcs-day');
             cells.forEach((cell, index) => {
                 cell.setAttribute('role', 'gridcell');
                 cell.setAttribute('tabindex', index === 0 ? '0' : '-1');
 
-                // Set aria-disabled for unavailable days
                 if (cell.classList.contains('mcs-day--full') ||
                     cell.classList.contains('mcs-day--blackout') ||
                     cell.classList.contains('mcs-day--past')) {
                     cell.setAttribute('aria-disabled', 'true');
                 }
 
-                // Add date label
                 const dateStr = cell.dataset.ymd;
                 if (dateStr) {
                     const date = new Date(dateStr);
@@ -133,26 +116,18 @@
          * Bind event listeners
          */
         bindEvents() {
-            // Mouse events with click/dblclick coordination
             this.root.addEventListener('click', this.handleClick.bind(this));
             this.root.addEventListener('dblclick', this.handleDoubleClick.bind(this));
             this.root.addEventListener('mousedown', this.handleMouseDown.bind(this));
             this.root.addEventListener('mousemove', this.handleMouseMove.bind(this));
             this.root.addEventListener('mouseup', this.handleMouseUp.bind(this));
-
-            // Touch events for mobile
             this.root.addEventListener('touchstart', this.handleTouchStart.bind(this), { passive: false });
             this.root.addEventListener('touchmove', this.handleTouchMove.bind(this), { passive: false });
             this.root.addEventListener('touchend', this.handleTouchEnd.bind(this));
-
-            // Keyboard navigation
             this.root.addEventListener('keydown', this.handleKeyDown.bind(this));
 
-            // Prevent text selection during drag
             this.root.style.userSelect = 'none';
             this.root.style.webkitUserSelect = 'none';
-
-            // Mobile optimization
             this.root.style.touchAction = 'manipulation';
         }
 
@@ -163,14 +138,12 @@
             const cell = event.target.closest('.mcs-day');
             if (!cell || this.isCellDisabled(cell)) return;
 
-            // Clear any existing click timer
             if (this.state.clickTimer) {
                 clearTimeout(this.state.clickTimer);
                 this.state.clickTimer = null;
-                return; // This will be handled by dblclick
+                return;
             }
 
-            // Set timer to handle single click after dblclick detection window
             this.state.clickTimer = setTimeout(() => {
                 this.state.clickTimer = null;
                 this.handleSingleClick(cell);
@@ -185,7 +158,6 @@
             const cell = event.target.closest('.mcs-day');
             if (!cell || this.isCellDisabled(cell)) return;
 
-            // Clear single click timer
             if (this.state.clickTimer) {
                 clearTimeout(this.state.clickTimer);
                 this.state.clickTimer = null;
@@ -201,10 +173,7 @@
             const checkinDate = cell.dataset.ymd;
             if (!checkinDate) return;
 
-            // Calculate checkout date (next day)
             const checkoutDate = this.getNextDay(checkinDate);
-
-            console.log('[Calendar] Single click preview:', checkinDate, '->', checkoutDate);
 
             this.clearSelection();
             this.state.selectedCheckin = checkinDate;
@@ -222,22 +191,17 @@
             if (!clickedDate) return;
 
             if (!this.state.selectedCheckin) {
-                // First click - set as checkin
                 this.state.selectedCheckin = clickedDate;
                 this.state.selectedCheckout = null;
-                console.log('[Calendar] Range start:', clickedDate);
             } else {
-                // Second click - set as checkout
                 const checkin = new Date(this.state.selectedCheckin);
                 const checkout = new Date(clickedDate);
 
                 if (checkout <= checkin) {
-                    // Invalid range, restart
                     this.state.selectedCheckin = clickedDate;
                     this.state.selectedCheckout = null;
                 } else {
                     this.state.selectedCheckout = clickedDate;
-                    console.log('[Calendar] Range complete:', this.state.selectedCheckin, '->', clickedDate);
                     this.fetchQuote();
                 }
             }
@@ -245,9 +209,7 @@
             this.updateVisualSelection();
         }
 
-        /**
-         * Mouse drag handling
-         */
+        // Mouse and touch event handlers
         handleMouseDown(event) {
             const cell = event.target.closest('.mcs-day');
             if (!cell || this.isCellDisabled(cell)) return;
@@ -255,7 +217,6 @@
             this.state.isDragging = true;
             this.state.selectedCheckin = cell.dataset.ymd;
             this.state.selectedCheckout = null;
-
             event.preventDefault();
         }
 
@@ -280,31 +241,23 @@
         handleMouseUp(event) {
             if (this.state.isDragging) {
                 this.state.isDragging = false;
-
                 if (this.state.selectedCheckin && this.state.selectedCheckout) {
-                    console.log('[Calendar] Drag complete:', this.state.selectedCheckin, '->', this.state.selectedCheckout);
                     this.fetchQuote();
                 }
             }
         }
 
-        /**
-         * Touch handling for mobile
-         */
         handleTouchStart(event) {
             const cell = event.target.closest('.mcs-day');
             if (!cell || this.isCellDisabled(cell)) return;
 
             this.state.lastTouchTarget = cell;
-
-            // Start long press timer (500ms)
             this.state.longPressTimer = setTimeout(() => {
                 this.startLongPressSelection(cell);
             }, 500);
         }
 
         handleTouchMove(event) {
-            // Cancel long press if finger moves
             if (this.state.longPressTimer) {
                 clearTimeout(this.state.longPressTimer);
                 this.state.longPressTimer = null;
@@ -312,12 +265,10 @@
         }
 
         handleTouchEnd(event) {
-            // Cancel long press timer
             if (this.state.longPressTimer) {
                 clearTimeout(this.state.longPressTimer);
                 this.state.longPressTimer = null;
 
-                // Handle as regular tap
                 const cell = this.state.lastTouchTarget;
                 if (cell) {
                     this.handleSingleClick(cell);
@@ -325,30 +276,20 @@
             }
         }
 
-        /**
-         * Start long press selection mode
-         */
         startLongPressSelection(cell) {
-            console.log('[Calendar] Long press selection started');
             this.state.isSelecting = true;
             this.state.selectedCheckin = cell.dataset.ymd;
             this.state.selectedCheckout = null;
             this.updateVisualSelection();
-
-            // Show visual feedback
             this.root.classList.add('mcs-selecting-range');
         }
 
-        /**
-         * Keyboard navigation
-         */
         handleKeyDown(event) {
             const currentCell = document.activeElement;
             if (!currentCell.classList.contains('mcs-day')) return;
 
             const cells = Array.from(this.root.querySelectorAll('.mcs-day'));
             const currentIndex = cells.indexOf(currentCell);
-
             let targetIndex = currentIndex;
 
             switch (event.key) {
@@ -399,7 +340,6 @@
          * Update visual selection
          */
         updateVisualSelection() {
-            // Clear previous selection
             this.root.querySelectorAll('.mcs-selected, .mcs-selected-start, .mcs-selected-end, .mcs-selected-range')
                 .forEach(cell => {
                     cell.classList.remove('mcs-selected', 'mcs-selected-start', 'mcs-selected-end', 'mcs-selected-range');
@@ -408,7 +348,6 @@
 
             if (!this.state.selectedCheckin) return;
 
-            // Mark checkin date
             const checkinCell = this.root.querySelector(`[data-ymd="${this.state.selectedCheckin}"]`);
             if (checkinCell) {
                 checkinCell.classList.add('mcs-selected-start');
@@ -416,14 +355,12 @@
             }
 
             if (this.state.selectedCheckout) {
-                // Mark checkout date
                 const checkoutCell = this.root.querySelector(`[data-ymd="${this.state.selectedCheckout}"]`);
                 if (checkoutCell) {
                     checkoutCell.classList.add('mcs-selected-end');
                     checkoutCell.setAttribute('aria-selected', 'true');
                 }
 
-                // Mark range between
                 const checkinDate = new Date(this.state.selectedCheckin);
                 const checkoutDate = new Date(this.state.selectedCheckout);
 
@@ -440,41 +377,38 @@
          * Create quote panel
          */
         createQuotePanel() {
-            // Check if panel already exists
             let panel = this.getQuotePanel();
             if (panel) return;
 
-            // Create panel HTML
+            const calendarId = this.root.getAttribute('data-calendar-id') || `cal-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            this.root.setAttribute('data-calendar-id', calendarId);
+
             const panelHtml = `
-                <div class="mcs-quote-panel" role="region" aria-label="${this.texts.quotePreview}" aria-live="polite">
-                    <div class="mcs-quote-header">
-                        <h3>${this.texts.quotePreview}</h3>
-                        <button type="button" class="mcs-clear-selection-btn" aria-label="${this.texts.clearSelectionLabel}">
+                <div class="wpmc-quote-panel" data-calendar-id="${calendarId}" role="region" aria-label="見積プレビュー" aria-live="polite">
+                    <div class="wpmc-quote-header">
+                        <h3>見積</h3>
+                        <button type="button" class="wpmc-clear-selection-btn" aria-label="${this.texts.clearSelectionLabel}">
                             <span aria-hidden="true">×</span>
                         </button>
                     </div>
-                    <div class="mcs-quote-content">
-                        <div class="mcs-quote-placeholder">
+                    <div class="wpmc-quote-content">
+                        <div class="wpmc-quote-placeholder">
                             <p>日程を選択すると見積が表示されます</p>
                         </div>
                     </div>
                 </div>
             `;
 
-            // Insert panel based on mode
             if (this.options.mode === 'modal') {
-                // Insert into modal
-                const modalBody = this.root.closest('.modal-body, .mcs-modal-body');
+                const modalBody = this.root.closest('.modal-body, .wpmc-modal-body');
                 if (modalBody) {
                     modalBody.insertAdjacentHTML('beforeend', panelHtml);
                 }
             } else {
-                // Insert after calendar
                 this.root.insertAdjacentHTML('afterend', panelHtml);
             }
 
-            // Bind clear button
-            const clearBtn = this.getQuotePanel()?.querySelector('.mcs-clear-selection-btn');
+            const clearBtn = this.getQuotePanel()?.querySelector('.wpmc-clear-selection-btn');
             if (clearBtn) {
                 clearBtn.addEventListener('click', () => this.clearSelection());
             }
@@ -484,11 +418,16 @@
          * Get quote panel element
          */
         getQuotePanel() {
+            const calendarId = this.root.getAttribute('data-calendar-id');
+            if (calendarId) {
+                return document.querySelector(`.wpmc-quote-panel[data-calendar-id="${calendarId}"]`);
+            }
+
             if (this.options.mode === 'modal') {
                 const modal = this.root.closest('.modal, .dialog, [role="dialog"]');
-                return modal?.querySelector('.mcs-quote-panel');
+                return modal?.querySelector('.wpmc-quote-panel');
             } else {
-                return this.root.parentNode.querySelector('.mcs-quote-panel');
+                return this.root.parentNode.querySelector('.wpmc-quote-panel');
             }
         }
 
@@ -501,32 +440,31 @@
             const panel = this.getQuotePanel();
             if (!panel) return;
 
-            const content = panel.querySelector('.mcs-quote-content');
-            content.innerHTML = `<div class="mcs-quote-loading">${this.texts.loading}</div>`;
+            const content = panel.querySelector('.wpmc-quote-content');
+            content.innerHTML = `<div class="wpmc-quote-loading">${this.texts.loading}</div>`;
 
             try {
-                const params = new URLSearchParams({
-                    property_id: this.options.propertyId,
+                const payload = {
+                    property_id: parseInt(this.options.propertyId),
                     checkin: this.state.selectedCheckin,
                     checkout: this.state.selectedCheckout,
-                    adults: this.options.adults || 2,
-                    children: this.options.children || 0,
-                    pets: this.options.pets || 0
-                });
+                    guests: this.options.guests || 2
+                };
 
-                const endpoint = this.options.isConnector
-                    ? `${this.options.apiBase}/connector/quote?${params}`
-                    : `${this.options.apiBase}/quote?${params}`;
+                // Required debug output
+                console.debug('[quote] request', payload);
 
-                const response = await fetch(endpoint, {
-                    method: 'GET',
+                const response = await fetch('/wp-json/minpaku-connector/v1/quote', {
+                    method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                    }
+                    },
+                    body: JSON.stringify(payload)
                 });
 
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({}));
+                    console.debug('[quote] error', errorData);
                     throw new Error(errorData.error || errorData.message || 'Quote request failed');
                 }
 
@@ -534,7 +472,7 @@
                 this.displayQuote(quoteData);
 
             } catch (error) {
-                console.error('[Calendar] Quote fetch error:', error);
+                console.debug('[quote] error', error);
                 this.displayQuoteError(error.message);
             }
         }
@@ -550,29 +488,33 @@
             const checkinDate = new Date(this.state.selectedCheckin);
             const checkoutDate = new Date(this.state.selectedCheckout);
 
+            const formatter = new Intl.NumberFormat('ja-JP', {style: 'currency', currency: 'JPY'});
+
             const html = `
-                <div class="mcs-quote-summary">
-                    <div class="mcs-quote-dates">
-                        <span class="mcs-checkin-date">${this.formatDate(checkinDate)}</span>
-                        <span class="mcs-date-separator">〜</span>
-                        <span class="mcs-checkout-date">${this.formatDate(checkoutDate)}</span>
-                        <span class="mcs-nights-count">${nights}${this.texts.nightsLabel}</span>
+                <div class="wpmc-quote-summary">
+                    <div class="wpmc-quote-dates">
+                        <span class="wpmc-checkin-date">${this.formatDate(checkinDate)}</span>
+                        <span class="wpmc-date-separator">〜</span>
+                        <span class="wpmc-checkout-date">${this.formatDate(checkoutDate)}</span>
+                        <span class="wpmc-nights-count">${nights}泊数</span>
                     </div>
                 </div>
 
-                <div class="mcs-quote-breakdown">
-                    ${this.buildBreakdownHtml(quoteData)}
+                <div class="wpmc-quote-breakdown">
+                    <table class="wpmc-quote-table">
+                        <tr><th>内訳</th><th>金額</th></tr>
+                        ${quoteData.base_total ? `<tr><td>宿泊料金 (${nights}泊)</td><td>${formatter.format(quoteData.base_total)}</td></tr>` : ''}
+                        ${quoteData.cleaning_fee && quoteData.cleaning_fee > 0 ? `<tr><td>清掃費</td><td>${formatter.format(quoteData.cleaning_fee)}</td></tr>` : ''}
+                        <tr class="wpmc-total-row"><td><strong>合計</strong></td><td><strong>${formatter.format(quoteData.grand_total || quoteData.total || 0)}</strong></td></tr>
+                    </table>
                 </div>
 
-                <div class="mcs-quote-total">
-                    <span class="mcs-quote-total-label">${this.texts.totalLabel}</span>
-                    <span class="mcs-quote-total-amount">¥${this.formatPrice(quoteData.total)}</span>
+                <div class="wpmc-quote-notice">
+                    <p><small>注意: 最終合計は予約時に確定します</small></p>
                 </div>
-
-                ${this.options.canBook ? this.buildBookingButtonHtml() : this.buildDisabledBookingHtml()}
             `;
 
-            const content = panel.querySelector('.mcs-quote-content');
+            const content = panel.querySelector('.wpmc-quote-content');
             content.innerHTML = html;
         }
 
@@ -584,76 +526,14 @@
             if (!panel) return;
 
             const html = `
-                <div class="mcs-quote-error">
+                <div class="wpmc-quote-error">
                     <h4>${this.texts.errorTitle}</h4>
                     <p>${message}</p>
                 </div>
             `;
 
-            const content = panel.querySelector('.mcs-quote-content');
+            const content = panel.querySelector('.wpmc-quote-content');
             content.innerHTML = html;
-        }
-
-        /**
-         * Build breakdown HTML
-         */
-        buildBreakdownHtml(quoteData) {
-            let html = '';
-
-            if (quoteData.base_nightly_total > 0) {
-                html += `
-                    <div class="mcs-quote-line-item">
-                        <span class="mcs-quote-label">${this.texts.accommodationFee}</span>
-                        <span class="mcs-quote-amount">¥${this.formatPrice(quoteData.base_nightly_total)}</span>
-                    </div>
-                `;
-            }
-
-            if (quoteData.cleaning_fee > 0) {
-                html += `
-                    <div class="mcs-quote-line-item">
-                        <span class="mcs-quote-label">${this.texts.cleaningFee}</span>
-                        <span class="mcs-quote-amount">¥${this.formatPrice(quoteData.cleaning_fee)}</span>
-                    </div>
-                `;
-            }
-
-            if (quoteData.extra_guest_total > 0) {
-                html += `
-                    <div class="mcs-quote-line-item">
-                        <span class="mcs-quote-label">${this.texts.extraGuestFee}</span>
-                        <span class="mcs-quote-amount">¥${this.formatPrice(quoteData.extra_guest_total)}</span>
-                    </div>
-                `;
-            }
-
-            return html;
-        }
-
-        /**
-         * Build booking button HTML
-         */
-        buildBookingButtonHtml() {
-            return `
-                <div class="mcs-quote-actions">
-                    <button type="button" class="mcs-book-now-btn mcs-btn-primary">
-                        予約する
-                    </button>
-                </div>
-            `;
-        }
-
-        /**
-         * Build disabled booking HTML
-         */
-        buildDisabledBookingHtml() {
-            return `
-                <div class="mcs-quote-actions">
-                    <button type="button" class="mcs-book-disabled-btn" disabled>
-                        ${this.texts.bookingDisabled}
-                    </button>
-                </div>
-            `;
         }
 
         /**
@@ -669,9 +549,9 @@
 
             const panel = this.getQuotePanel();
             if (panel) {
-                const content = panel.querySelector('.mcs-quote-content');
+                const content = panel.querySelector('.wpmc-quote-content');
                 content.innerHTML = `
-                    <div class="mcs-quote-placeholder">
+                    <div class="wpmc-quote-placeholder">
                         <p>日程を選択すると見積が表示されます</p>
                     </div>
                 `;
@@ -701,52 +581,31 @@
                 weekday: 'short'
             });
         }
-
-        formatPrice(price) {
-            return price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-        }
     }
 
     /**
-     * Initialize unified calendar interactions
+     * Initialize connector calendar interactions
      */
-    function initCalendarInteractions(rootElement, options = {}) {
-        return new CalendarInteractions(rootElement, options);
+    function initConnectorCalendarInteractions(rootElement, options = {}) {
+        return new ConnectorCalendarInteractions(rootElement, options);
     }
 
     // Export to global scope
-    window.MinpakuSuite = window.MinpakuSuite || {};
-    window.MinpakuSuite.CalendarInteractions = CalendarInteractions;
-    window.initCalendarInteractions = initCalendarInteractions;
+    window.MinpakuConnector = window.MinpakuConnector || {};
+    window.MinpakuConnector.CalendarInteractions = ConnectorCalendarInteractions;
+    window.initConnectorCalendarInteractions = initConnectorCalendarInteractions;
 
     // Auto-initialize calendars with modern interactions
     document.addEventListener('DOMContentLoaded', function() {
-        // Initialize portal calendars
-        document.querySelectorAll('[data-interactions="modern"]').forEach(calendar => {
-            const propertyId = calendar.dataset.propertyId;
-            const mode = calendar.dataset.mode || 'inline';
-
-            if (propertyId) {
-                initCalendarInteractions(calendar, {
-                    mode: mode,
-                    propertyId: propertyId,
-                    isConnector: false,
-                    apiBase: '/wp-json/minpaku/v1'
-                });
-            }
-        });
-
-        // Initialize connector calendars
         document.querySelectorAll('.connector-calendar[data-interactions="modern"]').forEach(calendar => {
             const propertyId = calendar.dataset.propertyId;
             const mode = calendar.dataset.mode || 'inline';
 
-            if (propertyId) {
-                initCalendarInteractions(calendar, {
+            if (propertyId && calendar.getAttribute('data-interactions') === 'modern') {
+                initConnectorCalendarInteractions(calendar, {
                     mode: mode,
                     propertyId: propertyId,
-                    isConnector: true,
-                    apiBase: window.mpcConnectorApi?.baseUrl || '/wp-json/minpaku/v1'
+                    apiBase: '/wp-json/minpaku-connector/v1'
                 });
             }
         });

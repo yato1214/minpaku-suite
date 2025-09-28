@@ -70,19 +70,24 @@
          * Initialize calendar interactions
          */
         init() {
+            // Guard: Only initialize on modern interactions
+            const interactions = this.root.getAttribute('data-interactions');
+            if (interactions !== 'modern') {
+                return;
+            }
+
             this.setupAccessibility();
             this.bindEvents();
             this.createQuotePanel();
 
             // Set data attributes (preserve existing interactions setting)
-            const currentInteractions = this.root.getAttribute('data-interactions') || 'modern';
-            this.root.setAttribute('data-interactions', currentInteractions);
+            this.root.setAttribute('data-interactions', 'modern');
             this.root.setAttribute('data-mode', this.options.mode);
 
-            console.log('[Calendar] Unified interactions initialized', {
-                mode: this.options.mode,
-                propertyId: this.options.propertyId,
-                canBook: this.options.canBook
+            // Required debug output
+            console.debug('[quote] init', {
+                el: this.root,
+                propertyId: this.options.propertyId
             });
         }
 
@@ -444,11 +449,15 @@
             let panel = this.getQuotePanel();
             if (panel) return;
 
-            // Create panel HTML
+            // Generate stable calendar ID for panel
+            const calendarId = this.root.getAttribute('data-calendar-id') || `cal-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            this.root.setAttribute('data-calendar-id', calendarId);
+
+            // Create panel HTML with robust anchoring
             const panelHtml = `
-                <div class="mcs-quote-panel" role="region" aria-label="${this.texts.quotePreview}" aria-live="polite">
+                <div class="mcs-quote-panel" data-calendar-id="${calendarId}" role="region" aria-label="${this.texts.quotePreview}" aria-live="polite">
                     <div class="mcs-quote-header">
-                        <h3>${this.texts.quotePreview}</h3>
+                        <h3>見積</h3>
                         <button type="button" class="mcs-clear-selection-btn" aria-label="${this.texts.clearSelectionLabel}">
                             <span aria-hidden="true">×</span>
                         </button>
@@ -461,7 +470,7 @@
                 </div>
             `;
 
-            // Insert panel based on mode
+            // Insert panel with robust anchoring: try existing, else create
             if (this.options.mode === 'modal') {
                 // Insert into modal
                 const modalBody = this.root.closest('.modal-body, .mcs-modal-body');
@@ -484,6 +493,11 @@
          * Get quote panel element
          */
         getQuotePanel() {
+            const calendarId = this.root.getAttribute('data-calendar-id');
+            if (calendarId) {
+                return document.querySelector(`.mcs-quote-panel[data-calendar-id="${calendarId}"]`);
+            }
+
             if (this.options.mode === 'modal') {
                 const modal = this.root.closest('.modal, .dialog, [role="dialog"]');
                 return modal?.querySelector('.mcs-quote-panel');
@@ -505,28 +519,31 @@
             content.innerHTML = `<div class="mcs-quote-loading">${this.texts.loading}</div>`;
 
             try {
-                const params = new URLSearchParams({
-                    property_id: this.options.propertyId,
+                const payload = {
+                    property_id: parseInt(this.options.propertyId),
                     checkin: this.state.selectedCheckin,
                     checkout: this.state.selectedCheckout,
-                    adults: this.options.adults || 2,
-                    children: this.options.children || 0,
-                    pets: this.options.pets || 0
-                });
+                    guests: this.options.guests || 2
+                };
+
+                // Required debug output
+                console.debug('[quote] request', payload);
 
                 const endpoint = this.options.isConnector
-                    ? `${this.options.apiBase}/connector/quote?${params}`
-                    : `${this.options.apiBase}/quote?${params}`;
+                    ? `${this.options.apiBase}/quote`
+                    : '/wp-json/minpaku/v1/quote';
 
                 const response = await fetch(endpoint, {
-                    method: 'GET',
+                    method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                    }
+                    },
+                    body: JSON.stringify(payload)
                 });
 
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({}));
+                    console.debug('[quote] error', errorData);
                     throw new Error(errorData.error || errorData.message || 'Quote request failed');
                 }
 
@@ -534,7 +551,7 @@
                 this.displayQuote(quoteData);
 
             } catch (error) {
-                console.error('[Calendar] Quote fetch error:', error);
+                console.debug('[quote] error', error);
                 this.displayQuoteError(error.message);
             }
         }
@@ -550,23 +567,29 @@
             const checkinDate = new Date(this.state.selectedCheckin);
             const checkoutDate = new Date(this.state.selectedCheckout);
 
+            const formatter = new Intl.NumberFormat('ja-JP', {style: 'currency', currency: 'JPY'});
+
             const html = `
                 <div class="mcs-quote-summary">
                     <div class="mcs-quote-dates">
                         <span class="mcs-checkin-date">${this.formatDate(checkinDate)}</span>
                         <span class="mcs-date-separator">〜</span>
                         <span class="mcs-checkout-date">${this.formatDate(checkoutDate)}</span>
-                        <span class="mcs-nights-count">${nights}${this.texts.nightsLabel}</span>
+                        <span class="mcs-nights-count">${nights}泊数</span>
                     </div>
                 </div>
 
                 <div class="mcs-quote-breakdown">
-                    ${this.buildBreakdownHtml(quoteData)}
+                    <table class="mcs-quote-table">
+                        <tr><th>内訳</th><th>金額</th></tr>
+                        ${quoteData.base_total ? `<tr><td>宿泊料金 (${nights}泊)</td><td>${formatter.format(quoteData.base_total)}</td></tr>` : ''}
+                        ${quoteData.cleaning_fee && quoteData.cleaning_fee > 0 ? `<tr><td>清掃費</td><td>${formatter.format(quoteData.cleaning_fee)}</td></tr>` : ''}
+                        <tr class="mcs-total-row"><td><strong>合計</strong></td><td><strong>${formatter.format(quoteData.grand_total || quoteData.total || 0)}</strong></td></tr>
+                    </table>
                 </div>
 
-                <div class="mcs-quote-total">
-                    <span class="mcs-quote-total-label">${this.texts.totalLabel}</span>
-                    <span class="mcs-quote-total-amount">¥${this.formatPrice(quoteData.total)}</span>
+                <div class="mcs-quote-notice">
+                    <p><small>注意: 最終合計は予約時に確定します</small></p>
                 </div>
 
                 ${this.options.canBook ? this.buildBookingButtonHtml() : this.buildDisabledBookingHtml()}
@@ -721,12 +744,12 @@
 
     // Auto-initialize calendars with modern interactions
     document.addEventListener('DOMContentLoaded', function() {
-        // Initialize portal calendars
+        // Initialize portal calendars with strict data-interactions="modern" guard
         document.querySelectorAll('[data-interactions="modern"]').forEach(calendar => {
             const propertyId = calendar.dataset.propertyId;
             const mode = calendar.dataset.mode || 'inline';
 
-            if (propertyId) {
+            if (propertyId && calendar.getAttribute('data-interactions') === 'modern') {
                 initCalendarInteractions(calendar, {
                     mode: mode,
                     propertyId: propertyId,
@@ -736,17 +759,17 @@
             }
         });
 
-        // Initialize connector calendars
+        // Initialize connector calendars with strict data-interactions="modern" guard
         document.querySelectorAll('.connector-calendar[data-interactions="modern"]').forEach(calendar => {
             const propertyId = calendar.dataset.propertyId;
             const mode = calendar.dataset.mode || 'inline';
 
-            if (propertyId) {
+            if (propertyId && calendar.getAttribute('data-interactions') === 'modern') {
                 initCalendarInteractions(calendar, {
                     mode: mode,
                     propertyId: propertyId,
                     isConnector: true,
-                    apiBase: window.mpcConnectorApi?.baseUrl || '/wp-json/minpaku/v1'
+                    apiBase: '/wp-json/minpaku-connector/v1'
                 });
             }
         });

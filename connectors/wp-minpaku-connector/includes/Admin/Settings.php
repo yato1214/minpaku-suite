@@ -739,6 +739,7 @@ class MPC_Admin_Settings {
                     <li><strong>months</strong>: <?php echo esc_html__('カレンダー表示月数（1-12、デフォルト: 2）', 'wp-minpaku-connector'); ?></li>
                     <li><strong>limit</strong>: <?php echo esc_html__('物件一覧の表示件数（propertiesタイプ用）', 'wp-minpaku-connector'); ?></li>
                     <li><strong>columns</strong>: <?php echo esc_html__('物件一覧のカラム数（1-4、デフォルト: 2）', 'wp-minpaku-connector'); ?></li>
+                    <li><strong>interactions</strong>: <?php echo esc_html__('カレンダー操作モード（"modern"（既定）、"legacy"）', 'wp-minpaku-connector'); ?></li>
                 </ul>
 
                 <h4><?php echo esc_html__('カレンダー機能', 'wp-minpaku-connector'); ?></h4>
@@ -746,6 +747,7 @@ class MPC_Admin_Settings {
                     <li><strong><?php echo esc_html__('ポータルパリティ', 'wp-minpaku-connector'); ?></strong>: <?php echo esc_html__('ポータル側と同じデザインと機能', 'wp-minpaku-connector'); ?></li>
                     <li><strong><?php echo esc_html__('色分け表示', 'wp-minpaku-connector'); ?></strong>: <?php echo esc_html__('平日（緑）、土曜（青）、日曜・祝日（赤）、満室（グレー）', 'wp-minpaku-connector'); ?></li>
                     <li><strong><?php echo esc_html__('リアルタイム価格', 'wp-minpaku-connector'); ?></strong>: <?php echo esc_html__('土日祝割増、季節料金を自動反映', 'wp-minpaku-connector'); ?></li>
+                    <li><strong><?php echo esc_html__('見積パネル', 'wp-minpaku-connector'); ?></strong>: <?php echo esc_html__('範囲選択で自動見積表示（1日ごとの内訳・清掃費・合計）', 'wp-minpaku-connector'); ?></li>
                     <li><strong><?php echo esc_html__('月送りナビゲーション', 'wp-minpaku-connector'); ?></strong>: <?php echo esc_html__('前月・次月ボタンで12ヶ月表示可能', 'wp-minpaku-connector'); ?></li>
                     <li><strong><?php echo esc_html__('レスポンシブ対応', 'wp-minpaku-connector'); ?></strong>: <?php echo esc_html__('デスクトップ2列、モバイル1列表示', 'wp-minpaku-connector'); ?></li>
                 </ul>
