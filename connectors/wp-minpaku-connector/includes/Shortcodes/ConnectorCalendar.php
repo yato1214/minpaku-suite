@@ -103,27 +103,8 @@ class MPC_Shortcodes_ConnectorCalendar {
             self::enqueue_legacy_assets();
         }
 
-        // For modern interactions, include quote panel template
-        if ($interactions === 'modern') {
-            $quote_panel_template = WP_MINPAKU_CONNECTOR_PATH . 'templates/connector/quote-panel.php';
-        }
-
-        // Use template if available for modern interactions
-        $template_path = WP_MINPAKU_CONNECTOR_PATH . 'templates/connector/calendar.php';
-        if (file_exists($template_path) && $interactions === 'modern') {
-            ob_start();
-
-            // Set variables for template (avoid variable conflicts)
-            extract([
-                'property_id' => $property_id,
-                'months' => $months,
-                'show_prices' => $show_prices,
-                'interactions' => $interactions
-            ]);
-
-            include $template_path;
-            return ob_get_clean();
-        }
+        // For now, always use direct rendering for reliability
+        // Template system can be added later when stable
 
         $calendar_id = 'connector-calendar-' . uniqid();
 
@@ -183,7 +164,7 @@ class MPC_Shortcodes_ConnectorCalendar {
                             <div class="mpc-calendar-day-header"><?php _e('金', 'wp-minpaku-connector'); ?></div>
                             <div class="mpc-calendar-day-header"><?php _e('土', 'wp-minpaku-connector'); ?></div>
 
-                            <?php echo self::generate_calendar_days($year, $month, $property_id, $show_prices, $api); ?>
+                            <?php echo self::generate_calendar_days($year, $month, $property_id, $show_prices); ?>
                         </div>
                     </div>
                 <?php endfor; ?>
@@ -1944,76 +1925,134 @@ class MPC_Shortcodes_ConnectorCalendar {
                    '</div>';
         }
 
-        // Enqueue basic styles
-        wp_add_inline_style('wp-block-library', '
+        // Inline styles for reliable display
+        $inline_styles = '
+        <style>
             .mpc-properties-grid {
-                display: grid;
-                grid-template-columns: repeat(' . $columns . ', 1fr);
-                gap: 20px;
-                margin: 20px 0;
+                display: grid !important;
+                grid-template-columns: repeat(' . $columns . ', 1fr) !important;
+                gap: 20px !important;
+                margin: 20px 0 !important;
+                max-width: 100% !important;
             }
             @media (max-width: 768px) {
                 .mpc-properties-grid {
-                    grid-template-columns: 1fr;
+                    grid-template-columns: 1fr !important;
+                    gap: 15px !important;
                 }
             }
             .mpc-property-card {
-                border: 1px solid #e5e7eb;
-                border-radius: 8px;
-                padding: 20px;
-                background: white;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                transition: transform 0.2s ease;
+                border: 1px solid #e5e7eb !important;
+                border-radius: 8px !important;
+                padding: 20px !important;
+                background: white !important;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+                transition: transform 0.2s ease !important;
+                display: block !important;
+                width: 100% !important;
+                box-sizing: border-box !important;
             }
             .mpc-property-card:hover {
-                transform: translateY(-2px);
-                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                transform: translateY(-2px) !important;
+                box-shadow: 0 8px 20px rgba(0,0,0,0.15) !important;
             }
             .mpc-property-title {
-                font-size: 18px;
-                font-weight: 600;
-                margin: 0 0 10px 0;
-                color: #1f2937;
+                font-size: 18px !important;
+                font-weight: 600 !important;
+                margin: 0 0 10px 0 !important;
+                color: #1f2937 !important;
+                line-height: 1.3 !important;
             }
             .mpc-property-summary {
-                color: #6b7280;
-                margin-bottom: 15px;
-                line-height: 1.5;
+                color: #6b7280 !important;
+                margin-bottom: 15px !important;
+                line-height: 1.5 !important;
+                font-size: 14px !important;
             }
             .mpc-property-external-btn {
-                display: inline-block;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                color: white;
-                text-decoration: none;
-                padding: 10px 20px;
-                border-radius: 6px;
-                font-weight: 500;
-                transition: all 0.2s ease;
+                display: inline-block !important;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+                color: white !important;
+                text-decoration: none !important;
+                padding: 12px 24px !important;
+                border-radius: 6px !important;
+                font-weight: 500 !important;
+                transition: all 0.2s ease !important;
+                border: none !important;
+                cursor: pointer !important;
+                font-size: 14px !important;
             }
             .mpc-property-external-btn:hover {
-                transform: translateY(-1px);
-                box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-                color: white;
-                text-decoration: none;
+                transform: translateY(-1px) !important;
+                box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3) !important;
+                color: white !important;
+                text-decoration: none !important;
             }
-        ');
+            .mpc-property-external-btn:visited {
+                color: white !important;
+            }
+            .mpc-property-meta {
+                margin-bottom: 15px !important;
+                font-size: 13px !important;
+                color: #9ca3af !important;
+            }
+            .mpc-property-amenities {
+                margin: 10px 0 15px 0 !important;
+            }
+            .mpc-amenity-tag {
+                display: inline-block !important;
+                background: #f3f4f6 !important;
+                color: #374151 !important;
+                padding: 3px 8px !important;
+                border-radius: 4px !important;
+                font-size: 11px !important;
+                margin: 2px 4px 2px 0 !important;
+            }
+        </style>';'
 
         ob_start();
+        echo $inline_styles;
         ?>
         <div class="mpc-properties-grid">
             <?php foreach (array_slice($properties, 0, $limit) as $property): ?>
                 <?php
                 $property_id = $property['id'] ?? 0;
-                $property_title = $property['title'] ?? __('Untitled Property', 'wp-minpaku-connector');
-                $property_summary = $property['excerpt'] ?? '';
-                $external_url = $property['external_detail_url'] ?? '';
+                $property_title = $property['title'] ?? $property['name'] ?? __('Untitled Property', 'wp-minpaku-connector');
+                $property_summary = $property['excerpt'] ?? $property['description'] ?? $property['content'] ?? '';
+                $external_url = $property['external_detail_url'] ?? $property['external_url'] ?? '';
+                $amenities = $property['amenities'] ?? [];
+                $max_guests = $property['max_guests'] ?? '';
+                $bedrooms = $property['bedrooms'] ?? '';
                 ?>
                 <div class="mpc-property-card">
                     <h3 class="mpc-property-title"><?php echo esc_html($property_title); ?></h3>
 
+                    <?php if ($max_guests || $bedrooms): ?>
+                        <div class="mpc-property-meta">
+                            <?php if ($max_guests): ?>
+                                <?php printf(__('最大 %d名', 'wp-minpaku-connector'), intval($max_guests)); ?>
+                            <?php endif; ?>
+                            <?php if ($bedrooms): ?>
+                                <?php if ($max_guests): echo ' • '; ?>
+                                <?php printf(__('%d寝室', 'wp-minpaku-connector'), intval($bedrooms)); ?>
+                            <?php endif; ?>
+                        </div>
+                    <?php endif; ?>
+
                     <?php if ($property_summary): ?>
                         <div class="mpc-property-summary">
                             <?php echo esc_html(wp_trim_words($property_summary, 20)); ?>
+                        </div>
+                    <?php endif; ?>
+
+                    <?php if (!empty($amenities) && is_array($amenities)): ?>
+                        <div class="mpc-property-amenities">
+                            <?php foreach (array_slice($amenities, 0, 5) as $amenity): ?>
+                                <span class="mpc-amenity-tag"><?php echo esc_html($amenity); ?></span>
+                            <?php endforeach; ?>
+                            <?php if (count($amenities) > 5): ?>
+                                <span class="mpc-amenity-tag">+<?php echo count($amenities) - 5; ?></span>
+                            <?php endif; ?>
                         </div>
                     <?php endif; ?>
 
@@ -2025,7 +2064,7 @@ class MPC_Shortcodes_ConnectorCalendar {
                             <?php _e('外部サイトで見る', 'wp-minpaku-connector'); ?>
                         </a>
                     <?php else: ?>
-                        <span class="mpc-property-external-btn" style="background: #6c757d; cursor: not-allowed;">
+                        <span class="mpc-property-external-btn" style="background: #6c757d !important; cursor: not-allowed !important;">
                             <?php _e('外部URLが未設定', 'wp-minpaku-connector'); ?>
                         </span>
                     <?php endif; ?>
