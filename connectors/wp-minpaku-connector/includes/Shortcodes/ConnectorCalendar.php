@@ -483,9 +483,6 @@ class MPC_Shortcodes_ConnectorCalendar {
 
         <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Required console.log for initialization
-            console.log('[WPMC Calendar] init');
-
             <?php
             $settings = \WP_Minpaku_Connector::get_settings();
             $portal_url = '';
@@ -501,8 +498,6 @@ class MPC_Shortcodes_ConnectorCalendar {
             }
             ?>
             var connectorPortalUrl = "<?php echo esc_js(untrailingslashit($portal_url)); ?>";
-
-            console.log('[ConnectorCalendar] Initializing responsive calendar with modern interactions');
 
             var calendar = document.getElementById('<?php echo esc_js($calendar_id); ?>');
             if (!calendar) return;
@@ -611,8 +606,6 @@ class MPC_Shortcodes_ConnectorCalendar {
             }
 
             function updateCalendar() {
-                console.log('[ConnectorCalendar] Updating calendar, start month:', currentStartMonth);
-
                 var newHtml = '';
                 for (var i = 0; i < visibleMonths; i++) {
                     newHtml += generateMonth(currentStartMonth + i);
@@ -630,7 +623,6 @@ class MPC_Shortcodes_ConnectorCalendar {
 
             prevBtn.addEventListener('click', function(e) {
                 e.preventDefault();
-                console.log('[ConnectorCalendar] Previous button clicked');
                 if (currentStartMonth > 0) {
                     currentStartMonth--;
                     updateCalendar();
@@ -639,7 +631,6 @@ class MPC_Shortcodes_ConnectorCalendar {
 
             nextBtn.addEventListener('click', function(e) {
                 e.preventDefault();
-                console.log('[ConnectorCalendar] Next button clicked');
                 if (currentStartMonth + visibleMonths < maxMonths) {
                     currentStartMonth++;
                     updateCalendar();
@@ -647,7 +638,6 @@ class MPC_Shortcodes_ConnectorCalendar {
             });
 
             updateNavigation();
-            console.log('[ConnectorCalendar] Navigation setup complete');
         });
         </script>
         <?php
@@ -701,15 +691,7 @@ class MPC_Shortcodes_ConnectorCalendar {
         if ($availability_result['success']) {
             $availability_data = $availability_result['data'] ?? [];
 
-            // Debug log for API data structure
-            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
-                error_log('[ConnectorCalendar] Portal API response for property ' . $property_id . ': ' . print_r($availability_data, true));
-            }
         } else {
-            // Debug log for API failure
-            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
-                error_log('[ConnectorCalendar] Portal API failed for property ' . $property_id . ': ' . $availability_result['message']);
-            }
         }
 
         while ($current_date <= $end_of_week) {
@@ -750,16 +732,10 @@ class MPC_Shortcodes_ConnectorCalendar {
 
                 // Add price badge for available days, or 満室 badge for booked days
                 if ($is_current_month && !$is_past) {
-                    // Debug pricing display conditions
-                    error_log('[ConnectorCalendar] Day check: ' . $date_string . ' - current_month:' . ($is_current_month ? 'Y' : 'N') . ', past:' . ($is_past ? 'Y' : 'N') . ', status:' . $availability_status . ', show_prices:' . ($show_prices ? 'Y' : 'N'));
 
                     if ($availability_status === 'available' && $show_prices) {
-                        // 強制ログで価格表示ロジックを確認
-                        error_log('[ConnectorCalendar] PRICE DISPLAY for ' . $date_string . ' (Property: ' . $property_id . ')');
-
-                        // まずローカル計算価格を算出（これが確実に動作する）
+                        // Calculate local pricing
                         $local_price = self::calculate_local_pricing_for_date($date_string, $property_id);
-                        error_log('[ConnectorCalendar] Local price calculated: ¥' . number_format($local_price));
 
                         // ポータルAPIから価格取得を試行
                         $portal_price = self::get_price_for_day($date_string, $availability_data, $property_id);
@@ -768,20 +744,13 @@ class MPC_Shortcodes_ConnectorCalendar {
                         $price = $local_price;
                         $price_source = 'local';
 
-                        error_log('[ConnectorCalendar] FORCED LOCAL PRICING for ' . $date_string . ': ¥' . number_format($price) . ' (Portal price was: ¥' . number_format($portal_price) . ')');
-
-                        // 価格の妥当性チェック
+                        // Price validation
                         if ($price <= 0) {
-                            error_log('[ConnectorCalendar] WARNING: Price is zero or negative, using emergency fallback');
                             $price = ($property_id == 17) ? 20000 : (($property_id == 16) ? 18000 : 16000);
                             $price_source = 'emergency';
                         }
 
-                        // 確実に価格バッジを表示
-                        $debug_info = $price_source . ':' . $price . ':' . $date_string;
-                        error_log('[ConnectorCalendar] FINAL PRICE DISPLAY: ¥' . number_format($price) . ' (source: ' . $price_source . ')');
-
-                        $output .= '<span class="mcs-day-price" data-debug="' . esc_attr($debug_info) . '" style="background: #1e293b !important; color: white !important; display: block !important;">¥' . number_format($price) . '</span>';
+                        $output .= '<span class="mcs-day-price" style="background: #1e293b !important; color: white !important; display: block !important;">¥' . number_format($price) . '</span>';
                     } elseif ($availability_status === 'full') {
                         $output .= '<span class="mcs-day-full-badge">満室</span>';
                     }
@@ -904,10 +873,6 @@ class MPC_Shortcodes_ConnectorCalendar {
      */
     private static function get_price_for_day($date_string, $availability_data, $property_id) {
         try {
-            // Debug log for price calculation
-            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
-                error_log('[ConnectorCalendar] Getting price for date: ' . $date_string . ', property: ' . $property_id);
-            }
 
             // First, check the pricing array for date-specific pricing from portal
             if (isset($availability_data['pricing']) && is_array($availability_data['pricing'])) {
@@ -919,9 +884,6 @@ class MPC_Shortcodes_ConnectorCalendar {
                             if (isset($pricing_data[$field]) && is_numeric($pricing_data[$field])) {
                                 $price = floatval($pricing_data[$field]);
                                 if ($price > 0) {
-                                    if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
-                                        error_log('[ConnectorCalendar] Found price from pricing array: ¥' . $price . ' (field: ' . $field . ')');
-                                    }
                                     return $price;
                                 }
                             }
@@ -940,9 +902,6 @@ class MPC_Shortcodes_ConnectorCalendar {
                             if (isset($day_data[$field]) && is_numeric($day_data[$field])) {
                                 $price = floatval($day_data[$field]);
                                 if ($price > 0) {
-                                    if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
-                                        error_log('[ConnectorCalendar] Found price from availability array: ¥' . $price . ' (field: ' . $field . ')');
-                                    }
                                     return $price;
                                 }
                             }
@@ -960,9 +919,6 @@ class MPC_Shortcodes_ConnectorCalendar {
                             if (isset($rate_data[$field]) && is_numeric($rate_data[$field])) {
                                 $price = floatval($rate_data[$field]);
                                 if ($price > 0) {
-                                    if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
-                                        error_log('[ConnectorCalendar] Found price from rates array: ¥' . $price . ' (field: ' . $field . ')');
-                                    }
                                     return $price;
                                 }
                             }
@@ -972,15 +928,9 @@ class MPC_Shortcodes_ConnectorCalendar {
             }
 
             // If no portal pricing available, return 0 to use local calculation
-            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
-                error_log('[ConnectorCalendar] No portal pricing found for ' . $date_string);
-            }
             return 0;
 
         } catch (Exception $e) {
-            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
-                error_log('[ConnectorCalendar] Error in get_price_for_day: ' . $e->getMessage());
-            }
             return 0;
         }
     }
@@ -1030,14 +980,11 @@ class MPC_Shortcodes_ConnectorCalendar {
             $unique_prices = array_unique($all_prices);
             $is_uniform = (count($unique_prices) === 1);
 
-            error_log('[ConnectorCalendar] Uniform pricing detection: Found ' . count($all_prices) . ' prices, ' . count($unique_prices) . ' unique values');
-            error_log('[ConnectorCalendar] All prices: ' . implode(', ', array_map(function($p) { return '¥' . number_format($p); }, $all_prices)));
 
             return $is_uniform;
         }
 
         // If we have insufficient data, assume non-uniform (use portal pricing)
-        error_log('[ConnectorCalendar] Insufficient price data for uniformity detection (' . count($all_prices) . ' prices found)');
         return false;
     }
 
@@ -1048,20 +995,17 @@ class MPC_Shortcodes_ConnectorCalendar {
         try {
             // Check if API client is available
             if (!class_exists('MinpakuConnector\Client\MPC_Client_Api')) {
-                error_log('[ConnectorCalendar] API client not available for pricing data');
                 return null;
             }
 
             $api = new \MinpakuConnector\Client\MPC_Client_Api();
             if (!$api->is_configured()) {
-                error_log('[ConnectorCalendar] API not configured for pricing data');
                 return null;
             }
 
             // Get property details which should include pricing data
             $response = $api->get_property($property_id);
             if (!$response['success']) {
-                error_log('[ConnectorCalendar] Failed to get property pricing data: ' . $response['message']);
                 return null;
             }
 
@@ -1089,18 +1033,14 @@ class MPC_Shortcodes_ConnectorCalendar {
                 ];
             }
 
-            error_log('[ConnectorCalendar] Retrieved pricing data for property ' . $property_id . ': ' . json_encode($pricing_data));
-
             // Validate that we have at least base pricing
             if (empty($pricing_data['base_nightly_price']) && !isset($pricing_data['base_nightly_price'])) {
-                error_log('[ConnectorCalendar] No base pricing found for property ' . $property_id);
                 return null;
             }
 
             return $pricing_data;
 
         } catch (Exception $e) {
-            error_log('[ConnectorCalendar] Exception getting property pricing data: ' . $e->getMessage());
             return null;
         }
     }
@@ -1123,11 +1063,9 @@ class MPC_Shortcodes_ConnectorCalendar {
                 $amount = floatval($rule['amount']);
 
                 if ($rule['mode'] === 'override') {
-                    error_log('[ConnectorCalendar] Seasonal rule override: ' . $date_string . ' = ¥' . number_format($amount));
                     return $amount;
                 } elseif ($rule['mode'] === 'add') {
                     $seasonal_price = $base_price + $amount;
-                    error_log('[ConnectorCalendar] Seasonal rule add: ' . $date_string . ' = ¥' . number_format($base_price) . ' + ¥' . number_format($amount) . ' = ¥' . number_format($seasonal_price));
                     return $seasonal_price;
                 }
             }
@@ -1147,7 +1085,6 @@ class MPC_Shortcodes_ConnectorCalendar {
             $pricing_data = self::get_property_pricing_data($property_id);
 
             if (!$pricing_data) {
-                error_log('[ConnectorCalendar] No pricing data found for property ' . $property_id . ', using fallback');
                 // Fallback rates if API fails
                 $base_price = 15000.0;
                 $eve_surcharges = ['sat' => 2000, 'sun' => 1000, 'holiday' => 1500];
@@ -1160,8 +1097,6 @@ class MPC_Shortcodes_ConnectorCalendar {
                     'holiday' => floatval($pricing_data['eve_surcharge_holiday'] ?? 1500)
                 ];
                 $seasonal_rules = $pricing_data['seasonal_rules'] ?? [];
-
-                error_log('[ConnectorCalendar] Using REAL pricing data for property ' . $property_id . ': base=¥' . number_format($base_price) . ', surcharges=' . json_encode($eve_surcharges));
             }
 
             // 日付解析（チェックイン日）
@@ -1171,7 +1106,6 @@ class MPC_Shortcodes_ConnectorCalendar {
             $seasonal_price = self::applySeasonalRules($date_string, $base_price, $seasonal_rules);
             if ($seasonal_price !== $base_price) {
                 // Seasonal rule applied, don't add eve surcharges (portal parity)
-                error_log('[ConnectorCalendar] SEASONAL RULE APPLIED for ' . $date_string . ': ¥' . number_format($seasonal_price) . ' (property ' . $property_id . ')');
                 return $seasonal_price;
             }
 
@@ -1205,25 +1139,9 @@ class MPC_Shortcodes_ConnectorCalendar {
 
             $final_price = $base_price + $surcharge;
 
-            // 強制ログ出力（デバッグ用）- 翌日ベース判定
-            error_log('[ConnectorCalendar] ===== PRICING DEBUG for ' . $date_string . ' (NEXT-DAY LOGIC) =====');
-            error_log('  Property ID: ' . $property_id);
-            error_log('  Base price: ¥' . number_format($base_price));
-            error_log('  Check-in date: ' . $checkin_date->format('Y-m-d l'));
-            error_log('  Check-out date (next day): ' . $checkout_date->format('Y-m-d l'));
-            error_log('  Checkout day of week (int): ' . $checkout_day_of_week . ' (0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat)');
-            error_log('  Is checkout day holiday: ' . ($is_checkout_holiday ? 'YES' : 'NO'));
-            if ($is_checkout_holiday) {
-                error_log('  Holiday list includes checkout date: ' . $checkout_date_string);
-            }
-            error_log('  Calculated surcharge: ¥' . number_format($surcharge) . ' (reason: ' . $surcharge_reason . ')');
-            error_log('  Final calculated price: ¥' . number_format($final_price));
-            error_log('  ===== END PRICING DEBUG =====');
-
             return $final_price;
 
         } catch (Exception $e) {
-            error_log('[ConnectorCalendar] ERROR in calculate_local_pricing_for_date: ' . $e->getMessage());
             // エラー時は基本料金のみ返す
             $property_base_rates = [17 => 18000.0, 16 => 16000.0, 15 => 14000.0];
             return $property_base_rates[$property_id] ?? 15000.0;
@@ -1442,21 +1360,18 @@ class MPC_Shortcodes_ConnectorCalendar {
 
         <script>
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('Connector Calendar Modal Script Loaded');
 
             // Modal button click handler
             var button = document.getElementById('<?php echo esc_js($button_id); ?>');
             if (button) {
                 button.addEventListener('click', function(e) {
                     e.preventDefault();
-                    console.log('Modal button clicked');
 
                     var propertyId = this.getAttribute('data-property-id');
                     var propertyTitle = this.getAttribute('data-property-title');
                     var months = this.getAttribute('data-months');
                     var showPrices = this.getAttribute('data-show-prices');
 
-                    console.log('Opening modal for property:', propertyId);
                     openConnectorCalendarModal(propertyId, propertyTitle, months, showPrices);
                 });
             }
@@ -1478,13 +1393,9 @@ class MPC_Shortcodes_ConnectorCalendar {
         });
 
         function openConnectorCalendarModal(propertyId, propertyTitle, months, showPrices) {
-            console.log('openConnectorCalendarModal called with:', propertyId, propertyTitle, months, showPrices);
-
             var modal = document.getElementById('connector-calendar-modal-' + propertyId);
-            console.log('Modal element found:', modal);
 
             if (!modal) {
-                console.error('Modal not found for ID: connector-calendar-modal-' + propertyId);
                 return;
             }
 
@@ -1494,8 +1405,6 @@ class MPC_Shortcodes_ConnectorCalendar {
             // Show modal
             modal.style.display = 'flex';
             document.body.classList.add('connector-calendar-modal-open');
-
-            console.log('Modal should now be visible');
 
             // Show loading
             if (loadingDiv) loadingDiv.style.display = 'block';
@@ -1533,7 +1442,6 @@ class MPC_Shortcodes_ConnectorCalendar {
                     }
                 })
                 .catch(error => {
-                    console.error('AJAX Error:', error);
                     if (loadingDiv) loadingDiv.style.display = 'none';
                     if (contentDiv) {
                         contentDiv.innerHTML = '<div class="connector-calendar-error">ネットワークエラーが発生しました。</div>';
@@ -1569,12 +1477,8 @@ class MPC_Shortcodes_ConnectorCalendar {
      * AJAX handler for modal calendar content
      */
     public static function ajax_modal_content() {
-        // Debug logging
-        error_log('[ConnectorCalendar] AJAX modal request received: ' . print_r($_POST, true));
-
         // Verify nonce
         if (!wp_verify_nonce($_POST['nonce'] ?? '', 'mpc_calendar_nonce')) {
-            error_log('[ConnectorCalendar] AJAX nonce verification failed');
             wp_send_json_error('Invalid nonce');
             return;
         }
@@ -1583,10 +1487,7 @@ class MPC_Shortcodes_ConnectorCalendar {
         $months = intval($_POST['months'] ?? 2);
         $show_prices = true; // Always show prices in modal
 
-        error_log('[ConnectorCalendar] AJAX processing: property_id=' . $property_id . ', months=' . $months);
-
         if (!$property_id) {
-            error_log('[ConnectorCalendar] AJAX error: Invalid property ID');
             wp_send_json_error('Invalid property ID');
             return;
         }
@@ -1605,16 +1506,12 @@ class MPC_Shortcodes_ConnectorCalendar {
         echo '</script>';
 
         // Generate calendar HTML
-        error_log('[ConnectorCalendar] AJAX generating calendar: property_id=' . $property_id . ', months=' . $months . ', show_prices=' . ($show_prices ? 'true' : 'false'));
-
         $calendar_html = self::render_calendar([
             'property_id' => $property_id,
             'months' => $months,
             'show_prices' => $show_prices ? 'true' : 'false',
             'modal' => 'false' // Prevent recursive modal rendering
         ]);
-
-        error_log('[ConnectorCalendar] AJAX calendar HTML generated, length: ' . strlen($calendar_html));
 
         // Remove the style and script tags from the calendar HTML since we're adding them separately
         $calendar_html = preg_replace('/<style[^>]*>.*?<\/style>/is', '', $calendar_html);
@@ -1623,18 +1520,6 @@ class MPC_Shortcodes_ConnectorCalendar {
         echo $calendar_html;
 
         $calendar_content = ob_get_clean();
-        error_log('[ConnectorCalendar] AJAX final content length: ' . strlen($calendar_content));
-
-        // Add price debug info to the response
-        $debug_info = [
-            'property_id' => $property_id,
-            'months' => $months,
-            'show_prices' => $show_prices,
-            'forced_local_pricing' => true,
-            'content_length' => strlen($calendar_content)
-        ];
-
-        error_log('[ConnectorCalendar] AJAX sending response with debug: ' . print_r($debug_info, true));
 
         wp_send_json_success($calendar_content);
     }
@@ -1808,10 +1693,7 @@ class MPC_Shortcodes_ConnectorCalendar {
         // Ensure portal URL is available
         var connectorPortalUrl = "' . esc_js(untrailingslashit($portal_url)) . '";
 
-        console.log("[ConnectorCalendar] JavaScript loaded, portal URL:", connectorPortalUrl);
-
         // Direct navigation removed - clicks now handled by unified calendar interactions
-        console.log("[ConnectorCalendar] Direct navigation disabled, using unified interactions");
         ';
     }
 
