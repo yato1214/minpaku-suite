@@ -2008,7 +2008,7 @@ class MPC_Shortcodes_ConnectorCalendar {
                 font-size: 11px !important;
                 margin: 2px 4px 2px 0 !important;
             }
-        </style>';'
+        </style>';
 
         ob_start();
         echo $inline_styles;
