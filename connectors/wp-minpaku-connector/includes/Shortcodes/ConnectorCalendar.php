@@ -88,7 +88,7 @@ class MPC_Shortcodes_ConnectorCalendar {
         // Try to get property info but don't fail if not found
         $property_response = $api->get_property($property_id);
         if ($property_response['success']) {
-            $property_title = $property_response['data']['title'] ?? '';
+            $property_title = isset($property_response['data']['title']) ? $property_response['data']['title'] : '';
         }
 
         // モーダル表示の場合はボタンを返す
@@ -781,7 +781,7 @@ class MPC_Shortcodes_ConnectorCalendar {
         $availability_data = [];
 
         if ($availability_result['success']) {
-            $availability_data = $availability_result['data'] ?? [];
+            $availability_data = isset($availability_result['data']) ? $availability_result['data'] : [];
 
         } else {
         }
@@ -855,8 +855,8 @@ class MPC_Shortcodes_ConnectorCalendar {
         if (isset($availability_data['availability']) && is_array($availability_data['availability'])) {
             foreach ($availability_data['availability'] as $day_data) {
                 if (isset($day_data['date']) && $day_data['date'] === $date_string) {
-                    $available = $day_data['available'] ?? true;
-                    $status = $day_data['status'] ?? 'available';
+                    $available = isset($day_data['available']) ? $day_data['available'] : true;
+                    $status = isset($day_data['status']) ? $day_data['status'] : 'available';
 
                     if (!$available) {
                         switch ($status) {
@@ -1106,11 +1106,11 @@ class MPC_Shortcodes_ConnectorCalendar {
             // Check for individual pricing fields
             else {
                 $pricing_data = [
-                    'base_nightly_price' => $property_data['base_nightly_price'] ?? $property_data['meta']['base_nightly_price'] ?? null,
-                    'eve_surcharge_sat' => $property_data['eve_surcharge_sat'] ?? $property_data['meta']['eve_surcharge_sat'] ?? null,
-                    'eve_surcharge_sun' => $property_data['eve_surcharge_sun'] ?? $property_data['meta']['eve_surcharge_sun'] ?? null,
-                    'eve_surcharge_holiday' => $property_data['eve_surcharge_holiday'] ?? $property_data['meta']['eve_surcharge_holiday'] ?? null,
-                    'seasonal_rules' => $property_data['seasonal_rules'] ?? $property_data['meta']['seasonal_rules'] ?? []
+                    'base_nightly_price' => isset($property_data['base_nightly_price']) ? $property_data['base_nightly_price'] : (isset($property_data['meta']['base_nightly_price']) ? $property_data['meta']['base_nightly_price'] : null),
+                    'eve_surcharge_sat' => isset($property_data['eve_surcharge_sat']) ? $property_data['eve_surcharge_sat'] : (isset($property_data['meta']['eve_surcharge_sat']) ? $property_data['meta']['eve_surcharge_sat'] : null),
+                    'eve_surcharge_sun' => isset($property_data['eve_surcharge_sun']) ? $property_data['eve_surcharge_sun'] : (isset($property_data['meta']['eve_surcharge_sun']) ? $property_data['meta']['eve_surcharge_sun'] : null),
+                    'eve_surcharge_holiday' => isset($property_data['eve_surcharge_holiday']) ? $property_data['eve_surcharge_holiday'] : (isset($property_data['meta']['eve_surcharge_holiday']) ? $property_data['meta']['eve_surcharge_holiday'] : null),
+                    'seasonal_rules' => isset($property_data['seasonal_rules']) ? $property_data['seasonal_rules'] : (isset($property_data['meta']['seasonal_rules']) ? $property_data['meta']['seasonal_rules'] : [])
                 ];
             }
 
@@ -1171,13 +1171,13 @@ class MPC_Shortcodes_ConnectorCalendar {
                 $eve_surcharges = ['sat' => 2000, 'sun' => 1000, 'holiday' => 1500];
                 $seasonal_rules = [];
             } else {
-                $base_price = floatval($pricing_data['base_nightly_price'] ?? 15000.0);
+                $base_price = floatval(isset($pricing_data['base_nightly_price']) ? $pricing_data['base_nightly_price'] : 15000.0);
                 $eve_surcharges = [
-                    'sat' => floatval($pricing_data['eve_surcharge_sat'] ?? 2000),
-                    'sun' => floatval($pricing_data['eve_surcharge_sun'] ?? 1000),
-                    'holiday' => floatval($pricing_data['eve_surcharge_holiday'] ?? 1500)
+                    'sat' => floatval(isset($pricing_data['eve_surcharge_sat']) ? $pricing_data['eve_surcharge_sat'] : 2000),
+                    'sun' => floatval(isset($pricing_data['eve_surcharge_sun']) ? $pricing_data['eve_surcharge_sun'] : 1000),
+                    'holiday' => floatval(isset($pricing_data['eve_surcharge_holiday']) ? $pricing_data['eve_surcharge_holiday'] : 1500)
                 ];
-                $seasonal_rules = $pricing_data['seasonal_rules'] ?? [];
+                $seasonal_rules = isset($pricing_data['seasonal_rules']) ? $pricing_data['seasonal_rules'] : [];
             }
 
             // 日付解析（チェックイン日）
@@ -1225,7 +1225,7 @@ class MPC_Shortcodes_ConnectorCalendar {
         } catch (Exception $e) {
             // エラー時は基本料金のみ返す
             $property_base_rates = [17 => 18000.0, 16 => 16000.0, 15 => 14000.0];
-            return $property_base_rates[$property_id] ?? 15000.0;
+            return isset($property_base_rates[$property_id]) ? $property_base_rates[$property_id] : 15000.0;
         }
     }
 
@@ -1559,13 +1559,13 @@ class MPC_Shortcodes_ConnectorCalendar {
      */
     public static function ajax_modal_content() {
         // Verify nonce
-        if (!wp_verify_nonce($_POST['nonce'] ?? '', 'mpc_calendar_nonce')) {
+        if (!wp_verify_nonce(isset($_POST['nonce']) ? $_POST['nonce'] : '', 'mpc_calendar_nonce')) {
             wp_send_json_error('Invalid nonce');
             return;
         }
 
-        $property_id = intval($_POST['property_id'] ?? 0);
-        $months = intval($_POST['months'] ?? 2);
+        $property_id = intval(isset($_POST['property_id']) ? $_POST['property_id'] : 0);
+        $months = intval(isset($_POST['months']) ? $_POST['months'] : 2);
         $show_prices = true; // Always show prices in modal
 
         if (!$property_id) {
@@ -1776,8 +1776,8 @@ class MPC_Shortcodes_ConnectorCalendar {
      */
     private static function enqueue_modern_assets() {
         // Use absolute plugin URL for reliability
-        $plugin_url = untrailingslashit(plugin_dir_url(WP_MINPAKU_CONNECTOR_FILE));
-        $plugin_path = untrailingslashit(plugin_dir_path(WP_MINPAKU_CONNECTOR_FILE));
+        $plugin_url = untrailingslashit(plugin_dir_url(__FILE__ . '/../..'));
+        $plugin_path = untrailingslashit(plugin_dir_path(__FILE__ . '/../..'));
 
         // Calendar CSS
         $calendar_css_file = $plugin_url . '/assets/css/wpmc-calendar.css';
@@ -1917,7 +1917,7 @@ class MPC_Shortcodes_ConnectorCalendar {
                    '</div>';
         }
 
-        $properties = $properties_response['data'] ?? [];
+        $properties = isset($properties_response['data']) ? $properties_response['data'] : [];
 
         if (empty($properties)) {
             return '<div class="mpc-notice" style="background: #fff3cd; border: 1px solid #ffeaa7; color: #856404; padding: 12px; border-radius: 6px; margin: 16px 0;">' .
@@ -2016,13 +2016,13 @@ class MPC_Shortcodes_ConnectorCalendar {
         <div class="mpc-properties-grid">
             <?php foreach (array_slice($properties, 0, $limit) as $property): ?>
                 <?php
-                $property_id = $property['id'] ?? 0;
-                $property_title = $property['title'] ?? $property['name'] ?? __('Untitled Property', 'wp-minpaku-connector');
-                $property_summary = $property['excerpt'] ?? $property['description'] ?? $property['content'] ?? '';
-                $external_url = $property['external_detail_url'] ?? $property['external_url'] ?? '';
-                $amenities = $property['amenities'] ?? [];
-                $max_guests = $property['max_guests'] ?? '';
-                $bedrooms = $property['bedrooms'] ?? '';
+                $property_id = isset($property['id']) ? $property['id'] : 0;
+                $property_title = isset($property['title']) ? $property['title'] : (isset($property['name']) ? $property['name'] : __('Untitled Property', 'wp-minpaku-connector'));
+                $property_summary = isset($property['excerpt']) ? $property['excerpt'] : (isset($property['description']) ? $property['description'] : (isset($property['content']) ? $property['content'] : ''));
+                $external_url = isset($property['external_detail_url']) ? $property['external_detail_url'] : (isset($property['external_url']) ? $property['external_url'] : '');
+                $amenities = isset($property['amenities']) ? $property['amenities'] : array();
+                $max_guests = isset($property['max_guests']) ? $property['max_guests'] : '';
+                $bedrooms = isset($property['bedrooms']) ? $property['bedrooms'] : '';
                 ?>
                 <div class="mpc-property-card">
                     <h3 class="mpc-property-title"><?php echo esc_html($property_title); ?></h3>
@@ -2115,7 +2115,7 @@ class MPC_Shortcodes_ConnectorCalendar {
         ob_start();
         ?>
         <div class="mpc-property-detail">
-            <h2><?php echo esc_html($property['title'] ?? __('Property Details', 'wp-minpaku-connector')); ?></h2>
+            <h2><?php echo esc_html(isset($property['title']) ? $property['title'] : __('Property Details', 'wp-minpaku-connector')); ?></h2>
 
             <?php if (!empty($property['content'])): ?>
                 <div class="mpc-property-content">
