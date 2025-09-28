@@ -43,9 +43,20 @@ class MPC_Shortcodes_Availability {
             return self::render_error(__('物件データの取得に失敗しました。', 'wp-minpaku-connector'));
         }
 
-        // Generate calendar HTML
+        // Generate calendar HTML with debug info
         ob_start();
         ?>
+        <!-- Debug: Calendar initialization start -->
+        <div style="background: #f0f8ff; padding: 10px; margin: 10px 0; border: 1px solid #0066cc;">
+            <strong>デバッグ情報:</strong><br>
+            Property ID: <?php echo esc_html($property_id); ?><br>
+            Calendar ID: <?php echo esc_html($calendar_id); ?><br>
+            Months: <?php echo esc_html($months); ?><br>
+            Show Prices: <?php echo $show_prices ? 'Yes' : 'No'; ?><br>
+            Interactions: <?php echo esc_html($interactions); ?><br>
+            Property Title: <?php echo esc_html($property_data['title'] ?? 'No title'); ?>
+        </div>
+
         <div class="wpmc-availability <?php echo esc_attr($css_class); ?>"
              id="<?php echo esc_attr($calendar_id); ?>"
              data-property-id="<?php echo esc_attr($property_id); ?>"
@@ -76,7 +87,11 @@ class MPC_Shortcodes_Availability {
 
             <!-- Calendar Months Grid -->
             <div class="wpmc-calendar-grid" role="application" aria-label="<?php esc_attr_e('空室カレンダー', 'wp-minpaku-connector'); ?>">
-                <!-- Months will be rendered here by JavaScript -->
+                <!-- Debug: Grid container ready for months -->
+                <div style="grid-column: 1 / -1; background: #fff3cd; padding: 10px; margin: 10px 0; border: 1px solid #ffeaa7;">
+                    <strong>JavaScriptがここに月表示を追加します</strong><br>
+                    Grid ready for JavaScript calendar rendering.
+                </div>
             </div>
 
             <!-- Loading State -->
@@ -99,6 +114,13 @@ class MPC_Shortcodes_Availability {
             </div>
         </div>
 
+        <!-- Debug: CSS and JS load test -->
+        <div style="background: #d4edda; padding: 10px; margin: 10px 0; border: 1px solid #c3e6cb;">
+            <strong>CSS/JS テスト:</strong><br>
+            <span class="wpmc-nav__title" style="color: #667eea;">CSSが読み込まれていればこの文字は青色になります</span><br>
+            <button onclick="alert('JavaScriptが動作しています!')">JSテスト</button>
+        </div>
+
         <?php
         return ob_get_clean();
     }
@@ -119,54 +141,53 @@ class MPC_Shortcodes_Availability {
     }
 
     /**
-     * Enqueue calendar assets
+     * Enqueue calendar assets - using inline styles/scripts for reliability
      */
     private static function enqueue_assets() {
-        // CSS
-        $css_file = plugin_dir_url(dirname(dirname(__FILE__))) . 'assets/css/availability-calendar.css';
+        // Get CSS file content
         $css_path = dirname(dirname(__FILE__)) . '/assets/css/availability-calendar.css';
-
-        if (file_exists($css_path)) {
-            wp_enqueue_style(
-                'wpmc-availability-calendar',
-                $css_file,
-                array(),
-                filemtime($css_path)
-            );
-        }
-
-        // JavaScript
-        $js_file = plugin_dir_url(dirname(dirname(__FILE__))) . 'assets/js/availability-calendar.js';
         $js_path = dirname(dirname(__FILE__)) . '/assets/js/availability-calendar.js';
 
-        if (file_exists($js_path)) {
-            wp_enqueue_script(
-                'wpmc-availability-calendar',
-                $js_file,
-                array('jquery'),
-                filemtime($js_path),
-                true
-            );
+        // Inline CSS to avoid loading issues
+        if (file_exists($css_path)) {
+            $css_content = file_get_contents($css_path);
+            if ($css_content) {
+                echo '<style type="text/css" id="wpmc-availability-calendar-css">' . $css_content . '</style>';
+            }
+        }
 
-            // Localize script for AJAX and i18n
-            wp_localize_script('wpmc-availability-calendar', 'wpmcAvailability', array(
-                'ajaxUrl' => admin_url('admin-ajax.php'),
-                'nonce' => wp_create_nonce('wpmc_availability_nonce'),
-                'i18n' => array(
-                    'loading' => __('読み込み中...', 'wp-minpaku-connector'),
-                    'error' => __('エラーが発生しました', 'wp-minpaku-connector'),
-                    'noData' => __('データがありません', 'wp-minpaku-connector'),
-                    'available' => __('空き', 'wp-minpaku-connector'),
-                    'occupied' => __('満室', 'wp-minpaku-connector'),
-                    'pending' => __('保留', 'wp-minpaku-connector'),
-                    'closed' => __('休業', 'wp-minpaku-connector'),
-                    'clickToSelect' => __('クリックして日付を選択', 'wp-minpaku-connector'),
-                    'priceLabel' => __('価格', 'wp-minpaku-connector'),
-                    'prevMonth' => __('前月', 'wp-minpaku-connector'),
-                    'nextMonth' => __('次月', 'wp-minpaku-connector'),
-                    'monthYear' => __('YYYY年M月', 'wp-minpaku-connector'),
-                )
-            ));
+        // Enqueue jQuery dependency
+        wp_enqueue_script('jquery');
+
+        // Inline JavaScript to avoid loading issues
+        if (file_exists($js_path)) {
+            $js_content = file_get_contents($js_path);
+            if ($js_content) {
+                // Localize variables for AJAX and i18n
+                $localize_data = array(
+                    'ajaxUrl' => admin_url('admin-ajax.php'),
+                    'nonce' => wp_create_nonce('wpmc_availability_nonce'),
+                    'i18n' => array(
+                        'loading' => __('読み込み中...', 'wp-minpaku-connector'),
+                        'error' => __('エラーが発生しました', 'wp-minpaku-connector'),
+                        'noData' => __('データがありません', 'wp-minpaku-connector'),
+                        'available' => __('空き', 'wp-minpaku-connector'),
+                        'occupied' => __('満室', 'wp-minpaku-connector'),
+                        'pending' => __('保留', 'wp-minpaku-connector'),
+                        'closed' => __('休業', 'wp-minpaku-connector'),
+                        'clickToSelect' => __('クリックして日付を選択', 'wp-minpaku-connector'),
+                        'priceLabel' => __('価格', 'wp-minpaku-connector'),
+                        'prevMonth' => __('前月', 'wp-minpaku-connector'),
+                        'nextMonth' => __('次月', 'wp-minpaku-connector'),
+                        'monthYear' => __('YYYY年M月', 'wp-minpaku-connector'),
+                    )
+                );
+
+                echo '<script type="text/javascript" id="wpmc-availability-calendar-js">';
+                echo 'var wpmcAvailability = ' . json_encode($localize_data) . ';';
+                echo $js_content;
+                echo '</script>';
+            }
         }
     }
 
