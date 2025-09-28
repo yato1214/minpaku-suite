@@ -59,16 +59,32 @@ class PortalCalendar {
             $is_modal = false; // Force inline display
         }
 
-        // Enqueue unified interactions assets if using modern interactions
+        // Enqueue unified assets for modern interactions
         if ($interactions === 'modern') {
-            self::enqueue_unified_interactions();
+            self::enqueue_modern_assets();
+        } else {
+            self::enqueue_legacy_assets();
         }
-
-        // Enqueue responsive calendar assets
-        self::enqueue_responsive_calendar_assets();
 
         $calendar_id = 'portal-calendar-' . uniqid();
         $mode = $is_modal ? 'modal' : 'inline';
+
+        // Use template if available for modern interactions
+        $template_path = MCS_PATH . 'templates/portal/calendar.php';
+        if (file_exists($template_path) && $interactions === 'modern') {
+            ob_start();
+
+            // Set variables for template (avoid variable conflicts)
+            extract([
+                'property_id' => $property_id,
+                'months' => $months,
+                'show_prices' => $show_prices,
+                'interactions' => $interactions
+            ]);
+
+            include $template_path;
+            return ob_get_clean();
+        }
 
         ob_start();
         ?>
@@ -79,7 +95,8 @@ class PortalCalendar {
              data-show-prices="<?php echo $show_prices ? '1' : '0'; ?>"
              data-months="<?php echo esc_attr($months); ?>"
              data-interactions="<?php echo esc_attr($interactions); ?>"
-             data-mode="<?php echo esc_attr($mode); ?>">
+             data-mode="<?php echo esc_attr($mode); ?>"
+             data-calendar-id="<?php echo esc_attr($calendar_id); ?>">
 
             <div class="mpc-calendar-header">
                 <div class="mpc-calendar-nav">
@@ -130,31 +147,14 @@ class PortalCalendar {
             </div>
 
             <!-- Quote Panel (initially hidden) -->
-            <div class="mpc-quote-panel" style="display: none;">
-                <div class="mpc-quote-header">
+            <div class="mcs-quote-panel" style="display: none;" aria-live="polite">
+                <div class="mcs-quote-header">
                     <h3><?php echo esc_html__('見積り', 'minpaku-suite'); ?></h3>
-                    <button class="mpc-quote-close" aria-label="<?php echo esc_attr__('閉じる', 'minpaku-suite'); ?>">×</button>
+                    <button class="mcs-clear-selection-btn" aria-label="<?php echo esc_attr__('選択をクリア', 'minpaku-suite'); ?>">×</button>
                 </div>
-                <div class="mpc-quote-content">
-                    <div class="mpc-quote-loading" style="display: none;">
-                        <span class="mpc-loading-spinner"></span>
-                        <?php echo esc_html__('見積り計算中...', 'minpaku-suite'); ?>
-                    </div>
-                    <div class="mpc-quote-result" style="display: none;">
-                        <div class="mpc-quote-summary">
-                            <div class="mpc-quote-dates"></div>
-                            <div class="mpc-quote-total"></div>
-                        </div>
-                        <div class="mpc-quote-breakdown">
-                            <h4><?php echo esc_html__('内訳', 'minpaku-suite'); ?></h4>
-                            <div class="mpc-quote-breakdown-content"></div>
-                        </div>
-                        <div class="mpc-quote-note">
-                            <?php echo esc_html__('※ 最終合計は予約時に確定します', 'minpaku-suite'); ?>
-                        </div>
-                    </div>
-                    <div class="mpc-quote-error" style="display: none;">
-                        <div class="mpc-error-message"></div>
+                <div class="mcs-quote-content">
+                    <div class="mcs-quote-placeholder">
+                        <p>日程を選択すると見積が表示されます</p>
                     </div>
                 </div>
             </div>
@@ -1266,214 +1266,7 @@ class PortalCalendar {
             document.body.classList.remove('portal-calendar-modal-open');
         }
 
-        // Modern Calendar Interactions with Quote Panel
-        document.addEventListener('DOMContentLoaded', function() {
-            var calendarContainer = document.getElementById('<?php echo esc_js($calendar_id); ?>');
-            if (!calendarContainer) return;
-
-            var interactions = calendarContainer.getAttribute('data-interactions');
-            if (interactions !== 'modern') return;
-
-            var propertyId = calendarContainer.getAttribute('data-property-id');
-            var quotePanel = calendarContainer.querySelector('.mpc-quote-panel');
-            var selectedRange = { start: null, end: null };
-
-            // Range selection functionality
-            var isSelecting = false;
-            var startDate = null;
-
-            function formatDate(date) {
-                return date.toISOString().split('T')[0];
-            }
-
-            function formatDisplayDate(dateStr) {
-                var date = new Date(dateStr);
-                return date.toLocaleDateString('ja-JP', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                });
-            }
-
-            function clearSelection() {
-                selectedRange = { start: null, end: null };
-                calendarContainer.querySelectorAll('.mcs-day-selected, .mcs-day-range').forEach(function(day) {
-                    day.classList.remove('mcs-day-selected', 'mcs-day-range');
-                });
-                hideQuotePanel();
-            }
-
-            function selectRange(start, end) {
-                clearSelection();
-                selectedRange = { start: start, end: end };
-
-                calendarContainer.querySelectorAll('.mcs-day').forEach(function(day) {
-                    var dayDate = day.getAttribute('data-ymd');
-                    if (dayDate >= start && dayDate <= end) {
-                        if (dayDate === start || dayDate === end) {
-                            day.classList.add('mcs-day-selected');
-                        } else {
-                            day.classList.add('mcs-day-range');
-                        }
-                    }
-                });
-
-                requestQuote(start, end);
-            }
-
-            function requestQuote(checkin, checkout) {
-                if (!quotePanel) return;
-
-                showQuotePanel();
-                showQuoteLoading();
-
-                fetch('<?php echo esc_url(rest_url('minpaku/v1/quote')); ?>', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-WP-Nonce': '<?php echo wp_create_nonce('wp_rest'); ?>'
-                    },
-                    body: JSON.stringify({
-                        property_id: parseInt(propertyId),
-                        checkin: checkin,
-                        checkout: checkout,
-                        guests: 2
-                    })
-                })
-                .then(function(response) {
-                    return response.json();
-                })
-                .then(function(data) {
-                    hideQuoteLoading();
-                    if (data.error) {
-                        showQuoteError(data.message_ja || data.error);
-                    } else {
-                        showQuoteResult(data, checkin, checkout);
-                    }
-                })
-                .catch(function(error) {
-                    hideQuoteLoading();
-                    showQuoteError('<?php echo esc_js(__('見積りの取得に失敗しました。', 'minpaku-suite')); ?>');
-                });
-            }
-
-            function showQuotePanel() {
-                quotePanel.style.display = 'block';
-            }
-
-            function hideQuotePanel() {
-                if (quotePanel) {
-                    quotePanel.style.display = 'none';
-                }
-            }
-
-            function showQuoteLoading() {
-                quotePanel.querySelector('.mpc-quote-loading').style.display = 'block';
-                quotePanel.querySelector('.mpc-quote-result').style.display = 'none';
-                quotePanel.querySelector('.mpc-quote-error').style.display = 'none';
-            }
-
-            function hideQuoteLoading() {
-                quotePanel.querySelector('.mpc-quote-loading').style.display = 'none';
-            }
-
-            function showQuoteResult(data, checkin, checkout) {
-                var resultDiv = quotePanel.querySelector('.mpc-quote-result');
-                var datesDiv = quotePanel.querySelector('.mpc-quote-dates');
-                var totalDiv = quotePanel.querySelector('.mpc-quote-total');
-                var breakdownDiv = quotePanel.querySelector('.mpc-quote-breakdown-content');
-
-                // Format dates
-                var checkinFormatted = formatDisplayDate(checkin);
-                var checkoutFormatted = formatDisplayDate(checkout);
-                datesDiv.textContent = checkinFormatted + ' ～ ' + checkoutFormatted + ' (' + data.nights + '泊)';
-
-                // Format total
-                totalDiv.textContent = '¥' + data.grand_total.toLocaleString();
-
-                // Build breakdown
-                var breakdownHTML = '';
-                data.breakdown.forEach(function(item) {
-                    var noteText = item.note ? ' (' + item.note + ')' : '';
-                    var amountText = '¥' + (item.base + item.surcharge).toLocaleString();
-                    breakdownHTML += '<div class="mpc-breakdown-item">' +
-                        '<div><span class="mpc-breakdown-date">' + formatDisplayDate(item.date) + '</span>' +
-                        '<span class="mpc-breakdown-note">' + noteText + '</span></div>' +
-                        '<div class="mpc-breakdown-amount">' + amountText + '</div>' +
-                        '</div>';
-                });
-
-                if (data.cleaning_fee > 0) {
-                    breakdownHTML += '<div class="mpc-breakdown-item">' +
-                        '<div class="mpc-breakdown-date"><?php echo esc_js(__('清掃費', 'minpaku-suite')); ?></div>' +
-                        '<div class="mpc-breakdown-amount">¥' + data.cleaning_fee.toLocaleString() + '</div>' +
-                        '</div>';
-                }
-
-                breakdownHTML += '<div class="mpc-breakdown-item mpc-breakdown-total">' +
-                    '<div class="mpc-breakdown-date"><?php echo esc_js(__('合計', 'minpaku-suite')); ?></div>' +
-                    '<div class="mpc-breakdown-amount">¥' + data.grand_total.toLocaleString() + '</div>' +
-                    '</div>';
-
-                breakdownDiv.innerHTML = breakdownHTML;
-                resultDiv.style.display = 'block';
-            }
-
-            function showQuoteError(message) {
-                var errorDiv = quotePanel.querySelector('.mpc-quote-error');
-                var messageDiv = quotePanel.querySelector('.mpc-error-message');
-                messageDiv.textContent = message;
-                errorDiv.style.display = 'block';
-            }
-
-            // Event listeners for day clicks
-            calendarContainer.addEventListener('click', function(e) {
-                var dayElement = e.target.closest('.mcs-day');
-                if (!dayElement || dayElement.getAttribute('data-disabled') === '1') {
-                    return;
-                }
-
-                var clickedDate = dayElement.getAttribute('data-ymd');
-                if (!clickedDate) return;
-
-                if (!isSelecting) {
-                    // Start selection
-                    isSelecting = true;
-                    startDate = clickedDate;
-                    clearSelection();
-                    dayElement.classList.add('mcs-day-selected');
-                } else {
-                    // End selection
-                    isSelecting = false;
-                    var endDate = clickedDate;
-
-                    if (startDate === endDate) {
-                        // Single night selection
-                        var nextDay = new Date(startDate);
-                        nextDay.setDate(nextDay.getDate() + 1);
-                        endDate = formatDate(nextDay);
-                    } else if (startDate > endDate) {
-                        // Swap if backwards
-                        var temp = startDate;
-                        startDate = endDate;
-                        endDate = temp;
-                    }
-
-                    selectRange(startDate, endDate);
-                    startDate = null;
-                }
-            });
-
-            // Quote panel close button
-            if (quotePanel) {
-                var closeButton = quotePanel.querySelector('.mpc-quote-close');
-                if (closeButton) {
-                    closeButton.addEventListener('click', function() {
-                        clearSelection();
-                    });
-                }
-            }
-        });
+        // Note: Calendar interactions are now handled by the unified calendar-interactions.js file
         </script>
         <?php
         return ob_get_clean();
@@ -1525,6 +1318,19 @@ class PortalCalendar {
      * Enqueue unified interactions assets
      */
     private static function enqueue_unified_interactions() {
+        // Portal Quote Panel CSS
+        $quote_css_file = get_template_directory_uri() . '/assets/css/portal-quote-panel.css';
+        $quote_css_path = get_template_directory() . '/assets/css/portal-quote-panel.css';
+
+        if (file_exists($quote_css_path)) {
+            wp_enqueue_style(
+                'minpaku-portal-quote-panel',
+                $quote_css_file,
+                [],
+                filemtime($quote_css_path)
+            );
+        }
+
         // CSS
         $css_file = get_template_directory_uri() . '/assets/css/calendar-interactions.css';
         $css_path = get_template_directory() . '/assets/css/calendar-interactions.css';
@@ -1559,6 +1365,7 @@ class PortalCalendar {
                     'ajaxUrl' => admin_url('admin-ajax.php'),
                     'nonce' => wp_create_nonce('minpaku_calendar'),
                     'apiBase' => '/wp-json/minpaku/v1',
+                    'isAdmin' => current_user_can('manage_options'),
                     'texts' => [
                         'loading' => __('読み込み中...', 'minpaku-suite'),
                         'nightsLabel' => __('泊', 'minpaku-suite'),

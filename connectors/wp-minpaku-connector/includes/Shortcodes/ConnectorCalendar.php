@@ -15,6 +15,7 @@ class MPC_Shortcodes_ConnectorCalendar {
 
     public static function init() {
         add_shortcode('connector_calendar', [__CLASS__, 'render_calendar']);
+        add_shortcode('minpaku_connector', [__CLASS__, 'render_calendar']); // Additional shortcode support
 
         // Register AJAX handlers for modal functionality
         add_action('wp_ajax_mpc_get_calendar', [__CLASS__, 'ajax_modal_content']);
@@ -84,9 +85,28 @@ class MPC_Shortcodes_ConnectorCalendar {
             return self::render_modal_button($property_id, $months, $show_prices, $property_title, $interactions);
         }
 
-        // Enqueue inline CSS for reliable styling\n        self::enqueue_inline_calendar_css();\n\n        // Enqueue unified interactions assets if using modern interactions
+        // Enqueue unified assets for modern interactions
         if ($interactions === 'modern') {
-            self::enqueue_unified_interactions();
+            self::enqueue_modern_assets();
+        } else {
+            self::enqueue_legacy_assets();
+        }
+
+        // Use template if available for modern interactions
+        $template_path = WP_MINPAKU_CONNECTOR_PATH . 'templates/connector/calendar.php';
+        if (file_exists($template_path) && $interactions === 'modern') {
+            ob_start();
+
+            // Set variables for template (avoid variable conflicts)
+            extract([
+                'property_id' => $property_id,
+                'months' => $months,
+                'show_prices' => $show_prices,
+                'interactions' => $interactions
+            ]);
+
+            include $template_path;
+            return ob_get_clean();
         }
 
         $calendar_id = 'connector-calendar-' . uniqid();
@@ -1755,43 +1775,57 @@ class MPC_Shortcodes_ConnectorCalendar {
     }
 
     /**
-     * Enqueue unified interactions assets for connector calendar
+     * Enqueue modern calendar assets for connector
      */
-    private static function enqueue_unified_interactions() {
-        // Create connector-specific unified interactions files with proper plugin paths
-        $css_file = plugin_dir_url(__FILE__) . '../../assets/css/calendar-interactions.css';
-        $css_path = plugin_dir_path(__FILE__) . '../../assets/css/calendar-interactions.css';
+    private static function enqueue_modern_calendar_assets() {
+        // Calendar CSS
+        $calendar_css_file = plugin_dir_url(__FILE__) . '../../assets/css/wpmc-calendar.css';
+        $calendar_css_path = plugin_dir_path(__FILE__) . '../../assets/css/wpmc-calendar.css';
 
-        if (file_exists($css_path)) {
+        if (file_exists($calendar_css_path)) {
             wp_enqueue_style(
-                'wp-minpaku-connector-interactions',
-                $css_file,
+                'wpmc-calendar',
+                $calendar_css_file,
                 [],
-                filemtime($css_path)
+                filemtime($calendar_css_path)
+            );
+        }
+
+        // Quote panel CSS
+        $quote_css_file = plugin_dir_url(__FILE__) . '../../assets/css/wpmc-quote-panel.css';
+        $quote_css_path = plugin_dir_path(__FILE__) . '../../assets/css/wpmc-quote-panel.css';
+
+        if (file_exists($quote_css_path)) {
+            wp_enqueue_style(
+                'wpmc-quote-panel',
+                $quote_css_file,
+                [],
+                filemtime($quote_css_path)
             );
         }
 
         // JavaScript
-        $js_file = plugin_dir_url(__FILE__) . '../../assets/js/calendar-interactions.js';
-        $js_path = plugin_dir_path(__FILE__) . '../../assets/js/calendar-interactions.js';
+        $js_file = plugin_dir_url(__FILE__) . '../../assets/js/connector-calendar-interactions.js';
+        $js_path = plugin_dir_path(__FILE__) . '../../assets/js/connector-calendar-interactions.js';
 
         if (file_exists($js_path)) {
             wp_enqueue_script(
-                'wp-minpaku-connector-interactions',
+                'wpmc-calendar-interactions',
                 $js_file,
-                ['jquery'],
+                [],
                 filemtime($js_path),
                 true
             );
 
-            // Localize script for connector
+            // Localize script for connector with debug support
+            $is_admin = current_user_can('manage_options');
             wp_localize_script(
-                'wp-minpaku-connector-interactions',
-                'mpcConnectorInteractions',
+                'wpmc-calendar-interactions',
+                'wpmcCalendarData',
                 [
-                    'ajaxUrl' => admin_url('admin-ajax.php'),
-                    'nonce' => wp_create_nonce('mpc_connector_calendar'),
-                    'apiBase' => '/wp-json/minpaku/v1',
+                    'restUrl' => rest_url('minpaku-connector/v1/'),
+                    'nonce' => wp_create_nonce('wp_rest'),
+                    'isAdmin' => $is_admin,
                     'texts' => [
                         'loading' => __('読み込み中...', 'wp-minpaku-connector'),
                         'nightsLabel' => __('泊', 'wp-minpaku-connector'),
@@ -1808,7 +1842,9 @@ class MPC_Shortcodes_ConnectorCalendar {
                         'errorTitle' => __('エラー', 'wp-minpaku-connector'),
                         'dateUnavailable' => __('この日程は満室です', 'wp-minpaku-connector'),
                         'occupancyExceeded' => __('定員を超えています', 'wp-minpaku-connector'),
-                        'networkError' => __('ネットワークエラーが発生しました', 'wp-minpaku-connector')
+                        'networkError' => __('ネットワークエラーが発生しました', 'wp-minpaku-connector'),
+                        'selectDates' => __('日程を選択すると見積が表示されます', 'wp-minpaku-connector'),
+                        'clearSelection' => __('選択をクリア', 'wp-minpaku-connector')
                     ]
                 ]
             );

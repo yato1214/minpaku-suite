@@ -48,9 +48,31 @@ class Quote {
                     'type' => 'string',
                     'sanitize_callback' => 'sanitize_text_field'
                 ],
-                'guests' => [
+                'adults' => [
                     'required' => false,
                     'default' => 2,
+                    'type' => 'integer',
+                    'sanitize_callback' => 'absint'
+                ],
+                'children' => [
+                    'required' => false,
+                    'default' => 0,
+                    'type' => 'integer',
+                    'sanitize_callback' => 'absint'
+                ],
+                // Legacy parameter support for backward compatibility
+                'start_date' => [
+                    'required' => false,
+                    'type' => 'string',
+                    'sanitize_callback' => 'sanitize_text_field'
+                ],
+                'end_date' => [
+                    'required' => false,
+                    'type' => 'string',
+                    'sanitize_callback' => 'sanitize_text_field'
+                ],
+                'guests' => [
+                    'required' => false,
                     'type' => 'integer',
                     'sanitize_callback' => 'absint'
                 ]
@@ -72,12 +94,13 @@ class Quote {
                 ], 500);
             }
 
-            // Prepare request data
+            // Prepare request data - unified portal format with legacy support
             $quote_data = [
                 'property_id' => $request->get_param('property_id'),
-                'checkin' => $request->get_param('checkin'),
-                'checkout' => $request->get_param('checkout'),
-                'guests' => $request->get_param('guests')
+                'checkin' => $request->get_param('checkin') ?: $request->get_param('start_date'),
+                'checkout' => $request->get_param('checkout') ?: $request->get_param('end_date'),
+                'adults' => $request->get_param('adults') ?: $request->get_param('guests') ?: 2,
+                'children' => $request->get_param('children') ?: 0
             ];
 
             // Build portal URL
@@ -121,13 +144,47 @@ class Quote {
             $response_body = wp_remote_retrieve_body($response);
             $response_data = json_decode($response_body, true);
 
+            // Enhanced error handling with Japanese messages
+            if ($response_code !== 200) {
+                $error_message = '';
+                $error_code = 'quote_error';
+
+                switch ($response_code) {
+                    case 401:
+                        $error_message = __('認証エラー: 署名が不正またはタイムスタンプが古すぎます。', 'wp-minpaku-connector');
+                        $error_code = 'authentication_error';
+                        break;
+                    case 404:
+                        $error_message = __('APIエンドポイントが見つかりません。ポータル側のプラグインを更新してください。', 'wp-minpaku-connector');
+                        $error_code = 'endpoint_not_found';
+                        break;
+                    case 422:
+                        $portal_error = isset($response_data['message_ja']) ? $response_data['message_ja'] :
+                                       (isset($response_data['message']) ? $response_data['message'] : '期間・在庫・定員エラー');
+                        $error_message = $portal_error;
+                        $error_code = 'validation_error';
+                        break;
+                    case 500:
+                    default:
+                        $error_message = __('予期せぬエラーが発生しました。', 'wp-minpaku-connector');
+                        $error_code = 'server_error';
+                        break;
+                }
+
+                return new \WP_REST_Response([
+                    'error' => $error_message,
+                    'code' => $error_code,
+                    'status' => $response_code
+                ], $response_code);
+            }
+
             // Log successful quote proxy
-            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG && $response_code === 200) {
+            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
                 error_log('[Connector] Quote proxied successfully for property ' . $quote_data['property_id']);
             }
 
-            // Return portal response with same status code
-            return new \WP_REST_Response($response_data, $response_code);
+            // Return portal response
+            return new \WP_REST_Response($response_data, 200);
 
         } catch (\Exception $e) {
             error_log('[Connector] Quote proxy exception: ' . $e->getMessage());

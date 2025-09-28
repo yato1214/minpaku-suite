@@ -22,6 +22,7 @@ class Bootstrap
         add_action('acf/init', [__CLASS__, 'register_acf'], 10);
         add_action('admin_menu', [__CLASS__, 'register_menu'], 9);
         add_action('admin_enqueue_scripts', [__CLASS__, 'enqueue_admin_styles'], 10);
+        add_action('wp_enqueue_scripts', [__CLASS__, 'enqueue_frontend_assets'], 10);
         add_action('rest_api_init', [__CLASS__, 'register_rest'], 10);
     }
 
@@ -661,6 +662,122 @@ class Bootstrap
             ));
 
             error_log("Minpaku Suite: Invalidated pricing cache for property {$property_id}");
+        }
+    }
+
+    /**
+     * Enqueue frontend assets for calendar interactions
+     */
+    public static function enqueue_frontend_assets()
+    {
+        // Only load on pages that might have calendar shortcodes
+        if (is_admin()) {
+            return;
+        }
+
+        global $post;
+
+        // Check if current page or post contains portal_calendar shortcode
+        $needs_calendar_js = false;
+
+        if ($post && has_shortcode($post->post_content, 'portal_calendar')) {
+            $needs_calendar_js = true;
+        }
+
+        // Also check for property pages
+        if (is_singular('mcs_property')) {
+            $needs_calendar_js = true;
+        }
+
+        if ($needs_calendar_js) {
+            // Enqueue basic calendar CSS
+            $calendar_css_file = plugin_dir_url(MINPAKU_SUITE_PLUGIN_FILE) . 'assets/css/portal-calendar.css';
+            $calendar_css_path = MCS_PATH . 'assets/css/portal-calendar.css';
+
+            if (file_exists($calendar_css_path)) {
+                wp_enqueue_style(
+                    'mcs-portal-calendar',
+                    $calendar_css_file,
+                    [],
+                    filemtime($calendar_css_path)
+                );
+            }
+
+            // Enqueue quote panel CSS
+            $css_file = plugin_dir_url(MINPAKU_SUITE_PLUGIN_FILE) . 'assets/css/portal-quote-panel.css';
+            $css_path = MCS_PATH . 'assets/css/portal-quote-panel.css';
+
+            if (file_exists($css_path)) {
+                wp_enqueue_style(
+                    'mcs-portal-quote-panel',
+                    $css_file,
+                    ['mcs-portal-calendar'],
+                    filemtime($css_path)
+                );
+            }
+
+            // Enqueue calendar interactions JS
+            $js_file = plugin_dir_url(MINPAKU_SUITE_PLUGIN_FILE) . 'assets/js/calendar-interactions.js';
+            $js_path = MCS_PATH . 'assets/js/calendar-interactions.js';
+
+            if (file_exists($js_path)) {
+                wp_enqueue_script(
+                    'mcs-calendar-interactions',
+                    $js_file,
+                    ['jquery', 'wp-i18n'],
+                    filemtime($js_path),
+                    true
+                );
+
+                // Localize script with translations and settings
+                wp_localize_script(
+                    'mcs-calendar-interactions',
+                    'mcsCalendarData',
+                    [
+                        'ajaxUrl' => admin_url('admin-ajax.php'),
+                        'restUrl' => rest_url('minpaku/v1/'),
+                        'nonce' => wp_create_nonce('wp_rest'),
+                        'isAdmin' => current_user_can('manage_options'),
+                        'texts' => [
+                            'loading' => __('読み込み中...', 'minpaku-suite'),
+                            'selectDates' => __('日付を選択', 'minpaku-suite'),
+                            'showQuote' => __('見積を表示', 'minpaku-suite'),
+                            'nightsLabel' => __('泊', 'minpaku-suite'),
+                            'totalLabel' => __('合計金額', 'minpaku-suite'),
+                            'clearSelection' => __('選択をクリア', 'minpaku-suite'),
+                            'errorTitle' => __('エラー', 'minpaku-suite'),
+                            'networkError' => __('ネットワークエラーが発生しました', 'minpaku-suite')
+                        ]
+                    ]
+                );
+
+                // Add inline boot script
+                $boot_script = "
+(function(){
+  function boot(){
+    if (window.MCSCalendarInteractions) {
+      window.MCSCalendarInteractions.init({ selector: '[data-interactions=\"modern\"]' });
+      if (!window.__MCS_DEBUG) window.__MCS_DEBUG = {};
+      window.__MCS_DEBUG.status = () => ({
+        ready: true,
+        interactions: 'modern',
+        calendars: document.querySelectorAll('[data-interactions=\"modern\"]').length
+      });
+    } else {
+      if (typeof mcsCalendarData !== 'undefined' && mcsCalendarData.isAdmin) {
+        console.warn('[MCS] interactions js not loaded');
+      }
+    }
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
+})();";
+
+                wp_add_inline_script('mcs-calendar-interactions', $boot_script);
+            }
         }
     }
 }

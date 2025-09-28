@@ -1,0 +1,283 @@
+/**
+ * Portal Calendar - Modern Unified Styles
+ * Provides unified styling for portal calendar and quote interactions
+ *
+ * @package MinpakuSuite
+ */
+
+/* ============================================================================
+   Calendar Container & Base Layout
+   ============================================================================ */
+
+.mcs-availability {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+    max-width: 100%;
+    margin: 0;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+/* Calendar Header */
+.mcs-calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding: 0 4px;
+}
+
+.mcs-calendar-nav {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.mcs-nav-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    background: #0073aa;
+    color: white;
+    border: none;
+    padding: 0.5rem 0.75rem;
+    border-radius: 4px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.mcs-nav-button:hover {
+    background: #005a87;
+}
+
+.mcs-nav-button:disabled,
+.mcs-nav-button[aria-disabled="true"] {
+    background: #ccc !important;
+    cursor: not-allowed !important;
+    opacity: 0.6;
+}
+
+.mcs-nav-button:disabled:hover,
+.mcs-nav-button[aria-disabled="true"]:hover {
+    background: #ccc !important;
+}
+
+.mcs-nav-icon {
+    font-size: 18px;
+    line-height: 1;
+}
+
+.mcs-calendar-subtitle {
+    font-size: 14px;
+    color: #666;
+    font-weight: 500;
+}
+
+/* Calendar Grid */
+.mcs-calendar-months-grid {
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+
+.mcs-calendar-month {
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.mcs-calendar-month-title {
+    background: #f7f7f7;
+    margin: 0;
+    padding: 1rem;
+    text-align: center;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #333;
+    border-bottom: 1px solid #ddd;
+}
+
+.mcs-calendar-grid {
+    background: #fafafa;
+}
+
+/* Day Headers */
+.mcs-calendar-day-headers {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0;
+}
+
+.mcs-calendar-day-header {
+    background: #f0f0f0;
+    color: #666;
+    padding: 0.75rem 0.5rem;
+    text-align: center;
+    font-weight: 600;
+    font-size: 12px;
+    border-right: 1px solid #ddd;
+    border-bottom: 1px solid #ddd;
+}
+
+.mcs-calendar-day-header:last-child {
+    border-right: none;
+}
+
+/* Calendar Weeks and Days */
+.mcs-calendar-week {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0;
+}
+
+.mcs-day {
+    position: relative;
+    min-height: 60px;
+    padding: 0.5rem 0.25rem;
+    border-right: 1px solid #ddd;
+    border-bottom: 1px solid #ddd;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: white;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: space-between;
+}
+
+.mcs-day:nth-child(7n) {
+    border-right: none;
+}
+
+.mcs-day:hover {
+    background: #f0f8ff;
+    z-index: 1;
+}
+
+/* Day States */
+.mcs-day--empty {
+    background: #f8f8f8 !important;
+    cursor: default;
+    opacity: 0.5;
+}
+
+.mcs-day--empty:hover {
+    background: #f8f8f8 !important;
+}
+
+.mcs-day--past {
+    background: #f0f0f0 !important;
+    color: #999;
+    cursor: not-allowed;
+}
+
+.mcs-day--past:hover {
+    background: #f0f0f0 !important;
+}
+
+.mcs-day--weekday {
+    background: #f0fdf4;
+}
+
+.mcs-day--sat {
+    background: #eff6ff;
+}
+
+.mcs-day--sun {
+    background: #fef2f2;
+}
+
+/* Day Content */
+.mcs-day-number {
+    font-weight: 600;
+    font-size: 14px;
+    line-height: 1.2;
+    color: #333;
+}
+
+.mcs-day--past .mcs-day-number {
+    color: #999;
+}
+
+.mcs-day-price {
+    margin-top: 0.25rem;
+    padding: 0.125rem 0.25rem;
+    border-radius: 3px;
+    background: #333;
+    color: white;
+    font-weight: 500;
+    font-size: 10px;
+    text-align: center;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.mcs-day-full-badge {
+    margin-top: 0.25rem;
+    padding: 0.125rem 0.25rem;
+    border-radius: 3px;
+    background: #dc3545;
+    color: white;
+    font-weight: 500;
+    font-size: 10px;
+    text-align: center;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.mcs-day-blocked-badge {
+    margin-top: 0.25rem;
+    padding: 0.125rem 0.25rem;
+    border-radius: 3px;
+    background: #6c757d;
+    color: white;
+    font-weight: 500;
+    font-size: 12px;
+    text-align: center;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .mcs-calendar-months-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .mcs-calendar-header {
+        flex-direction: column;
+        gap: 0.75rem;
+        text-align: center;
+    }
+
+    .mcs-calendar-nav {
+        order: 2;
+    }
+
+    .mcs-calendar-subtitle {
+        order: 1;
+    }
+
+    .mcs-day {
+        min-height: 50px;
+        padding: 0.25rem 0.125rem;
+    }
+
+    .mcs-day-number {
+        font-size: 12px;
+    }
+
+    .mcs-day-price,
+    .mcs-day-full-badge {
+        font-size: 9px;
+        padding: 0.1rem 0.2rem;
+    }
+
+    .mcs-nav-button .mcs-nav-text {
+        display: none;
+    }
+}

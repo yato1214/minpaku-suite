@@ -712,17 +712,25 @@ class MPC_Admin_Settings {
                 <code>[minpaku_connector type="properties" limit="12" columns="3"]</code>
                 <p class="description"><?php echo esc_html__('物件一覧をグリッド表示します。各物件カードに「外部サイトで見る」ボタンが表示され、設定した外部詳細ページへリンクします。', 'wp-minpaku-connector'); ?></p>
 
-                <h3><?php echo esc_html__('📅 空室カレンダー（外部詳細ページ本文に貼る）', 'wp-minpaku-connector'); ?></h3>
-                <code>[minpaku_connector type="availability" property_id="123" months="2"]</code>
-                <p class="description"><?php echo esc_html__('指定した物件の空室カレンダーをインライン表示します。外部詳細ページの本文内に埋め込んでご利用ください。', 'wp-minpaku-connector'); ?></p>
+                <h3><?php echo esc_html__('📅 空室カレンダー（モダンUI）', 'wp-minpaku-connector'); ?></h3>
+                <code>[minpaku_connector type="availability" property_id="123" months="2" interactions="modern"]</code>
+                <p class="description"><?php echo esc_html__('モダンな見積機能付きカレンダーを表示。カレンダー操作で即座に見積パネルが表示されます（ポータル側と完全統一）。デスクトップ2列、モバイル1列のレスポンシブ対応。', 'wp-minpaku-connector'); ?></p>
 
-                <h3><?php echo esc_html__('📝 物件詳細ブロック（必要に応じて）', 'wp-minpaku-connector'); ?></h3>
+                <h3><?php echo esc_html__('📅 レガシーカレンダー（従来型）', 'wp-minpaku-connector'); ?></h3>
+                <code>[minpaku_connector type="availability" property_id="123" months="2" interactions="legacy"]</code>
+                <p class="description"><?php echo esc_html__('従来の日付クリック→新規予約画面遷移タイプのカレンダー。レガシーシステム対応用。', 'wp-minpaku-connector'); ?></p>
+
+                <h3><?php echo esc_html__('📝 物件詳細ブロック', 'wp-minpaku-connector'); ?></h3>
                 <code>[minpaku_connector type="property" property_id="123"]</code>
-                <p class="description"><?php echo esc_html__('物件の詳細情報（アメニティ、説明文等）を表示します。', 'wp-minpaku-connector'); ?></p>
+                <p class="description"><?php echo esc_html__('物件の詳細情報（アメニティ、説明文等）を表示。カレンダーと組み合わせて使用可能。', 'wp-minpaku-connector'); ?></p>
 
-                <div style="background: #fff2cc; padding: 16px; border-left: 4px solid #f0ad4e; margin: 20px 0;">
-                    <h4 style="margin-top: 0; color: #8a6d3b;"><?php echo esc_html__('🚨 重要な変更点', 'wp-minpaku-connector'); ?></h4>
-                    <p style="margin-bottom: 0;"><strong><?php echo esc_html__('モーダルカレンダーは廃止されました。', 'wp-minpaku-connector'); ?></strong> <?php echo esc_html__('すべて「インライン表示」でご利用ください。物件一覧カードの「カレンダーを見る」ボタンは削除され、代わりに「外部サイトで見る」ボタンが表示されます。', 'wp-minpaku-connector'); ?></p>
+                <div style="background: #e8f5e8; padding: 16px; border-left: 4px solid #28a745; margin: 20px 0;">
+                    <h4 style="margin-top: 0; color: #155724;"><?php echo esc_html__('✨ 新機能：統一モダンUI', 'wp-minpaku-connector'); ?></h4>
+                    <ul style="margin-bottom: 0;">
+                        <li><strong><?php echo esc_html__('即時見積:', 'wp-minpaku-connector'); ?></strong> <?php echo esc_html__('日程選択と同時に見積パネルが表示', 'wp-minpaku-connector'); ?></li>
+                        <li><strong><?php echo esc_html__('操作統一:', 'wp-minpaku-connector'); ?></strong> <?php echo esc_html__('シングルクリック、ドラッグ、ロングプレス対応', 'wp-minpaku-connector'); ?></li>
+                        <li><strong><?php echo esc_html__('デザイン統一:', 'wp-minpaku-connector'); ?></strong> <?php echo esc_html__('ポータル側と完全同一の見た目・挙動', 'wp-minpaku-connector'); ?></li>
+                    </ul>
                 </div>
 
                 <h4><?php echo esc_html__('推奨の運用方法', 'wp-minpaku-connector'); ?></h4>
@@ -742,19 +750,22 @@ class MPC_Admin_Settings {
                     <li><strong>interactions</strong>: <?php echo esc_html__('カレンダー操作モード（"modern"（既定）、"legacy"）', 'wp-minpaku-connector'); ?></li>
                 </ul>
 
-                <h4><?php echo esc_html__('カレンダー機能', 'wp-minpaku-connector'); ?></h4>
+                <h4><?php echo esc_html__('モダンカレンダー機能（interactions="modern"）', 'wp-minpaku-connector'); ?></h4>
                 <ul>
-                    <li><strong><?php echo esc_html__('ポータルパリティ', 'wp-minpaku-connector'); ?></strong>: <?php echo esc_html__('ポータル側と同じデザインと機能', 'wp-minpaku-connector'); ?></li>
-                    <li><strong><?php echo esc_html__('色分け表示', 'wp-minpaku-connector'); ?></strong>: <?php echo esc_html__('平日（緑）、土曜（青）、日曜・祝日（赤）、満室（グレー）', 'wp-minpaku-connector'); ?></li>
-                    <li><strong><?php echo esc_html__('リアルタイム価格', 'wp-minpaku-connector'); ?></strong>: <?php echo esc_html__('土日祝割増、季節料金を自動反映', 'wp-minpaku-connector'); ?></li>
-                    <li><strong><?php echo esc_html__('見積パネル', 'wp-minpaku-connector'); ?></strong>: <?php echo esc_html__('範囲選択で自動見積表示（1日ごとの内訳・清掃費・合計）', 'wp-minpaku-connector'); ?></li>
-                    <li><strong><?php echo esc_html__('月送りナビゲーション', 'wp-minpaku-connector'); ?></strong>: <?php echo esc_html__('前月・次月ボタンで12ヶ月表示可能', 'wp-minpaku-connector'); ?></li>
-                    <li><strong><?php echo esc_html__('レスポンシブ対応', 'wp-minpaku-connector'); ?></strong>: <?php echo esc_html__('デスクトップ2列、モバイル1列表示', 'wp-minpaku-connector'); ?></li>
+                    <li><strong><?php echo esc_html__('ポータル完全同期', 'wp-minpaku-connector'); ?></strong>: <?php echo esc_html__('DOM構造・CSS・挙動がポータル側と100%一致', 'wp-minpaku-connector'); ?></li>
+                    <li><strong><?php echo esc_html__('即時見積表示', 'wp-minpaku-connector'); ?></strong>: <?php echo esc_html__('日程選択と同時に見積パネルが出現（宿泊料・清掃費・合計の内訳表示）', 'wp-minpaku-connector'); ?></li>
+                    <li><strong><?php echo esc_html__('マルチ選択方法', 'wp-minpaku-connector'); ?></strong>: <?php echo esc_html__('シングルクリック（1泊）、ドラッグ（PC）、ロングプレス（SP）対応', 'wp-minpaku-connector'); ?></li>
+                    <li><strong><?php echo esc_html__('統一デザイン', 'wp-minpaku-connector'); ?></strong>: <?php echo esc_html__('平日（緑）、土曜（青）、日曜・祝日（赤）、満室（グレー）', 'wp-minpaku-connector'); ?></li>
+                    <li><strong><?php echo esc_html__('ナビゲーション維持', 'wp-minpaku-connector'); ?></strong>: <?php echo esc_html__('月送り後も選択状態と見積パネルが維持される', 'wp-minpaku-connector'); ?></li>
+                    <li><strong><?php echo esc_html__('レスポンシブ完備', 'wp-minpaku-connector'); ?></strong>: <?php echo esc_html__('デスクトップ2列、モバイル1列の自動切り替え', 'wp-minpaku-connector'); ?></li>
                 </ul>
 
                 <h4><?php echo esc_html__('使用例', 'wp-minpaku-connector'); ?></h4>
-                <code>[minpaku_connector type="availability" property_id="123" months="3"]</code>
-                <p class="description"><?php echo esc_html__('物件ID 123 の空室カレンダーを3ヶ月分表示（外部詳細ページ用）', 'wp-minpaku-connector'); ?></p>
+                <code>[minpaku_connector type="availability" property_id="123" months="3" interactions="modern"]</code>
+                <p class="description"><?php echo esc_html__('物件ID 123 のモダン見積カレンダーを3ヶ月分表示（外部詳細ページ推奨）', 'wp-minpaku-connector'); ?></p>
+
+                <code>[minpaku_connector type="availability" property_id="456" months="2" interactions="legacy"]</code>
+                <p class="description"><?php echo esc_html__('物件ID 456 のレガシーカレンダーを2ヶ月分表示（従来型システム用）', 'wp-minpaku-connector'); ?></p>
 
             <?php else: ?>
                 <div class="notice notice-warning">

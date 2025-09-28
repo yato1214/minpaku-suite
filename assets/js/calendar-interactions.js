@@ -42,7 +42,11 @@
                 lastTouchTarget: null
             };
 
-            // Texts with defaults
+            // Texts with defaults (will be overridden by localized data)
+            const localizedTexts = (typeof window.mcsCalendarData !== 'undefined' && window.mcsCalendarData.texts)
+                ? window.mcsCalendarData.texts
+                : {};
+
             this.texts = {
                 loading: '読み込み中...',
                 nightsLabel: '泊',
@@ -60,10 +64,24 @@
                 dateUnavailable: 'この日程は満室です',
                 occupancyExceeded: '定員を超えています',
                 networkError: 'ネットワークエラーが発生しました',
+                ...localizedTexts,
                 ...this.options.texts
             };
 
             this.init();
+        }
+
+        /**
+         * Debug helper - only logs for administrators
+         */
+        debug(message, data = null) {
+            if (typeof window.mcsCalendarData !== 'undefined' && window.mcsCalendarData.isAdmin) {
+                if (data) {
+                    console.debug(`[MCS Calendar] ${message}`, data);
+                } else {
+                    console.debug(`[MCS Calendar] ${message}`);
+                }
+            }
         }
 
         /**
@@ -79,13 +97,14 @@
             this.setupAccessibility();
             this.bindEvents();
             this.createQuotePanel();
+            this.initNavigation();
 
             // Set data attributes (preserve existing interactions setting)
             this.root.setAttribute('data-interactions', 'modern');
             this.root.setAttribute('data-mode', this.options.mode);
 
             // Required debug output
-            console.debug('[quote] init', {
+            this.debug('Init', {
                 el: this.root,
                 propertyId: this.options.propertyId
             });
@@ -209,7 +228,7 @@
             // Calculate checkout date (next day)
             const checkoutDate = this.getNextDay(checkinDate);
 
-            console.log('[Calendar] Single click preview:', checkinDate, '->', checkoutDate);
+            this.debug('Single click preview', { checkinDate, checkoutDate });
 
             this.clearSelection();
             this.state.selectedCheckin = checkinDate;
@@ -230,7 +249,7 @@
                 // First click - set as checkin
                 this.state.selectedCheckin = clickedDate;
                 this.state.selectedCheckout = null;
-                console.log('[Calendar] Range start:', clickedDate);
+                this.debug('Range start', { clickedDate });
             } else {
                 // Second click - set as checkout
                 const checkin = new Date(this.state.selectedCheckin);
@@ -242,7 +261,7 @@
                     this.state.selectedCheckout = null;
                 } else {
                     this.state.selectedCheckout = clickedDate;
-                    console.log('[Calendar] Range complete:', this.state.selectedCheckin, '->', clickedDate);
+                    this.debug('Range complete', { checkin: this.state.selectedCheckin, checkout: clickedDate });
                     this.fetchQuote();
                 }
             }
@@ -287,7 +306,7 @@
                 this.state.isDragging = false;
 
                 if (this.state.selectedCheckin && this.state.selectedCheckout) {
-                    console.log('[Calendar] Drag complete:', this.state.selectedCheckin, '->', this.state.selectedCheckout);
+                    this.debug('Drag complete', { checkin: this.state.selectedCheckin, checkout: this.state.selectedCheckout });
                     this.fetchQuote();
                 }
             }
@@ -334,14 +353,14 @@
          * Start long press selection mode
          */
         startLongPressSelection(cell) {
-            console.log('[Calendar] Long press selection started');
+            this.debug('Long press selection started');
             this.state.isSelecting = true;
             this.state.selectedCheckin = cell.dataset.ymd;
             this.state.selectedCheckout = null;
             this.updateVisualSelection();
 
             // Show visual feedback
-            this.root.classList.add('mcs-selecting-range');
+            this.root.classList.add('mcs-selecting-range', 'is-selecting');
         }
 
         /**
@@ -407,7 +426,7 @@
             // Clear previous selection
             this.root.querySelectorAll('.mcs-selected, .mcs-selected-start, .mcs-selected-end, .mcs-selected-range')
                 .forEach(cell => {
-                    cell.classList.remove('mcs-selected', 'mcs-selected-start', 'mcs-selected-end', 'mcs-selected-range');
+                    cell.classList.remove('mcs-selected', 'mcs-selected-start', 'mcs-selected-end', 'mcs-selected-range', 'is-selected');
                     cell.removeAttribute('aria-selected');
                 });
 
@@ -416,7 +435,7 @@
             // Mark checkin date
             const checkinCell = this.root.querySelector(`[data-ymd="${this.state.selectedCheckin}"]`);
             if (checkinCell) {
-                checkinCell.classList.add('mcs-selected-start');
+                checkinCell.classList.add('mcs-selected-start', 'is-selected');
                 checkinCell.setAttribute('aria-selected', 'true');
             }
 
@@ -424,7 +443,7 @@
                 // Mark checkout date
                 const checkoutCell = this.root.querySelector(`[data-ymd="${this.state.selectedCheckout}"]`);
                 if (checkoutCell) {
-                    checkoutCell.classList.add('mcs-selected-end');
+                    checkoutCell.classList.add('mcs-selected-end', 'is-selected');
                     checkoutCell.setAttribute('aria-selected', 'true');
                 }
 
@@ -435,7 +454,7 @@
                 this.root.querySelectorAll('.mcs-day[data-ymd]').forEach(cell => {
                     const cellDate = new Date(cell.dataset.ymd);
                     if (cellDate > checkinDate && cellDate < checkoutDate) {
-                        cell.classList.add('mcs-selected-range');
+                        cell.classList.add('mcs-selected-range', 'is-selected');
                     }
                 });
             }
@@ -490,20 +509,164 @@
         }
 
         /**
+         * Initialize navigation functionality
+         */
+        initNavigation() {
+            const navButtons = this.root.querySelectorAll('.mcs-nav-button');
+            navButtons.forEach(button => {
+                button.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const action = button.getAttribute('data-action');
+                    if (action === 'prev' || action === 'next') {
+                        this.navigateMonth(action);
+                    }
+                });
+            });
+
+            // Update button states
+            this.updateNavigationState();
+        }
+
+        /**
+         * Update navigation button states
+         */
+        updateNavigationState() {
+            const monthsGrid = this.root.querySelector('.mcs-calendar-months-grid');
+            const prevBtn = this.root.querySelector('.mcs-nav-prev');
+            const nextBtn = this.root.querySelector('.mcs-nav-next');
+
+            if (!monthsGrid || !prevBtn || !nextBtn) return;
+
+            const currentOffset = parseInt(monthsGrid.getAttribute('data-current-offset')) || 0;
+
+            // Disable/enable buttons based on limits
+            if (currentOffset <= -12) {
+                prevBtn.disabled = true;
+                prevBtn.setAttribute('aria-disabled', 'true');
+            } else {
+                prevBtn.disabled = false;
+                prevBtn.setAttribute('aria-disabled', 'false');
+            }
+
+            if (currentOffset >= 24) {
+                nextBtn.disabled = true;
+                nextBtn.setAttribute('aria-disabled', 'true');
+            } else {
+                nextBtn.disabled = false;
+                nextBtn.setAttribute('aria-disabled', 'false');
+            }
+        }
+
+        /**
+         * Navigate to previous or next month
+         */
+        navigateMonth(direction) {
+            this.debug('Navigate month', { direction });
+
+            // Clear current selection
+            this.clearSelection();
+
+            // Get current offset from the months grid
+            const monthsGrid = this.root.querySelector('.mcs-calendar-months-grid');
+            let currentOffset = 0;
+
+            if (monthsGrid) {
+                currentOffset = parseInt(monthsGrid.getAttribute('data-current-offset')) || 0;
+            }
+
+            let newOffset = currentOffset;
+            if (direction === 'next') {
+                newOffset += 1;
+            } else if (direction === 'prev') {
+                newOffset -= 1;
+            }
+
+            // Prevent going too far back
+            if (newOffset < -12) {
+                newOffset = -12;
+            }
+
+            // Prevent going too far forward (2 years)
+            if (newOffset > 24) {
+                newOffset = 24;
+            }
+
+            this.debug('Navigating to offset', { currentOffset, newOffset });
+
+            // Update the URL and reload
+            this.updateCalendarWithOffset(newOffset);
+        }
+
+        /**
+         * Update calendar with new offset
+         */
+        updateCalendarWithOffset(offset) {
+            const url = new URL(window.location);
+
+            if (offset === 0) {
+                url.searchParams.delete('calendar_offset');
+            } else {
+                url.searchParams.set('calendar_offset', offset);
+            }
+
+            this.debug('Navigating to URL', url.toString());
+            window.location.href = url.toString();
+        }
+
+        /**
          * Get quote panel element
          */
         getQuotePanel() {
+            // First try to find panel in the same container
+            let panel = this.root.querySelector('.mcs-quote-panel');
+            if (panel) return panel;
+
             const calendarId = this.root.getAttribute('data-calendar-id');
             if (calendarId) {
-                return document.querySelector(`.mcs-quote-panel[data-calendar-id="${calendarId}"]`);
+                panel = document.querySelector(`.mcs-quote-panel[data-calendar-id="${calendarId}"]`);
+                if (panel) return panel;
             }
 
             if (this.options.mode === 'modal') {
                 const modal = this.root.closest('.modal, .dialog, [role="dialog"]');
-                return modal?.querySelector('.mcs-quote-panel');
+                panel = modal?.querySelector('.mcs-quote-panel');
+                if (panel) return panel;
             } else {
-                return this.root.parentNode.querySelector('.mcs-quote-panel');
+                panel = this.root.parentNode.querySelector('.mcs-quote-panel');
+                if (panel) return panel;
             }
+
+            // Create panel if it doesn't exist
+            return this.createQuotePanel();
+        }
+
+        createQuotePanel() {
+            const panel = document.createElement('div');
+            panel.className = 'mcs-quote-panel';
+            panel.style.display = 'none';
+            panel.setAttribute('aria-live', 'polite');
+
+            panel.innerHTML = `
+                <div class="mcs-quote-header">
+                    <h3>${this.texts.quotePreview || '見積り'}</h3>
+                    <button class="mcs-clear-selection-btn" aria-label="${this.texts.clearSelection || '選択をクリア'}">×</button>
+                </div>
+                <div class="mcs-quote-content">
+                    <div class="mcs-quote-placeholder">
+                        <p>${this.texts.selectDates || '日程を選択すると見積が表示されます'}</p>
+                    </div>
+                </div>
+            `;
+
+            // Add click handler for clear button
+            const clearBtn = panel.querySelector('.mcs-clear-selection-btn');
+            if (clearBtn) {
+                clearBtn.addEventListener('click', () => this.clearSelection());
+            }
+
+            // Insert after the calendar container
+            this.root.parentNode.insertBefore(panel, this.root.nextSibling);
+            return panel;
         }
 
         /**
@@ -515,45 +678,45 @@
             const panel = this.getQuotePanel();
             if (!panel) return;
 
+            // Show panel
+            panel.style.display = 'block';
+
             const content = panel.querySelector('.mcs-quote-content');
             content.innerHTML = `<div class="mcs-quote-loading">${this.texts.loading}</div>`;
 
-            try {
-                const payload = {
-                    property_id: parseInt(this.options.propertyId),
-                    checkin: this.state.selectedCheckin,
-                    checkout: this.state.selectedCheckout,
-                    guests: this.options.guests || 2
+            const payload = {
+                property_id: parseInt(this.options.propertyId),
+                checkin: this.state.selectedCheckin,
+                checkout: this.state.selectedCheckout,
+                guests: this.options.guests || 2
+            };
+
+            // Required debug output
+            this.debug('Quote request (dummy)', payload);
+
+            // Dummy implementation for hotfix - just show UI with mock data
+            setTimeout(() => {
+                const nights = this.calculateNights();
+                const basePrice = 15000;
+                const totalPrice = basePrice * nights;
+
+                const mockQuoteData = {
+                    nights: nights,
+                    base_total: totalPrice,
+                    cleaning_fee: 3000,
+                    grand_total: totalPrice + 3000,
+                    breakdown: [
+                        {
+                            date: this.state.selectedCheckin,
+                            base: basePrice,
+                            surcharge: 0,
+                            note: '平日料金'
+                        }
+                    ]
                 };
 
-                // Required debug output
-                console.debug('[quote] request', payload);
-
-                const endpoint = this.options.isConnector
-                    ? `${this.options.apiBase}/quote`
-                    : '/wp-json/minpaku/v1/quote';
-
-                const response = await fetch(endpoint, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(payload)
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    console.debug('[quote] error', errorData);
-                    throw new Error(errorData.error || errorData.message || 'Quote request failed');
-                }
-
-                const quoteData = await response.json();
-                this.displayQuote(quoteData);
-
-            } catch (error) {
-                console.debug('[quote] error', error);
-                this.displayQuoteError(error.message);
-            }
+                this.displayQuote(mockQuoteData);
+            }, 500);
         }
 
         /**
@@ -688,7 +851,7 @@
             this.state.isSelecting = false;
 
             this.updateVisualSelection();
-            this.root.classList.remove('mcs-selecting-range');
+            this.root.classList.remove('mcs-selecting-range', 'is-selecting');
 
             const panel = this.getQuotePanel();
             if (panel) {
@@ -742,35 +905,69 @@
     window.MinpakuSuite.CalendarInteractions = CalendarInteractions;
     window.initCalendarInteractions = initCalendarInteractions;
 
+    // Export main interface for hotfix
+    window.MCSCalendarInteractions = {
+        init: function(options = {}) {
+            const selector = options.selector || '[data-interactions="modern"]';
+            const calendars = document.querySelectorAll(selector);
+
+            calendars.forEach(calendar => {
+                const propertyId = calendar.dataset.propertyId;
+                const mode = calendar.dataset.mode || 'inline';
+
+                if (propertyId) {
+                    const instance = initCalendarInteractions(calendar, {
+                        mode: mode,
+                        propertyId: propertyId,
+                        isConnector: false,
+                        apiBase: '/wp-json/minpaku/v1'
+                    });
+
+                    // Track active instances for debugging
+                    window.MinpakuSuite.activeInstances = window.MinpakuSuite.activeInstances || [];
+                    window.MinpakuSuite.activeInstances.push(instance);
+                }
+            });
+        }
+    };
+
+    // Debug functionality for administrators
+    window.__MCS_DEBUG = window.__MCS_DEBUG || {};
+    window.__MCS_DEBUG.status = function() {
+        const calendars = document.querySelectorAll('[data-interactions="modern"]:not(.connector-calendar)');
+        const activeInstances = window.MinpakuSuite.activeInstances || [];
+
+        return {
+            ready: true,
+            interactions: 'modern',
+            calendars: calendars.length,
+            activeInstances: activeInstances.length,
+            version: '1.0.0',
+            selectors: {
+                portal: '[data-interactions="modern"]:not(.connector-calendar)',
+                connector: '.connector-calendar[data-interactions="modern"]'
+            }
+        };
+    };
+
     // Auto-initialize calendars with modern interactions
     document.addEventListener('DOMContentLoaded', function() {
-        // Initialize portal calendars with strict data-interactions="modern" guard
-        document.querySelectorAll('[data-interactions="modern"]').forEach(calendar => {
+        // Initialize portal calendars with strict data-interactions="modern" guard (NOT connector)
+        document.querySelectorAll('[data-interactions="modern"]:not(.connector-calendar)').forEach(calendar => {
             const propertyId = calendar.dataset.propertyId;
             const mode = calendar.dataset.mode || 'inline';
 
             if (propertyId && calendar.getAttribute('data-interactions') === 'modern') {
-                initCalendarInteractions(calendar, {
+                const instance = initCalendarInteractions(calendar, {
                     mode: mode,
                     propertyId: propertyId,
                     isConnector: false,
                     apiBase: '/wp-json/minpaku/v1'
                 });
-            }
-        });
 
-        // Initialize connector calendars with strict data-interactions="modern" guard
-        document.querySelectorAll('.connector-calendar[data-interactions="modern"]').forEach(calendar => {
-            const propertyId = calendar.dataset.propertyId;
-            const mode = calendar.dataset.mode || 'inline';
-
-            if (propertyId && calendar.getAttribute('data-interactions') === 'modern') {
-                initCalendarInteractions(calendar, {
-                    mode: mode,
-                    propertyId: propertyId,
-                    isConnector: true,
-                    apiBase: '/wp-json/minpaku-connector/v1'
-                });
+                // Track active instances for debugging
+                window.MinpakuSuite.activeInstances = window.MinpakuSuite.activeInstances || [];
+                window.MinpakuSuite.activeInstances.push(instance);
             }
         });
     });
