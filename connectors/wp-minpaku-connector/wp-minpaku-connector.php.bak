@@ -1,0 +1,713 @@
+<?php
+/**
+ * Plugin Name: WP Minpaku Connector
+ * Plugin URI: https://github.com/yato1214/minpaku-suite
+ * Description: Connect your WordPress site to Minpaku Suite portal to display property listings and availability calendars with real-time pricing and booking integration.
+ * Version: 1.1.0
+ * Author: Yato1214
+ * Text Domain: wp-minpaku-connector
+ * Domain Path: /languages
+ * Requires at least: 5.0
+ * Requires PHP: 7.4
+ * Network: false
+ */
+
+// Prevent direct access
+if (!defined('ABSPATH')) {
+    exit;
+}
+
+// Define plugin constants
+define('WP_MINPAKU_CONNECTOR_VERSION', '1.1.0');
+define('WP_MINPAKU_CONNECTOR_PLUGIN_FILE', __FILE__);
+define('WP_MINPAKU_CONNECTOR_PATH', plugin_dir_path(__FILE__));
+define('WP_MINPAKU_CONNECTOR_URL', plugin_dir_url(__FILE__));
+
+// Load plugin dependencies immediately
+require_once WP_MINPAKU_CONNECTOR_PATH . 'includes/Admin/Settings.php';
+require_once WP_MINPAKU_CONNECTOR_PATH . 'includes/Client/Signer.php';
+require_once WP_MINPAKU_CONNECTOR_PATH . 'includes/Client/Api.php';
+require_once WP_MINPAKU_CONNECTOR_PATH . 'includes/Client/QuoteApi.php';
+require_once WP_MINPAKU_CONNECTOR_PATH . 'includes/Ajax/AvailabilityAjax.php';
+require_once WP_MINPAKU_CONNECTOR_PATH . 'includes/Routes/Quote.php';
+require_once WP_MINPAKU_CONNECTOR_PATH . 'includes/Shortcodes/Embed.php';
+require_once WP_MINPAKU_CONNECTOR_PATH . 'includes/Shortcodes/Calendar.php';
+require_once WP_MINPAKU_CONNECTOR_PATH . 'includes/Shortcodes/ConnectorCalendar.php';
+require_once WP_MINPAKU_CONNECTOR_PATH . 'includes/Shortcodes/PropertyCard.php';
+
+/**
+ * Load text domain for translations
+ */
+function wp_minpaku_connector_load_textdomain() {
+    \load_plugin_textdomain(
+        'wp-minpaku-connector',
+        false,
+        dirname(plugin_basename(__FILE__)) . '/languages'
+    );
+}
+\add_action('plugins_loaded', 'wp_minpaku_connector_load_textdomain');
+
+/**
+ * Main plugin class
+ */
+class WP_Minpaku_Connector {
+
+    private static $instance = null;
+
+    public static function get_instance() {
+        if (self::$instance === null) {
+            self::$instance = new self();
+        }
+        return self::$instance;
+    }
+
+    private function __construct() {
+        $this->init();
+    }
+
+    /**
+     * Initialize the plugin
+     */
+    private function init() {
+        \add_action('init', array($this, 'init_components'), 10);
+
+        // Admin hooks
+        \add_action('admin_menu', array($this, 'add_admin_menu'));
+        \add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_scripts'));
+
+        // Frontend hooks
+        \add_action('wp_enqueue_scripts', array($this, 'enqueue_frontend_scripts'));
+
+        // AJAX hooks
+        \add_action('wp_ajax_mpc_test_connection', array($this, 'ajax_test_connection'));
+        \add_action('wp_ajax_mpc_get_quote', array($this, 'ajax_get_quote'));
+        \add_action('wp_ajax_nopriv_mpc_get_quote', array($this, 'ajax_get_quote'));
+        \add_action('wp_ajax_mpc_get_availability', array($this, 'ajax_get_availability'));
+        \add_action('wp_ajax_nopriv_mpc_get_availability', array($this, 'ajax_get_availability'));
+
+        // Calendar modal AJAX hooks - Use ConnectorCalendar for modal content
+        \add_action('wp_ajax_mpc_get_calendar', array('MinpakuConnector\Shortcodes\MPC_Shortcodes_ConnectorCalendar', 'ajax_modal_content'));
+        \add_action('wp_ajax_nopriv_mpc_get_calendar', array('MinpakuConnector\Shortcodes\MPC_Shortcodes_ConnectorCalendar', 'ajax_modal_content'));
+
+        // HTTP filters for .local domain support
+        $this->setup_http_filters();
+    }
+
+    /**
+     * Initialize components
+     */
+    public function init_components() {
+        // Initialize admin settings
+        if (\is_admin()) {
+            MinpakuConnector\Admin\MPC_Admin_Settings::init();
+        }
+
+        // Initialize AJAX handlers
+        MinpakuConnector\Ajax\MPC_Ajax_Availability::init();
+
+        // Initialize API routes
+        MinpakuConnector\Routes\Quote::init();
+
+        // Initialize shortcodes
+        MinpakuConnector\Shortcodes\MPC_Shortcodes_Embed::init();
+        MinpakuConnector\Shortcodes\MPC_Shortcodes_Calendar::init();
+        MinpakuConnector\Shortcodes\MPC_Shortcodes_ConnectorCalendar::init();
+        MinpakuConnector\Shortcodes\MPC_Shortcodes_PropertyCard::init();
+    }
+
+    /**
+     * Add admin menu
+     */
+    public function add_admin_menu() {
+        \add_options_page(
+            \__('Minpaku Connector', 'wp-minpaku-connector'),
+            \__('Minpaku Connector', 'wp-minpaku-connector'),
+            'manage_options',
+            'wp-minpaku-connector',
+            array($this, 'render_admin_page')
+        );
+    }
+
+    /**
+     * Render admin page
+     */
+    public function render_admin_page() {
+        if (\class_exists('MinpakuConnector\Admin\MPC_Admin_Settings')) {
+            MinpakuConnector\Admin\MPC_Admin_Settings::render_page();
+        }
+    }
+
+    /**
+     * Enqueue admin scripts and styles
+     */
+    public function enqueue_admin_scripts($hook_suffix) {
+        if ($hook_suffix !== 'settings_page_wp-minpaku-connector') {
+            return;
+        }
+
+        \wp_enqueue_style(
+            'wp-minpaku-connector-admin',
+            WP_MINPAKU_CONNECTOR_URL . 'assets/admin.css',
+            array(),
+            WP_MINPAKU_CONNECTOR_VERSION
+        );
+
+        \wp_enqueue_script(
+            'wp-minpaku-connector-admin',
+            WP_MINPAKU_CONNECTOR_URL . 'assets/admin.js',
+            array('jquery'),
+            WP_MINPAKU_CONNECTOR_VERSION,
+            true
+        );
+
+        \wp_localize_script('wp-minpaku-connector-admin', 'mpcAdmin', array(
+            'ajaxUrl' => \admin_url('admin-ajax.php'),
+            'nonce' => \wp_create_nonce('mpc_admin_nonce'),
+            'strings' => array(
+                'testing' => \__('Testing connection...', 'wp-minpaku-connector'),
+                'success' => \__('Connection successful!', 'wp-minpaku-connector'),
+                'error' => \__('Connection failed. Please check your settings.', 'wp-minpaku-connector')
+            )
+        ));
+    }
+
+    /**
+     * Enqueue frontend scripts and styles
+     */
+    public function enqueue_frontend_scripts() {
+        // Enqueue main connector styles with filemtime cache busting
+        $connector_css_path = WP_MINPAKU_CONNECTOR_PATH . 'assets/connector.css';
+        $connector_css_version = file_exists($connector_css_path) ? filemtime($connector_css_path) : WP_MINPAKU_CONNECTOR_VERSION;
+
+        \wp_enqueue_style(
+            'wp-minpaku-connector',
+            WP_MINPAKU_CONNECTOR_URL . 'assets/connector.css',
+            array(),
+            $connector_css_version,
+            'all'
+        );
+
+        // Enqueue calendar CSS with filemtime cache busting
+        $calendar_css_path = WP_MINPAKU_CONNECTOR_PATH . 'assets/css/calendar.css';
+        $calendar_css_version = file_exists($calendar_css_path) ? filemtime($calendar_css_path) : WP_MINPAKU_CONNECTOR_VERSION;
+
+        \wp_enqueue_style(
+            'wp-minpaku-connector-calendar',
+            WP_MINPAKU_CONNECTOR_URL . 'assets/css/calendar.css',
+            array(),
+            $calendar_css_version,
+            'all'
+        );
+
+        // Enqueue calendar JS with filemtime cache busting
+        $calendar_js_path = WP_MINPAKU_CONNECTOR_PATH . 'assets/js/calendar.js';
+        $calendar_js_version = file_exists($calendar_js_path) ? filemtime($calendar_js_path) : WP_MINPAKU_CONNECTOR_VERSION;
+
+        \wp_enqueue_script(
+            'wp-minpaku-connector-calendar',
+            WP_MINPAKU_CONNECTOR_URL . 'assets/js/calendar.js',
+            array('jquery'),
+            $calendar_js_version,
+            true
+        );
+
+        // Localize script with portal URL and AJAX data
+        $settings = self::get_settings();
+        $portal_url = '';
+
+        if (!empty($settings['portal_url'])) {
+            if (class_exists('MinpakuConnector\Admin\MPC_Admin_Settings')) {
+                $portal_url = \MinpakuConnector\Admin\MPC_Admin_Settings::normalize_portal_url($settings['portal_url']);
+                if ($portal_url === false) {
+                    $portal_url = $settings['portal_url']; // Fallback to original
+                }
+            } else {
+                $portal_url = $settings['portal_url'];
+            }
+        }
+
+        \wp_localize_script(
+            'wp-minpaku-connector-calendar',
+            'mpcCalendarData',
+            array(
+                'portalUrl' => untrailingslashit($portal_url),
+                'nonce' => \wp_create_nonce('mpc_calendar_nonce'),
+                'ajaxUrl' => \admin_url('admin-ajax.php'),
+                'debug' => defined('WP_DEBUG') && WP_DEBUG
+            )
+        );
+
+        // Enqueue price manager assets if they exist
+        $price_manager_css_path = WP_MINPAKU_CONNECTOR_PATH . 'assets/css/price-manager.css';
+        if (file_exists($price_manager_css_path)) {
+            \wp_enqueue_style(
+                'wp-minpaku-connector-price-manager',
+                WP_MINPAKU_CONNECTOR_URL . 'assets/css/price-manager.css',
+                array(),
+                filemtime($price_manager_css_path),
+                'all'
+            );
+        }
+
+
+        \wp_enqueue_script(
+            'wp-minpaku-connector-price-manager',
+            WP_MINPAKU_CONNECTOR_URL . 'assets/js/price-manager.js',
+            array('jquery'),
+            WP_MINPAKU_CONNECTOR_VERSION,
+            true
+        );
+
+        \wp_enqueue_script(
+            'wp-minpaku-connector-calendar',
+            WP_MINPAKU_CONNECTOR_URL . 'assets/js/calendar.js',
+            array('jquery'),
+            WP_MINPAKU_CONNECTOR_VERSION,
+            true
+        );
+
+        // Get connector settings for portal URL
+        $settings = self::get_settings();
+
+        // Localize script with AJAX URL and nonce
+        \wp_localize_script('wp-minpaku-connector-price-manager', 'mpcPricing', array(
+            'ajaxUrl' => \admin_url('admin-ajax.php'),
+            'nonce' => \wp_create_nonce('mpc_pricing_nonce'),
+            'portalUrl' => !empty($settings['portal_url']) ? \trailingslashit($settings['portal_url']) : '',
+            'strings' => array(
+                'loading' => \__('Loading...', 'wp-minpaku-connector'),
+                'error' => \__('Error', 'wp-minpaku-connector'),
+                'unavailable' => \__('N/A', 'wp-minpaku-connector'),
+                'quoteTitle' => \__('Quote Details', 'wp-minpaku-connector'),
+                'baseRate' => \__('Base Rate', 'wp-minpaku-connector'),
+                'cleaningFee' => \__('Cleaning Fee', 'wp-minpaku-connector'),
+                'serviceFee' => \__('Service Fee', 'wp-minpaku-connector'),
+                'taxesFees' => \__('Taxes & Fees', 'wp-minpaku-connector'),
+                'total' => \__('Total', 'wp-minpaku-connector'),
+                'perNight' => \__('per night', 'wp-minpaku-connector'),
+                'retry' => \__('Retry', 'wp-minpaku-connector'),
+                'fromPrice' => \__('From', 'wp-minpaku-connector'),
+                'available' => \__('Available', 'wp-minpaku-connector'),
+                'partialAvailable' => \__('Limited availability', 'wp-minpaku-connector'),
+                'fullyBooked' => \__('Fully booked', 'wp-minpaku-connector'),
+                'remaining' => \__('remaining', 'wp-minpaku-connector'),
+                'checkAvailability' => \__('Check availability', 'wp-minpaku-connector'),
+                'night' => \__('night', 'wp-minpaku-connector'),
+                'nights' => \__('nights', 'wp-minpaku-connector'),
+                'clickToSelect' => \__('Click to select dates', 'wp-minpaku-connector'),
+                'selectCheckout' => \__('Select checkout date', 'wp-minpaku-connector'),
+                'calculating' => \__('Calculating quote...', 'wp-minpaku-connector'),
+                'quoteFailed' => \__('Quote calculation failed', 'wp-minpaku-connector')
+            )
+        ));
+    }
+
+    /**
+     * AJAX handler for connection test
+     */
+    public function ajax_test_connection() {
+        \check_ajax_referer('mpc_admin_nonce', 'nonce');
+
+        if (!\current_user_can('manage_options')) {
+            \wp_die(\__('You do not have permission to perform this action.', 'wp-minpaku-connector'));
+        }
+
+        if (\class_exists('MinpakuConnector\Client\MPC_Client_Api')) {
+            $api = new MinpakuConnector\Client\MPC_Client_Api();
+            $result = $api->test_connection();
+
+            if ($result['success']) {
+                \wp_send_json_success($result);
+            } else {
+                \wp_send_json_error($result);
+            }
+        } else {
+            \wp_send_json_error(array(
+                'message' => \__('API client not available.', 'wp-minpaku-connector')
+            ));
+        }
+    }
+
+    /**
+     * AJAX handler for price quotes
+     */
+    public function ajax_get_quote() {
+        \check_ajax_referer('mpc_pricing_nonce', 'nonce');
+
+        $property_id = \sanitize_text_field(isset($_POST['property_id']) ? $_POST['property_id'] : '');
+        $checkin = \sanitize_text_field(isset($_POST['checkin']) ? $_POST['checkin'] : '');
+        $checkout = \sanitize_text_field(isset($_POST['checkout']) ? $_POST['checkout'] : '');
+        $adults = \intval(isset($_POST['adults']) ? $_POST['adults'] : 2);
+        $children = \intval(isset($_POST['children']) ? $_POST['children'] : 0);
+        $infants = \intval(isset($_POST['infants']) ? $_POST['infants'] : 0);
+        $currency = \sanitize_text_field(isset($_POST['currency']) ? $_POST['currency'] : 'JPY');
+
+        if (empty($property_id) || empty($checkin) || empty($checkout)) {
+            \wp_send_json_error(array(
+                'message' => \__('Missing required parameters.', 'wp-minpaku-connector')
+            ));
+        }
+
+        if (\class_exists('MinpakuConnector\Client\MPC_Client_QuoteApi')) {
+            $quote_api = new MinpakuConnector\Client\MPC_Client_QuoteApi();
+            $result = $quote_api->get_quote($property_id, $checkin, $checkout, $adults, $children, $infants, $currency);
+
+            if ($result['success']) {
+                // Format the response for frontend
+                $quote_data = $result['data'];
+                $formatted_response = array(
+                    'property_id' => $property_id,
+                    'checkin' => $checkin,
+                    'checkout' => $checkout,
+                    'adults' => $adults,
+                    'children' => $children,
+                    'infants' => $infants,
+                    'currency' => $currency,
+                    'base_rate' => isset($quote_data['base_rate']) ? $quote_data['base_rate'] : 0,
+                    'cleaning_fee' => isset($quote_data['cleaning_fee']) ? $quote_data['cleaning_fee'] : 0,
+                    'service_fee' => isset($quote_data['service_fee']) ? $quote_data['service_fee'] : 0,
+                    'taxes_fees' => isset($quote_data['taxes_fees']) ? $quote_data['taxes_fees'] : 0,
+                    'total_incl_tax' => isset($quote_data['total_incl_tax']) ? $quote_data['total_incl_tax'] : 0,
+                    'breakdown' => isset($quote_data['breakdown']) ? $quote_data['breakdown'] : array(),
+                    'formatted_price' => $quote_api->format_price(isset($quote_data['total_incl_tax']) ? $quote_data['total_incl_tax'] : 0, $currency)
+                );
+
+                \wp_send_json_success($formatted_response);
+            } else {
+                \wp_send_json_error($result);
+            }
+        } else {
+            \wp_send_json_error(array(
+                'message' => \__('Quote API client not available.', 'wp-minpaku-connector')
+            ));
+        }
+    }
+
+    /**
+     * AJAX handler for availability data
+     */
+    public function ajax_get_availability() {
+        \check_ajax_referer('mpc_pricing_nonce', 'nonce');
+
+        $property_id = \sanitize_text_field(isset($_POST['property_id']) ? $_POST['property_id'] : '');
+        $date = \sanitize_text_field(isset($_POST['date']) ? $_POST['date'] : '');
+
+        if (empty($property_id) || empty($date)) {
+            \wp_send_json_error(array(
+                'message' => \__('Missing required parameters.', 'wp-minpaku-connector')
+            ));
+        }
+
+        if (\class_exists('MinpakuConnector\Client\MPC_Client_Api')) {
+            $api = new MinpakuConnector\Client\MPC_Client_Api();
+
+            if (!$api->is_configured()) {
+                \wp_send_json_error(array(
+                    'message' => \__('API not configured.', 'wp-minpaku-connector')
+                ));
+            }
+
+            // Build availability API URL
+            $base_url = \trailingslashit($api->get_portal_url()) . 'wp-json/minpaku/v1/connector/availability';
+
+            // Calculate month containing the date
+            $date_obj = new \DateTime($date);
+            $start_date = $date_obj->format('Y-m-01');
+
+            $params = array(
+                'property_id' => $property_id,
+                'start_date' => $start_date,
+                'months' => 1
+            );
+
+            $url = \add_query_arg($params, $base_url);
+
+            // Get signed headers
+            $signer = new MinpakuConnector\Client\MPC_Client_Signer($api->get_api_key(), $api->get_secret());
+            $signed_data = $signer->sign_request('GET', '/wp-json/minpaku/v1/connector/availability?' . \http_build_query($params));
+
+            // Add origin header
+            $signed_data['headers']['X-MCS-Origin'] = \home_url();
+
+            // Make request
+            $response = \wp_remote_get($url, array(
+                'headers' => $signed_data['headers'],
+                'timeout' => 8,
+                'sslverify' => false
+            ));
+
+            if (\is_wp_error($response)) {
+                \wp_send_json_error(array(
+                    'message' => $response->get_error_message()
+                ));
+            }
+
+            $status_code = \wp_remote_retrieve_response_code($response);
+            $body = \wp_remote_retrieve_body($response);
+
+            if ($status_code !== 200) {
+                \wp_send_json_error(array(
+                    'message' => 'HTTP ' . $status_code . ': ' . $body
+                ));
+            }
+
+            $data = \json_decode($body, true);
+            if (\json_last_error() !== JSON_ERROR_NONE) {
+                \wp_send_json_error(array(
+                    'message' => \__('Invalid JSON response', 'wp-minpaku-connector')
+                ));
+            }
+
+            if (isset($data['success']) && $data['success'] && isset($data['data']['availability'])) {
+                // Find the specific date in the availability data
+                $availability_item = null;
+                foreach ($data['data']['availability'] as $item) {
+                    if ($item['date'] === $date) {
+                        $availability_item = $item;
+                        break;
+                    }
+                }
+
+                if ($availability_item) {
+                    // Convert API format to our internal format
+                    $status = 'available';
+                    $remaining = 3;
+
+                    if (!$availability_item['available'] || $availability_item['status'] === 'booked') {
+                        $status = 'full';
+                        $remaining = 0;
+                    } elseif ($availability_item['status'] === 'partial') {
+                        $status = 'partial';
+                        $remaining = 1;
+                    }
+
+                    \wp_send_json_success(array(
+                        'status' => $status,
+                        'remaining' => $remaining,
+                        'original' => $availability_item
+                    ));
+                } else {
+                    // Date not found, assume available
+                    \wp_send_json_success(array(
+                        'status' => 'available',
+                        'remaining' => 3
+                    ));
+                }
+            } else {
+                \wp_send_json_error(array(
+                    'message' => $data['message'] ?? \__('Availability request failed', 'wp-minpaku-connector')
+                ));
+            }
+        } else {
+            \wp_send_json_error(array(
+                'message' => \__('API client not available.', 'wp-minpaku-connector')
+            ));
+        }
+    }
+
+    /**
+     * Get plugin settings
+     */
+    public static function get_settings() {
+        return \get_option('wp_minpaku_connector_settings', array(
+            'portal_url' => '',
+            'api_key' => '',
+            'secret' => '',
+            'site_id' => ''
+        ));
+    }
+
+    /**
+     * Update plugin settings
+     */
+    public static function update_settings($settings) {
+        return \update_option('wp_minpaku_connector_settings', $settings);
+    }
+
+    /**
+     * Setup HTTP filters to allow .local domains and handle external blocking
+     */
+    private function setup_http_filters() {
+        // Allow .local domains in wp_remote_* requests
+        \add_filter('http_request_host_is_external', array($this, 'allow_local_domains'), 10, 3);
+
+        // Handle wp_safe_remote_request blocking
+        \add_filter('pre_http_request', array($this, 'handle_local_domain_requests'), 10, 3);
+
+        // Temporarily disable WP_HTTP_BLOCK_EXTERNAL for our requests
+        \add_filter('http_request_args', array($this, 'maybe_unblock_external_requests'), 10, 2);
+    }
+
+    /**
+     * Allow .local domains to be treated as internal
+     */
+    public function allow_local_domains($is_external, $host, $url) {
+        // Check if this is our connector request
+        if ($this->is_connector_request($url)) {
+            // Allow .local, .test, localhost, and IPv4 addresses
+            if (filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+                return false; // IPv4 addresses are considered internal
+            }
+
+            if ($host === 'localhost') {
+                return false; // localhost is internal
+            }
+
+            if (strpos($host, '.') !== false) {
+                $tld = substr(strrchr($host, '.'), 1);
+                if (in_array($tld, ['local', 'test', 'localdomain'], true)) {
+                    return false; // Development TLDs are internal
+                }
+            }
+        }
+
+        return $is_external;
+    }
+
+    /**
+     * Handle requests to .local domains by bypassing wp_safe_remote_request restrictions
+     */
+    public function handle_local_domain_requests($response, $parsed_args, $url) {
+        // Only handle our connector requests
+        if (!$this->is_connector_request($url)) {
+            return $response;
+        }
+
+        $parsed_url = wp_parse_url($url);
+        $host = $parsed_url['host'] ?? '';
+
+        // Check if this is a .local domain or development environment
+        $is_dev_domain = false;
+
+        if (filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+            $is_dev_domain = true;
+        } elseif ($host === 'localhost') {
+            $is_dev_domain = true;
+        } elseif (strpos($host, '.') !== false) {
+            $tld = substr(strrchr($host, '.'), 1);
+            $is_dev_domain = in_array($tld, ['local', 'test', 'localdomain'], true);
+        }
+
+        if ($is_dev_domain) {
+            // Temporarily set WP_HTTP_BLOCK_EXTERNAL to false for this request
+            if (defined('WP_HTTP_BLOCK_EXTERNAL') && WP_HTTP_BLOCK_EXTERNAL) {
+                // Create a modified args array that forces the request to proceed
+                $parsed_args['reject_unsafe_urls'] = false;
+                $parsed_args['_connector_override'] = true;
+
+                // Debug logging
+                if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                    error_log('[minpaku-connector] Allowing request to development domain: ' . $host);
+                }
+            }
+        }
+
+        return $response;
+    }
+
+    /**
+     * Modify request arguments to allow external requests for connector URLs
+     */
+    public function maybe_unblock_external_requests($args, $url) {
+        // Only modify our connector requests
+        if (!$this->is_connector_request($url)) {
+            return $args;
+        }
+
+        $parsed_url = wp_parse_url($url);
+        $host = $parsed_url['host'] ?? '';
+
+        // Check if this is a development domain
+        $is_dev_domain = false;
+
+        if (filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+            $is_dev_domain = true;
+        } elseif ($host === 'localhost') {
+            $is_dev_domain = true;
+        } elseif (strpos($host, '.') !== false) {
+            $tld = substr(strrchr($host, '.'), 1);
+            $is_dev_domain = in_array($tld, ['local', 'test', 'localdomain'], true);
+        }
+
+        if ($is_dev_domain) {
+            // Force allow external requests for development domains
+            $args['reject_unsafe_urls'] = false;
+
+            // Add a filter to temporarily disable WP_HTTP_BLOCK_EXTERNAL
+            if (defined('WP_HTTP_BLOCK_EXTERNAL') && WP_HTTP_BLOCK_EXTERNAL) {
+                \add_filter('pre_option_wp_http_block_external', '__return_false', 999);
+
+                // Remove the filter after the request
+                \add_action('http_api_curl', array($this, 'restore_http_block_external'), 999);
+                \add_action('http_api_transports', array($this, 'restore_http_block_external'), 999);
+            }
+
+            // Debug logging
+            if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+                error_log('[minpaku-connector] Modified request args for development domain: ' . $host);
+            }
+        }
+
+        return $args;
+    }
+
+    /**
+     * Restore the WP_HTTP_BLOCK_EXTERNAL setting after request
+     */
+    public function restore_http_block_external() {
+        \remove_filter('pre_option_wp_http_block_external', '__return_false', 999);
+    }
+
+    /**
+     * Check if the URL is a connector-related request
+     */
+    private function is_connector_request($url) {
+        // Check if URL contains connector endpoints
+        return (strpos($url, '/wp-json/minpaku/v1/connector/') !== false);
+    }
+}
+
+/**
+ * Plugin activation hook
+ */
+if (!function_exists('wp_minpaku_connector_activate')) {
+    function wp_minpaku_connector_activate() {
+        // Security check
+        if (!\current_user_can('activate_plugins')) {
+            return;
+        }
+
+        // Set default options
+        if (!\get_option('wp_minpaku_connector_settings')) {
+            \add_option('wp_minpaku_connector_settings', array(
+                'portal_url' => '',
+                'api_key' => '',
+                'secret' => '',
+                'site_id' => ''
+            ));
+        }
+
+        // Flush rewrite rules
+        \flush_rewrite_rules();
+    }
+}
+
+/**
+ * Plugin deactivation hook
+ */
+function wp_minpaku_connector_deactivate() {
+    // Flush rewrite rules
+    \flush_rewrite_rules();
+}
+
+/**
+ * Initialize the plugin
+ */
+function wp_minpaku_connector_init() {
+    WP_Minpaku_Connector::get_instance();
+}
+
+// Register hooks - dependencies are already loaded above
+\register_activation_hook(__FILE__, 'wp_minpaku_connector_activate');
+\register_deactivation_hook(__FILE__, 'wp_minpaku_connector_deactivate');
+\add_action('plugins_loaded', 'wp_minpaku_connector_init', 5);

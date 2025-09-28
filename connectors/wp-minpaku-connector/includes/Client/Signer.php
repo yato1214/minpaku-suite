@@ -75,7 +75,6 @@ class MPC_Client_Signer {
                 'secret_length' => strlen($this->secret),
                 'signature_prefix' => substr($signature, 0, 12) . '...'
             );
-            error_log('[minpaku-connector] HMAC signature generation (detailed): ' . json_encode($debug_info, JSON_PRETTY_PRINT));
 
             // Additional detailed string-to-sign breakdown for comparison with portal
             error_log('[minpaku-connector] String-to-sign breakdown:');

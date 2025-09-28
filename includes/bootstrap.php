@@ -17,9 +17,12 @@ class Bootstrap
         add_action('init', [__CLASS__, 'register_portal_components'], 15);
         add_action('init', [__CLASS__, 'register_connector_components'], 15);
         add_action('init', [__CLASS__, 'register_pricing_components'], 15);
+        add_action('init', [__CLASS__, 'register_property_components'], 15);
+        add_action('init', [__CLASS__, 'register_shortcode_components'], 15);
         add_action('acf/init', [__CLASS__, 'register_acf'], 10);
         add_action('admin_menu', [__CLASS__, 'register_menu'], 9);
         add_action('admin_enqueue_scripts', [__CLASS__, 'enqueue_admin_styles'], 10);
+        add_action('wp_enqueue_scripts', [__CLASS__, 'enqueue_frontend_assets'], 10);
         add_action('rest_api_init', [__CLASS__, 'register_rest'], 10);
     }
 
@@ -138,6 +141,18 @@ class Bootstrap
                     'read',
                     'mcs-owner-portal',
                     [__CLASS__, 'render_owner_portal']
+                );
+            }
+
+            // Add Pricing Settings submenu for admins only
+            if (current_user_can('manage_options')) {
+                add_submenu_page(
+                    'minpaku-suite',
+                    __('料金設定', 'minpaku-suite'),
+                    __('料金設定', 'minpaku-suite'),
+                    'manage_options',
+                    'mcs-pricing-settings',
+                    [__CLASS__, 'render_pricing_settings']
                 );
             }
 
@@ -332,9 +347,10 @@ class Bootstrap
                     true
                 );
 
-                // Localize script with booking URL
+                // Localize script - direct booking URL removed, uses unified interactions
                 wp_localize_script('minpaku-admin-calendar', 'minpakuAdmin', [
-                    'bookingUrl' => admin_url('post-new.php?post_type=mcs_booking')
+                    'interactionsEnabled' => true, // Flag for unified interactions
+                    'legacyBookingDisabled' => true // Flag that legacy direct booking is disabled
                 ]);
 
                 error_log("MCS Debug: Calendar JS enqueued successfully");
@@ -385,14 +401,14 @@ class Bootstrap
     public static function register_ui_components()
     {
         try {
-            // Register UI components
-            $calendar_file = MCS_PATH . 'includes/UI/AvailabilityCalendar.php';
-            if (file_exists($calendar_file)) {
-                require_once $calendar_file;
-                if (class_exists('MinpakuSuite\UI\AvailabilityCalendar')) {
-                    \MinpakuSuite\UI\AvailabilityCalendar::init();
-                }
-            }
+            // DEPRECATED: Old mcs_availability shortcode removed in favor of portal_calendar
+            // $calendar_file = MCS_PATH . 'includes/UI/AvailabilityCalendar.php';
+            // if (file_exists($calendar_file)) {
+            //     require_once $calendar_file;
+            //     if (class_exists('MinpakuSuite\UI\AvailabilityCalendar')) {
+            //         \MinpakuSuite\UI\AvailabilityCalendar::init();
+            //     }
+            // }
 
             // Register availability service
             $service_file = MCS_PATH . 'includes/Availability/AvailabilityService.php';
@@ -449,6 +465,23 @@ class Bootstrap
         }
     }
 
+    public static function render_pricing_settings()
+    {
+        // Load PricingSettings class
+        $settings_file = MCS_PATH . 'includes/Admin/PricingSettings.php';
+        if (file_exists($settings_file)) {
+            require_once $settings_file;
+            if (class_exists('MinpakuSuite\Admin\PricingSettings')) {
+                \MinpakuSuite\Admin\PricingSettings::render_page();
+            }
+        } else {
+            echo '<div class="wrap">';
+            echo '<h1>' . esc_html(__('料金設定', 'minpaku-suite')) . '</h1>';
+            echo '<p class="notice notice-error">' . esc_html(__('料金設定が利用できません。', 'minpaku-suite')) . '</p>';
+            echo '</div>';
+        }
+    }
+
     public static function render_connector_settings()
     {
         // Load ConnectorSettings class
@@ -477,6 +510,21 @@ class Bootstrap
                     \MinpakuSuite\Api\OwnerApiController::init();
                 }
             }
+
+            // Register Quote API
+            $quote_api_file = MCS_PATH . 'includes/Api/QuoteController.php';
+            if (file_exists($quote_api_file)) {
+                require_once $quote_api_file;
+                if (class_exists('MinpakuSuite\Api\QuoteController')) {
+                    \MinpakuSuite\Api\QuoteController::init();
+                }
+            }
+
+            // Register Rate Engine Service
+            $rate_engine_file = MCS_PATH . 'includes/Services/RateEngine.php';
+            if (file_exists($rate_engine_file)) {
+                require_once $rate_engine_file;
+            }
         } catch (Exception $e) {
             error_log('Minpaku Suite REST API Error: ' . $e->getMessage());
         }
@@ -485,6 +533,15 @@ class Bootstrap
     public static function register_pricing_components()
     {
         try {
+            // Initialize Pricing Settings
+            $pricing_settings_file = MCS_PATH . 'includes/Admin/PricingSettings.php';
+            if (file_exists($pricing_settings_file)) {
+                require_once $pricing_settings_file;
+                if (class_exists('MinpakuSuite\Admin\PricingSettings')) {
+                    \MinpakuSuite\Admin\PricingSettings::init();
+                }
+            }
+
             // Load Pricing domain models
             $pricing_files = [
                 'RateContext.php',
@@ -541,6 +598,56 @@ class Bootstrap
         }
     }
 
+    public static function register_property_components()
+    {
+        try {
+            // Initialize Property Pricing Metabox
+            $pricing_metabox_file = MCS_PATH . 'includes/Admin/PropertyPricingMetabox.php';
+            if (file_exists($pricing_metabox_file)) {
+                require_once $pricing_metabox_file;
+                if (class_exists('MinpakuSuite\Admin\PropertyPricingMetabox')) {
+                    \MinpakuSuite\Admin\PropertyPricingMetabox::init();
+                }
+            }
+
+            // Initialize Property Calendar Preview Metabox
+            $calendar_metabox_file = MCS_PATH . 'includes/Admin/PropertyCalendarMetabox.php';
+            if (file_exists($calendar_metabox_file)) {
+                require_once $calendar_metabox_file;
+                if (class_exists('MinpakuSuite\Admin\PropertyCalendarMetabox')) {
+                    \MinpakuSuite\Admin\PropertyCalendarMetabox::init();
+                }
+            }
+
+            // Initialize Property External Integration Metabox
+            $external_metabox_file = MCS_PATH . 'includes/Admin/PropertyExternalMetabox.php';
+            if (file_exists($external_metabox_file)) {
+                require_once $external_metabox_file;
+                if (class_exists('MinpakuSuite\Admin\PropertyExternalMetabox')) {
+                    \MinpakuSuite\Admin\PropertyExternalMetabox::init();
+                }
+            }
+        } catch (Exception $e) {
+            error_log('Minpaku Suite Property Components Error: ' . $e->getMessage());
+        }
+    }
+
+    public static function register_shortcode_components()
+    {
+        try {
+            // Initialize Portal Calendar Shortcode
+            $portal_calendar_file = MCS_PATH . 'includes/Shortcodes/PortalCalendar.php';
+            if (file_exists($portal_calendar_file)) {
+                require_once $portal_calendar_file;
+                if (class_exists('MinpakuSuite\Shortcodes\PortalCalendar')) {
+                    \MinpakuSuite\Shortcodes\PortalCalendar::init();
+                }
+            }
+        } catch (Exception $e) {
+            error_log('Minpaku Suite Shortcode Components Error: ' . $e->getMessage());
+        }
+    }
+
     /**
      * Invalidate pricing cache when property or booking changes
      */
@@ -555,6 +662,122 @@ class Bootstrap
             ));
 
             error_log("Minpaku Suite: Invalidated pricing cache for property {$property_id}");
+        }
+    }
+
+    /**
+     * Enqueue frontend assets for calendar interactions
+     */
+    public static function enqueue_frontend_assets()
+    {
+        // Only load on pages that might have calendar shortcodes
+        if (is_admin()) {
+            return;
+        }
+
+        global $post;
+
+        // Check if current page or post contains portal_calendar shortcode
+        $needs_calendar_js = false;
+
+        if ($post && has_shortcode($post->post_content, 'portal_calendar')) {
+            $needs_calendar_js = true;
+        }
+
+        // Also check for property pages
+        if (is_singular('mcs_property')) {
+            $needs_calendar_js = true;
+        }
+
+        if ($needs_calendar_js) {
+            // Enqueue basic calendar CSS
+            $calendar_css_file = plugin_dir_url(MINPAKU_SUITE_PLUGIN_FILE) . 'assets/css/portal-calendar.css';
+            $calendar_css_path = MCS_PATH . 'assets/css/portal-calendar.css';
+
+            if (file_exists($calendar_css_path)) {
+                wp_enqueue_style(
+                    'mcs-portal-calendar',
+                    $calendar_css_file,
+                    [],
+                    filemtime($calendar_css_path)
+                );
+            }
+
+            // Enqueue quote panel CSS
+            $css_file = plugin_dir_url(MINPAKU_SUITE_PLUGIN_FILE) . 'assets/css/portal-quote-panel.css';
+            $css_path = MCS_PATH . 'assets/css/portal-quote-panel.css';
+
+            if (file_exists($css_path)) {
+                wp_enqueue_style(
+                    'mcs-portal-quote-panel',
+                    $css_file,
+                    ['mcs-portal-calendar'],
+                    filemtime($css_path)
+                );
+            }
+
+            // Enqueue calendar interactions JS
+            $js_file = plugin_dir_url(MINPAKU_SUITE_PLUGIN_FILE) . 'assets/js/calendar-interactions.js';
+            $js_path = MCS_PATH . 'assets/js/calendar-interactions.js';
+
+            if (file_exists($js_path)) {
+                wp_enqueue_script(
+                    'mcs-calendar-interactions',
+                    $js_file,
+                    ['jquery', 'wp-i18n'],
+                    filemtime($js_path),
+                    true
+                );
+
+                // Localize script with translations and settings
+                wp_localize_script(
+                    'mcs-calendar-interactions',
+                    'mcsCalendarData',
+                    [
+                        'ajaxUrl' => admin_url('admin-ajax.php'),
+                        'restUrl' => rest_url('minpaku/v1/'),
+                        'nonce' => wp_create_nonce('wp_rest'),
+                        'isAdmin' => current_user_can('manage_options'),
+                        'texts' => [
+                            'loading' => __('読み込み中...', 'minpaku-suite'),
+                            'selectDates' => __('日付を選択', 'minpaku-suite'),
+                            'showQuote' => __('見積を表示', 'minpaku-suite'),
+                            'nightsLabel' => __('泊', 'minpaku-suite'),
+                            'totalLabel' => __('合計金額', 'minpaku-suite'),
+                            'clearSelection' => __('選択をクリア', 'minpaku-suite'),
+                            'errorTitle' => __('エラー', 'minpaku-suite'),
+                            'networkError' => __('ネットワークエラーが発生しました', 'minpaku-suite')
+                        ]
+                    ]
+                );
+
+                // Add inline boot script
+                $boot_script = "
+(function(){
+  function boot(){
+    if (window.MCSCalendarInteractions) {
+      window.MCSCalendarInteractions.init({ selector: '[data-interactions=\"modern\"]' });
+      if (!window.__MCS_DEBUG) window.__MCS_DEBUG = {};
+      window.__MCS_DEBUG.status = () => ({
+        ready: true,
+        interactions: 'modern',
+        calendars: document.querySelectorAll('[data-interactions=\"modern\"]').length
+      });
+    } else {
+      if (typeof mcsCalendarData !== 'undefined' && mcsCalendarData.isAdmin) {
+        console.warn('[MCS] interactions js not loaded');
+      }
+    }
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
+})();";
+
+                wp_add_inline_script('mcs-calendar-interactions', $boot_script);
+            }
         }
     }
 }

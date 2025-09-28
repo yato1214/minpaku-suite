@@ -1,0 +1,187 @@
+/**
+ * Connector Quote Panel Styles
+ * Provides styling for wpmc-quote-panel components
+ */
+
+/* Quote Panel Base Styles */
+.wpmc-quote-panel {
+    margin-top: 1rem;
+    padding: 1rem;
+    border: 1px solid #e1e4e8;
+    border-radius: 6px;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    display: none;
+}
+
+.wpmc-quote-panel[aria-live="polite"] {
+    display: block;
+}
+
+/* Quote Header */
+.wpmc-quote-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #e1e4e8;
+}
+
+.wpmc-quote-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #24292e;
+}
+
+.wpmc-clear-selection-btn {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    color: #586069;
+    cursor: pointer;
+    padding: 0.25rem;
+    border-radius: 3px;
+    line-height: 1;
+}
+
+.wpmc-clear-selection-btn:hover {
+    background: #f6f8fa;
+    color: #24292e;
+}
+
+/* Quote Content */
+.wpmc-quote-content {
+    min-height: 2rem;
+}
+
+.wpmc-quote-placeholder {
+    color: #586069;
+    font-style: italic;
+    text-align: center;
+    padding: 1rem 0;
+}
+
+.wpmc-quote-loading {
+    text-align: center;
+    color: #586069;
+    padding: 1rem 0;
+}
+
+/* Quote Summary */
+.wpmc-quote-summary {
+    margin-bottom: 1rem;
+}
+
+.wpmc-quote-dates {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.95rem;
+    color: #24292e;
+}
+
+.wpmc-nights-count {
+    background: #f1f8ff;
+    color: #0366d6;
+    padding: 0.25rem 0.5rem;
+    border-radius: 3px;
+    font-weight: 500;
+}
+
+/* Quote Breakdown Table */
+.wpmc-quote-breakdown {
+    margin-bottom: 1rem;
+}
+
+.wpmc-quote-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.wpmc-quote-table th,
+.wpmc-quote-table td {
+    padding: 0.5rem;
+    text-align: left;
+    border-bottom: 1px solid #e1e4e8;
+}
+
+.wpmc-quote-table th {
+    background: #f6f8fa;
+    font-weight: 600;
+    color: #24292e;
+}
+
+.wpmc-quote-table td:last-child {
+    text-align: right;
+}
+
+.wpmc-total-row {
+    border-top: 2px solid #e1e4e8;
+    font-weight: 600;
+}
+
+.wpmc-total-row td {
+    padding-top: 0.75rem;
+    color: #24292e;
+}
+
+/* Quote Notice */
+.wpmc-quote-notice {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: 4px;
+}
+
+.wpmc-quote-notice p {
+    margin: 0;
+    color: #856404;
+    font-size: 0.85rem;
+}
+
+/* Quote Error */
+.wpmc-quote-error {
+    padding: 1rem;
+    background: #ffe6e6;
+    border: 1px solid #ffb3b3;
+    border-radius: 4px;
+    text-align: center;
+}
+
+.wpmc-quote-error h4 {
+    margin: 0 0 0.5rem 0;
+    color: #d73a49;
+    font-size: 1rem;
+}
+
+.wpmc-quote-error p {
+    margin: 0;
+    color: #d73a49;
+    font-size: 0.9rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .wpmc-quote-panel {
+        margin-top: 0.75rem;
+        padding: 0.75rem;
+    }
+
+    .wpmc-quote-dates {
+        flex-wrap: wrap;
+        font-size: 0.9rem;
+    }
+
+    .wpmc-quote-table {
+        font-size: 0.85rem;
+    }
+
+    .wpmc-quote-table th,
+    .wpmc-quote-table td {
+        padding: 0.4rem;
+    }
+}

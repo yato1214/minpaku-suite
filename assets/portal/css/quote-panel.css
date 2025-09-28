@@ -1,0 +1,480 @@
+/**
+ * Portal Quote Panel - Modern Unified Styles (Connector Parity)
+ * Mirrors connector quote panel styles for consistent UI/UX
+ *
+ * @package MinpakuSuite
+ */
+
+/* ============================================================================
+   Quote Panel Base Styles
+   ============================================================================ */
+
+.mcs-quote-panel,
+.mpc-quote-panel {
+    margin-top: 24px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #ffffff;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+}
+
+.mcs-quote-panel:not([style*="display: none"]),
+.mpc-quote-panel:not([style*="display: none"]) {
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ============================================================================
+   Quote Panel Header
+   ============================================================================ */
+
+.mcs-quote-header,
+.mpc-quote-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-bottom: none;
+}
+
+.mcs-quote-title,
+.mpc-quote-title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: white;
+}
+
+.mcs-clear-selection-btn,
+.mpc-clear-selection-btn,
+.wpmc-clear-selection-btn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: white;
+    cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+    line-height: 1;
+}
+
+.mcs-clear-selection-btn:hover,
+.mpc-clear-selection-btn:hover,
+.wpmc-clear-selection-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+/* ============================================================================
+   Quote Panel Content
+   ============================================================================ */
+
+.mcs-quote-content,
+.mpc-quote-content {
+    padding: 20px;
+}
+
+.mcs-quote-placeholder,
+.mpc-quote-placeholder {
+    text-align: center;
+    padding: 40px 20px;
+    color: #6b7280;
+    font-size: 16px;
+}
+
+.mcs-quote-placeholder p,
+.mpc-quote-placeholder p {
+    margin: 0;
+}
+
+/* ============================================================================
+   Selection Summary & Guest Form (Modern UI)
+   ============================================================================ */
+
+.mcs-quote-selection,
+.mpc-quote-selection {
+    display: none;
+}
+
+.mcs-quote-summary,
+.mpc-quote-summary {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 16px;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.mcs-quote-dates,
+.mpc-quote-dates {
+    font-size: 18px;
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 8px;
+}
+
+.mcs-date-separator,
+.mpc-date-separator {
+    margin: 0 8px;
+    color: #64748b;
+}
+
+.mcs-nights-count,
+.mpc-nights-count {
+    display: block;
+    font-size: 14px;
+    color: #64748b;
+    font-weight: 500;
+    margin-top: 4px;
+}
+
+/* Guest Form */
+.mcs-guest-form,
+.mpc-guest-form {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 20px;
+    justify-content: center;
+    align-items: end;
+}
+
+.mcs-guest-input-group,
+.mpc-guest-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.mcs-guest-label,
+.mpc-guest-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: #374151;
+}
+
+.mcs-guest-select,
+.mpc-guest-select {
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    background: white;
+    font-size: 14px;
+    min-width: 80px;
+    cursor: pointer;
+}
+
+.mcs-guest-select:focus,
+.mpc-guest-select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+}
+
+/* Action Buttons */
+.mcs-quote-actions,
+.mpc-quote-actions,
+.wpmc-quote-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.mcs-get-quote,
+.mpc-get-quote,
+.wpmc-get-quote,
+.mcs-btn-primary,
+.mpc-btn-primary,
+.wpmc-btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 120px;
+}
+
+.mcs-get-quote:hover,
+.mpc-get-quote:hover,
+.wpmc-get-quote:hover,
+.mcs-btn-primary:hover,
+.mpc-btn-primary:hover,
+.wpmc-btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.mcs-btn-secondary,
+.mpc-btn-secondary,
+.wpmc-btn-secondary {
+    background: #f3f4f6;
+    color: #374151;
+    border: 1px solid #d1d5db;
+    padding: 12px 24px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 120px;
+}
+
+.mcs-btn-secondary:hover,
+.mpc-btn-secondary:hover,
+.wpmc-btn-secondary:hover {
+    background: #e5e7eb;
+    border-color: #9ca3af;
+}
+
+/* ============================================================================
+   Loading State
+   ============================================================================ */
+
+.mcs-quote-loading,
+.mpc-quote-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    color: #6b7280;
+}
+
+.mcs-loading-spinner,
+.mpc-loading-spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid #e5e7eb;
+    border-radius: 50%;
+    border-top-color: #667eea;
+    animation: spin 1s ease-in-out infinite;
+    margin-right: 12px;
+}
+
+.mcs-loading-text,
+.mpc-loading-text {
+    font-size: 14px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* ============================================================================
+   Quote Result & Breakdown
+   ============================================================================ */
+
+.mcs-quote-result,
+.mpc-quote-result {
+    display: none;
+}
+
+.mcs-quote-breakdown,
+.mpc-quote-breakdown {
+    margin-bottom: 20px;
+}
+
+.mcs-quote-table,
+.mpc-quote-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid #e5e7eb;
+}
+
+.mcs-quote-table thead th,
+.mpc-quote-table thead th {
+    background: #f8fafc;
+    color: #374151;
+    font-weight: 600;
+    font-size: 14px;
+    text-align: left;
+    padding: 12px 16px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.mcs-quote-table thead th:last-child,
+.mpc-quote-table thead th:last-child {
+    text-align: right;
+}
+
+.mcs-quote-table tbody tr,
+.mpc-quote-table tbody tr {
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.mcs-quote-table tbody tr:last-child,
+.mpc-quote-table tbody tr:last-child {
+    border-bottom: none;
+}
+
+.mcs-breakdown-label,
+.mpc-breakdown-label {
+    padding: 12px 16px;
+    color: #374151;
+    font-size: 14px;
+}
+
+.mcs-breakdown-amount,
+.mpc-breakdown-amount {
+    padding: 12px 16px;
+    color: #111827;
+    font-weight: 600;
+    text-align: right;
+    font-size: 14px;
+}
+
+.mcs-breakdown-total,
+.mpc-breakdown-total,
+.mcs-total-row,
+.mpc-total-row {
+    background: #f9fafb;
+}
+
+.mcs-breakdown-total .mcs-breakdown-label,
+.mpc-breakdown-total .mpc-breakdown-label,
+.mcs-total-row .mcs-breakdown-label,
+.mpc-total-row .mpc-breakdown-label {
+    font-weight: 700;
+}
+
+.mcs-breakdown-total .mcs-breakdown-amount,
+.mpc-breakdown-total .mpc-breakdown-amount,
+.mcs-total-row .mcs-breakdown-amount,
+.mpc-total-row .mpc-breakdown-amount {
+    font-weight: 700;
+    color: #059669;
+    font-size: 16px;
+}
+
+/* ============================================================================
+   Notice & Error States
+   ============================================================================ */
+
+.mcs-quote-notice,
+.mpc-quote-notice {
+    margin-top: 16px;
+    padding: 12px;
+    background: #fef3c7;
+    border: 1px solid #f59e0b;
+    border-radius: 6px;
+    font-size: 14px;
+    color: #92400e;
+    text-align: center;
+}
+
+.mcs-quote-notice p,
+.mpc-quote-notice p {
+    margin: 0;
+}
+
+.mcs-quote-error,
+.mpc-quote-error {
+    padding: 16px;
+    background: #fef2f2;
+    border: 1px solid #fca5a5;
+    border-radius: 6px;
+    color: #b91c1c;
+}
+
+.mcs-error-title,
+.mpc-error-title {
+    margin: 0 0 8px 0;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.mcs-error-message,
+.mpc-error-message {
+    margin: 0;
+    font-size: 14px;
+}
+
+/* ============================================================================
+   Mobile Responsive
+   ============================================================================ */
+
+@media (max-width: 767px) {
+    .mcs-quote-content,
+    .mpc-quote-content {
+        padding: 16px;
+    }
+
+    .mcs-quote-dates,
+    .mpc-quote-dates {
+        font-size: 16px;
+    }
+
+    .mcs-guest-form,
+    .mpc-guest-form {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+
+    .mcs-guest-input-group,
+    .mpc-guest-input-group {
+        align-items: stretch;
+    }
+
+    .mcs-quote-actions,
+    .mpc-quote-actions,
+    .wpmc-quote-actions {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+
+    .mcs-get-quote,
+    .mpc-get-quote,
+    .wpmc-get-quote,
+    .mcs-btn-primary,
+    .mpc-btn-primary,
+    .wpmc-btn-primary,
+    .mcs-btn-secondary,
+    .mpc-btn-secondary,
+    .wpmc-btn-secondary {
+        min-width: auto;
+        width: 100%;
+    }
+
+    .mcs-quote-table,
+    .mpc-quote-table {
+        font-size: 13px;
+    }
+
+    .mcs-breakdown-label,
+    .mpc-breakdown-label,
+    .mcs-breakdown-amount,
+    .mpc-breakdown-amount {
+        padding: 10px 12px;
+        font-size: 13px;
+    }
+}

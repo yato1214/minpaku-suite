@@ -166,53 +166,11 @@ class RegisterFields
                     'mime_types' => 'jpg,jpeg,png,webp',
                 ],
                 [
-                    'key' => 'field_mcs_accommodation_rate',
-                    'label' => __('Accommodation Rate', 'minpaku-suite'),
-                    'name' => 'accommodation_rate',
-                    'type' => 'number',
-                    'instructions' => __('Base nightly accommodation rate (per night)', 'minpaku-suite'),
-                    'required' => 1,
-                    'conditional_logic' => 0,
-                    'wrapper' => [
-                        'width' => '50',
-                        'class' => '',
-                        'id' => '',
-                    ],
-                    'default_value' => 15000,
-                    'placeholder' => '15000',
-                    'prepend' => '¥',
-                    'append' => '/ night',
-                    'min' => 1000,
-                    'max' => '',
-                    'step' => 100,
-                ],
-                [
-                    'key' => 'field_mcs_cleaning_fee',
-                    'label' => __('Cleaning Fee', 'minpaku-suite'),
-                    'name' => 'cleaning_fee',
-                    'type' => 'number',
-                    'instructions' => __('One-time cleaning fee (per booking)', 'minpaku-suite'),
-                    'required' => 0,
-                    'conditional_logic' => 0,
-                    'wrapper' => [
-                        'width' => '50',
-                        'class' => '',
-                        'id' => '',
-                    ],
-                    'default_value' => 5000,
-                    'placeholder' => '5000',
-                    'prepend' => '¥',
-                    'append' => '/ booking',
-                    'min' => 0,
-                    'max' => '',
-                    'step' => 100,
-                ],
-                [
                     'key' => 'field_mcs_property_excerpt',
-                    'label' => __('Property Excerpt', 'minpaku-suite'),
+                    'label' => __('物件概要', 'minpaku-suite'),
                     'name' => 'property_excerpt',
                     'type' => 'textarea',
-                    'instructions' => __('Brief description shown in property listings and connector sites', 'minpaku-suite'),
+                    'instructions' => __('物件一覧およびコネクタサイトで表示される簡潔な説明文', 'minpaku-suite'),
                     'required' => 0,
                     'conditional_logic' => 0,
                     'wrapper' => [
@@ -221,7 +179,7 @@ class RegisterFields
                         'id' => '',
                     ],
                     'default_value' => '',
-                    'placeholder' => __('Enter a brief description for this property...', 'minpaku-suite'),
+                    'placeholder' => __('この物件の簡潔な説明を入力してください...', 'minpaku-suite'),
                     'maxlength' => 300,
                     'rows' => 4,
                     'new_lines' => 'br',
@@ -247,39 +205,5 @@ class RegisterFields
             'show_in_rest' => 1,
         ]);
 
-        // Add pricing summary field for display purposes
-        acf_add_local_field_group([
-            'key' => 'group_mcs_pricing_summary',
-            'title' => __('Pricing Summary', 'minpaku-suite'),
-            'fields' => [
-                [
-                    'key' => 'field_mcs_pricing_display',
-                    'label' => __('Pricing Information', 'minpaku-suite'),
-                    'name' => 'pricing_display',
-                    'type' => 'message',
-                    'instructions' => '',
-                    'message' => __('The total display price shown to guests includes the accommodation rate plus cleaning fee. Detailed breakdown will be shown in the booking process.', 'minpaku-suite'),
-                    'new_lines' => 'wpautop',
-                    'esc_html' => 0,
-                ]
-            ],
-            'location' => [
-                [
-                    [
-                        'param' => 'post_type',
-                        'operator' => '==',
-                        'value' => 'mcs_property',
-                    ],
-                ],
-            ],
-            'menu_order' => 10,
-            'position' => 'normal',
-            'style' => 'default',
-            'label_placement' => 'top',
-            'instruction_placement' => 'label',
-            'hide_on_screen' => '',
-            'active' => true,
-            'description' => '',
-        ]);
     }
 }

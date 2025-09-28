@@ -14,10 +14,26 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-$property = $property ?? get_post($property_id);
-if (!$property) {
+// Force fresh data from database
+wp_cache_delete($property_id, 'posts');
+clean_post_cache($property_id);
+
+// Get fresh data directly from database
+global $wpdb;
+$fresh_property = $wpdb->get_row($wpdb->prepare(
+    "SELECT * FROM {$wpdb->posts} WHERE ID = %d AND post_type = 'mcs_property'",
+    $property_id
+));
+
+if (!$fresh_property) {
     return;
 }
+
+// Convert to WP_Post object
+$property = new WP_Post($fresh_property);
+
+// Debug: Add timestamp to verify fresh data
+$debug_info = '<!-- Fresh DB Query - Property ID: ' . $property_id . ', Title: ' . $property->post_title . ', Modified: ' . $property->post_modified . ' -->';
 
 $thumbnail = get_the_post_thumbnail($property_id, 'medium', ['class' => 'mcs-property-thumbnail']);
 $edit_link = get_edit_post_link($property_id);
@@ -25,6 +41,7 @@ $view_link = get_permalink($property_id);
 $status_class = 'mcs-status--' . $property->post_status;
 
 ?>
+<?php echo $debug_info; ?>
 <div class="mcs-property-card">
     <?php if ($thumbnail) : ?>
         <div class="mcs-property-image">
@@ -99,57 +116,26 @@ $status_class = 'mcs-status--' . $property->post_status;
             </a>
 
             <?php if (current_user_can('edit_mcs_bookings')) : ?>
-                <a href="<?php echo esc_url(admin_url('post-new.php?post_type=mcs_booking&property_id=' . $property_id)); ?>" class="mcs-action-link mcs-action-link--booking">
+                <span class="mcs-action-link mcs-action-link--booking mcs-action-disabled" title="<?php esc_attr_e('Use calendar quote panel to create bookings', 'minpaku-suite'); ?>">
                     <span class="dashicons dashicons-calendar-alt"></span>
-                    <?php esc_html_e('Add Booking', 'minpaku-suite'); ?>
-                </a>
+                    <?php esc_html_e('Add Booking', 'minpaku-suite'); ?> (<?php esc_html_e('Use Calendar', 'minpaku-suite'); ?>)
+                </span>
             <?php endif; ?>
 
             <?php
-            // Availability calendar shortcode link (if on same site)
-            $calendar_shortcode = '[mcs_availability id="' . $property_id . '"]';
+            // External detail URL button (if configured)
+            $external_detail_url = '';
+            if (class_exists('MinpakuSuite\Admin\PropertyExternalMetabox')) {
+                $external_detail_url = \MinpakuSuite\Admin\PropertyExternalMetabox::get_external_detail_url($property_id);
+            }
             ?>
-            <button type="button" class="mcs-action-link mcs-action-link--calendar" data-shortcode="<?php echo esc_attr($calendar_shortcode); ?>" title="<?php esc_attr_e('Copy availability shortcode', 'minpaku-suite'); ?>">
-                <span class="dashicons dashicons-calendar"></span>
-                <?php esc_html_e('Calendar', 'minpaku-suite'); ?>
-            </button>
+            <?php if (!empty($external_detail_url)) : ?>
+                <a href="<?php echo esc_url($external_detail_url); ?>" class="mcs-action-link mcs-action-link--external" target="_blank" rel="noopener noreferrer">
+                    <span class="dashicons dashicons-external"></span>
+                    <?php esc_html_e('外部サイトで見る', 'minpaku-suite'); ?>
+                </a>
+            <?php endif; ?>
         </div>
     </div>
 </div>
 
-<script>
-// Copy shortcode to clipboard functionality
-document.addEventListener('DOMContentLoaded', function() {
-    const calendarButtons = document.querySelectorAll('.mcs-action-link--calendar');
-
-    calendarButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            const shortcode = this.getAttribute('data-shortcode');
-
-            if (navigator.clipboard) {
-                navigator.clipboard.writeText(shortcode).then(() => {
-                    // Visual feedback
-                    const originalText = this.innerHTML;
-                    this.innerHTML = '<span class="dashicons dashicons-yes"></span> <?php esc_html_e('Copied!', 'minpaku-suite'); ?>';
-                    this.style.background = '#27ae60';
-
-                    setTimeout(() => {
-                        this.innerHTML = originalText;
-                        this.style.background = '';
-                    }, 2000);
-                });
-            } else {
-                // Fallback for older browsers
-                const textArea = document.createElement('textarea');
-                textArea.value = shortcode;
-                document.body.appendChild(textArea);
-                textArea.select();
-                document.execCommand('copy');
-                document.body.removeChild(textArea);
-
-                alert('<?php esc_html_e('Shortcode copied to clipboard:', 'minpaku-suite'); ?> ' + shortcode);
-            }
-        });
-    });
-});
-</script>

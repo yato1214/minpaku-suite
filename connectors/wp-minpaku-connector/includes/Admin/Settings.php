@@ -31,6 +31,7 @@ class MPC_Admin_Settings {
             array(__CLASS__, 'sanitize_settings')
         );
 
+
         add_settings_section(
             'mpc_connection_section',
             __('Portal Connection', 'wp-minpaku-connector'),
@@ -69,6 +70,7 @@ class MPC_Admin_Settings {
             'wp-minpaku-connector',
             'mpc_connection_section'
         );
+
     }
 
     /**
@@ -107,6 +109,7 @@ class MPC_Admin_Settings {
 
         return $sanitized;
     }
+
 
     /**
      * Normalize and validate portal URL - improved version
@@ -625,6 +628,7 @@ class MPC_Admin_Settings {
         echo '<p class="description">' . esc_html__('The Secret key generated in your portal connector settings.', 'wp-minpaku-connector') . '</p>';
     }
 
+
     /**
      * Render admin page
      */
@@ -650,6 +654,7 @@ class MPC_Admin_Settings {
                 submit_button();
                 ?>
             </form>
+
 
             <?php if ($is_configured): ?>
                 <hr>
@@ -701,31 +706,66 @@ class MPC_Admin_Settings {
 
                 <hr>
                 <h2><?php echo esc_html__('使用方法', 'wp-minpaku-connector'); ?></h2>
-                <p><?php echo esc_html__('以下のショートコードを使用して、Minpaku Suite ポータルからコンテンツを表示できます：', 'wp-minpaku-connector'); ?></p>
+                <p><?php echo esc_html__('物件の外部詳細ページにカレンダーを埋め込む運用に最適化されています。以下のショートコードをご利用ください：', 'wp-minpaku-connector'); ?></p>
 
-                <h3><?php echo esc_html__('物件一覧', 'wp-minpaku-connector'); ?></h3>
+                <h3><?php echo esc_html__('🏠 物件一覧（トップページ・カテゴリページ用）', 'wp-minpaku-connector'); ?></h3>
                 <code>[minpaku_connector type="properties" limit="12" columns="3"]</code>
-                <p class="description"><?php echo esc_html__('物件一覧をグリッド表示します。パラメータ: limit（表示件数）、columns（列数）', 'wp-minpaku-connector'); ?></p>
+                <p class="description"><?php echo esc_html__('物件一覧をグリッド表示します。各物件カードに「外部サイトで見る」ボタンが表示され、設定した外部詳細ページへリンクします。', 'wp-minpaku-connector'); ?></p>
 
-                <h3><?php echo esc_html__('空室カレンダー', 'wp-minpaku-connector'); ?></h3>
-                <code>[minpaku_connector type="availability" property_id="123" months="2"]</code>
-                <p class="description"><?php echo esc_html__('指定した物件の空室カレンダーを表示します。パラメータ: property_id（必須）、months（表示月数）', 'wp-minpaku-connector'); ?></p>
+                <h3><?php echo esc_html__('📅 空室カレンダー（モダンUI）', 'wp-minpaku-connector'); ?></h3>
+                <code>[minpaku_connector type="availability" property_id="123" months="2" interactions="modern"]</code>
+                <p class="description"><?php echo esc_html__('モダンな見積機能付きカレンダーを表示。カレンダー操作で即座に見積パネルが表示されます（ポータル側と完全統一）。デスクトップ2列、モバイル1列のレスポンシブ対応。', 'wp-minpaku-connector'); ?></p>
 
-                <h3><?php echo esc_html__('物件詳細', 'wp-minpaku-connector'); ?></h3>
+                <h3><?php echo esc_html__('📅 レガシーカレンダー（従来型）', 'wp-minpaku-connector'); ?></h3>
+                <code>[minpaku_connector type="availability" property_id="123" months="2" interactions="legacy"]</code>
+                <p class="description"><?php echo esc_html__('従来の日付クリック→新規予約画面遷移タイプのカレンダー。レガシーシステム対応用。', 'wp-minpaku-connector'); ?></p>
+
+                <h3><?php echo esc_html__('📝 物件詳細ブロック', 'wp-minpaku-connector'); ?></h3>
                 <code>[minpaku_connector type="property" property_id="123"]</code>
-                <p class="description"><?php echo esc_html__('指定した物件の詳細情報を表示します。パラメータ: property_id（必須）', 'wp-minpaku-connector'); ?></p>
+                <p class="description"><?php echo esc_html__('物件の詳細情報（アメニティ、説明文等）を表示。カレンダーと組み合わせて使用可能。', 'wp-minpaku-connector'); ?></p>
 
-                <h4><?php echo esc_html__('追加オプション', 'wp-minpaku-connector'); ?></h4>
+                <div style="background: #e8f5e8; padding: 16px; border-left: 4px solid #28a745; margin: 20px 0;">
+                    <h4 style="margin-top: 0; color: #155724;"><?php echo esc_html__('✨ 新機能：統一モダンUI', 'wp-minpaku-connector'); ?></h4>
+                    <ul style="margin-bottom: 0;">
+                        <li><strong><?php echo esc_html__('即時見積:', 'wp-minpaku-connector'); ?></strong> <?php echo esc_html__('日程選択と同時に見積パネルが表示', 'wp-minpaku-connector'); ?></li>
+                        <li><strong><?php echo esc_html__('操作統一:', 'wp-minpaku-connector'); ?></strong> <?php echo esc_html__('シングルクリック、ドラッグ、ロングプレス対応', 'wp-minpaku-connector'); ?></li>
+                        <li><strong><?php echo esc_html__('デザイン統一:', 'wp-minpaku-connector'); ?></strong> <?php echo esc_html__('ポータル側と完全同一の見た目・挙動', 'wp-minpaku-connector'); ?></li>
+                    </ul>
+                </div>
+
+                <h4><?php echo esc_html__('推奨の運用方法', 'wp-minpaku-connector'); ?></h4>
+                <ol>
+                    <li><strong><?php echo esc_html__('トップページ', 'wp-minpaku-connector'); ?></strong>: <?php echo esc_html__('物件一覧ショートコードで複数物件を表示', 'wp-minpaku-connector'); ?></li>
+                    <li><strong><?php echo esc_html__('外部詳細ページ', 'wp-minpaku-connector'); ?></strong>: <?php echo esc_html__('各物件専用ページに空室カレンダーを埋め込み', 'wp-minpaku-connector'); ?></li>
+                    <li><strong><?php echo esc_html__('ポータル管理', 'wp-minpaku-connector'); ?></strong>: <?php echo esc_html__('各物件の「外部物件詳細URL」に外部詳細ページのURLを設定', 'wp-minpaku-connector'); ?></li>
+                </ol>
+
+                <h4><?php echo esc_html__('基本パラメータ', 'wp-minpaku-connector'); ?></h4>
                 <ul>
-                    <li><strong>show_prices</strong>: <?php echo esc_html__('価格表示の有効/無効（"true"/"false"、デフォルト: "true"）', 'wp-minpaku-connector'); ?></li>
-                    <li><strong>adults</strong>: <?php echo esc_html__('大人の人数（デフォルト: 2）', 'wp-minpaku-connector'); ?></li>
-                    <li><strong>children</strong>: <?php echo esc_html__('子供の人数（デフォルト: 0）', 'wp-minpaku-connector'); ?></li>
-                    <li><strong>currency</strong>: <?php echo esc_html__('通貨単位（デフォルト: "JPY"）', 'wp-minpaku-connector'); ?></li>
+                    <li><strong>type</strong>: <?php echo esc_html__('表示タイプ（"properties", "availability", "property"）', 'wp-minpaku-connector'); ?></li>
+                    <li><strong>property_id</strong>: <?php echo esc_html__('物件ID（availabilityとpropertyタイプで必須）', 'wp-minpaku-connector'); ?></li>
+                    <li><strong>months</strong>: <?php echo esc_html__('カレンダー表示月数（1-12、デフォルト: 2）', 'wp-minpaku-connector'); ?></li>
+                    <li><strong>limit</strong>: <?php echo esc_html__('物件一覧の表示件数（propertiesタイプ用）', 'wp-minpaku-connector'); ?></li>
+                    <li><strong>columns</strong>: <?php echo esc_html__('物件一覧のカラム数（1-4、デフォルト: 2）', 'wp-minpaku-connector'); ?></li>
+                    <li><strong>interactions</strong>: <?php echo esc_html__('カレンダー操作モード（"modern"（既定）、"legacy"）', 'wp-minpaku-connector'); ?></li>
+                </ul>
+
+                <h4><?php echo esc_html__('モダンカレンダー機能（interactions="modern"）', 'wp-minpaku-connector'); ?></h4>
+                <ul>
+                    <li><strong><?php echo esc_html__('ポータル完全同期', 'wp-minpaku-connector'); ?></strong>: <?php echo esc_html__('DOM構造・CSS・挙動がポータル側と100%一致', 'wp-minpaku-connector'); ?></li>
+                    <li><strong><?php echo esc_html__('即時見積表示', 'wp-minpaku-connector'); ?></strong>: <?php echo esc_html__('日程選択と同時に見積パネルが出現（宿泊料・清掃費・合計の内訳表示）', 'wp-minpaku-connector'); ?></li>
+                    <li><strong><?php echo esc_html__('マルチ選択方法', 'wp-minpaku-connector'); ?></strong>: <?php echo esc_html__('シングルクリック（1泊）、ドラッグ（PC）、ロングプレス（SP）対応', 'wp-minpaku-connector'); ?></li>
+                    <li><strong><?php echo esc_html__('統一デザイン', 'wp-minpaku-connector'); ?></strong>: <?php echo esc_html__('平日（緑）、土曜（青）、日曜・祝日（赤）、満室（グレー）', 'wp-minpaku-connector'); ?></li>
+                    <li><strong><?php echo esc_html__('ナビゲーション維持', 'wp-minpaku-connector'); ?></strong>: <?php echo esc_html__('月送り後も選択状態と見積パネルが維持される', 'wp-minpaku-connector'); ?></li>
+                    <li><strong><?php echo esc_html__('レスポンシブ完備', 'wp-minpaku-connector'); ?></strong>: <?php echo esc_html__('デスクトップ2列、モバイル1列の自動切り替え', 'wp-minpaku-connector'); ?></li>
                 </ul>
 
                 <h4><?php echo esc_html__('使用例', 'wp-minpaku-connector'); ?></h4>
-                <code>[minpaku_connector type="availability" property_id="123" months="3" show_prices="true" adults="4"]</code>
-                <p class="description"><?php echo esc_html__('物件ID 123 の空室カレンダーを3ヶ月分、大人4名での価格付きで表示', 'wp-minpaku-connector'); ?></p>
+                <code>[minpaku_connector type="availability" property_id="123" months="3" interactions="modern"]</code>
+                <p class="description"><?php echo esc_html__('物件ID 123 のモダン見積カレンダーを3ヶ月分表示（外部詳細ページ推奨）', 'wp-minpaku-connector'); ?></p>
+
+                <code>[minpaku_connector type="availability" property_id="456" months="2" interactions="legacy"]</code>
+                <p class="description"><?php echo esc_html__('物件ID 456 のレガシーカレンダーを2ヶ月分表示（従来型システム用）', 'wp-minpaku-connector'); ?></p>
 
             <?php else: ?>
                 <div class="notice notice-warning">
@@ -748,6 +788,8 @@ class MPC_Admin_Settings {
 
         <script>
         jQuery(document).ready(function($) {
+
+            // Connection test JavaScript
             $('#test-connection').on('click', function() {
                 var button = $(this);
                 var result = $('#test-result');
@@ -792,7 +834,6 @@ class MPC_Admin_Settings {
 
                         // Log error for debugging
                         if (window.console && response.data.original) {
-                            console.log('WMC Connection Test Error:', response.data.original);
                         }
                     }
                 })
@@ -805,7 +846,6 @@ class MPC_Admin_Settings {
 
                     // Log error for debugging
                     if (window.console) {
-                        console.log('WMC AJAX Error:', xhr, status, error);
                     }
                 })
                 .always(function() {

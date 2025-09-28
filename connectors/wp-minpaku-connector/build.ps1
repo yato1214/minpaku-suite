@@ -1,143 +1,184 @@
-# WordPress Plugin Build Script
-# Builds and packages the wp-minpaku-connector plugin
+# WP Minpaku Connector Build Script
+# This script creates a deployable ZIP file of the plugin
 
 param(
-    [string]$Version = "1.1.4",
-    [string]$OutputDir = "dist",
+    [string]$Version = "0.5.0",
+    [string]$OutputDir = ".\dist",
     [switch]$Clean = $false
 )
 
-Write-Host "Building wp-minpaku-connector v$Version..." -ForegroundColor Green
+Write-Host "Building WP Minpaku Connector v$Version" -ForegroundColor Green
 
-# Get script directory
-$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
-Set-Location $ScriptDir
+# Set script location and plugin directory
+$ScriptPath = $PSScriptRoot
+$PluginDir = $ScriptPath
+$PluginName = "wp-minpaku-connector"
 
-# Clean output directory if requested
-if ($Clean -and (Test-Path $OutputDir)) {
-    Write-Host "Cleaning output directory..." -ForegroundColor Yellow
-    Remove-Item $OutputDir -Recurse -Force
-}
-
-# Create output directory
+# Create output directory if it doesn't exist
 if (!(Test-Path $OutputDir)) {
-    New-Item -ItemType Directory -Path $OutputDir | Out-Null
+    New-Item -ItemType Directory -Path $OutputDir -Force | Out-Null
+    Write-Host "Created output directory: $OutputDir" -ForegroundColor Yellow
 }
 
-# Define files and directories to include in the plugin
-$IncludeItems = @(
+# Clean previous builds if requested
+if ($Clean -and (Test-Path "$OutputDir\$PluginName-$Version.zip")) {
+    Remove-Item "$OutputDir\$PluginName-$Version.zip" -Force
+    Write-Host "Cleaned previous build" -ForegroundColor Yellow
+}
+
+# Files and directories to include in the build
+$IncludeFiles = @(
     "wp-minpaku-connector.php",
-    "includes",
-    "assets",
-    "languages",
     "readme.txt",
-    "LICENSE"
+    "includes\**",
+    "assets\**",
+    "languages\**"
 )
 
-# Define files and directories to exclude
+# Files and directories to exclude from the build
 $ExcludePatterns = @(
     "*.ps1",
     "*.md",
     ".git*",
-    "node_modules",
-    "dist",
-    "src",
-    "webpack.config.js",
-    "package*.json",
+    "node_modules\**",
+    "src\**",
+    "*.tmp",
+    "*.log",
+    "dist\**",
+    "tests\**",
+    ".vscode\**",
+    ".idea\**",
     "composer.json",
     "composer.lock",
-    "phpunit.xml",
-    "tests",
-    ".vscode",
-    ".idea",
-    "*.log",
-    "*.tmp",
-    ".DS_Store",
-    "Thumbs.db"
+    "package.json",
+    "package-lock.json",
+    "webpack.config.js",
+    "gulpfile.js",
+    "*.map"
 )
 
-# Create temporary build directory
-$BuildDir = Join-Path $OutputDir "wp-minpaku-connector"
-if (Test-Path $BuildDir) {
-    Remove-Item $BuildDir -Recurse -Force
+Write-Host "Preparing files for packaging..." -ForegroundColor Yellow
+
+# Create temporary directory for staging
+$TempDir = Join-Path $env:TEMP "wp-minpaku-connector-build"
+$StagingDir = Join-Path $TempDir $PluginName
+
+if (Test-Path $TempDir) {
+    Remove-Item $TempDir -Recurse -Force
 }
-New-Item -ItemType Directory -Path $BuildDir | Out-Null
+New-Item -ItemType Directory -Path $StagingDir -Force | Out-Null
 
-Write-Host "Copying plugin files..." -ForegroundColor Blue
+# Copy files to staging directory
+foreach ($Pattern in $IncludeFiles) {
+    $SourcePath = Join-Path $PluginDir $Pattern
 
-# Copy included items
-foreach ($Item in $IncludeItems) {
-    if (Test-Path $Item) {
-        if (Test-Path $Item -PathType Container) {
-            # Directory
-            Copy-Item $Item -Destination $BuildDir -Recurse -Force
-        } else {
-            # File
-            Copy-Item $Item -Destination $BuildDir -Force
+    # Handle wildcard patterns
+    if ($Pattern.Contains("**")) {
+        $BasePath = $Pattern.Split("**")[0].TrimEnd("\")
+        $SourceBasePath = Join-Path $PluginDir $BasePath
+
+        if (Test-Path $SourceBasePath) {
+            $DestPath = Join-Path $StagingDir $BasePath
+            if (!(Test-Path $DestPath)) {
+                New-Item -ItemType Directory -Path $DestPath -Force | Out-Null
+            }
+
+            # Copy directory contents recursively
+            Get-ChildItem $SourceBasePath -Recurse | ForEach-Object {
+                $RelativePath = $_.FullName.Substring($SourceBasePath.Length + 1)
+                $DestFile = Join-Path $DestPath $RelativePath
+
+                # Skip excluded files
+                $ShouldExclude = $false
+                foreach ($ExcludePattern in $ExcludePatterns) {
+                    if ($RelativePath -like $ExcludePattern -or $_.Name -like $ExcludePattern) {
+                        $ShouldExclude = $true
+                        break
+                    }
+                }
+
+                if (-not $ShouldExclude) {
+                    if ($_.PSIsContainer) {
+                        if (!(Test-Path $DestFile)) {
+                            New-Item -ItemType Directory -Path $DestFile -Force | Out-Null
+                        }
+                    } else {
+                        $DestDir = Split-Path $DestFile -Parent
+                        if (!(Test-Path $DestDir)) {
+                            New-Item -ItemType Directory -Path $DestDir -Force | Out-Null
+                        }
+                        Copy-Item $_.FullName $DestFile -Force
+                    }
+                }
+            }
         }
-        Write-Host "  ✓ $Item" -ForegroundColor Gray
     } else {
-        Write-Host "  ! $Item (not found)" -ForegroundColor Yellow
+        # Handle single files
+        if (Test-Path $SourcePath) {
+            $DestPath = Join-Path $StagingDir $Pattern
+            $DestDir = Split-Path $DestPath -Parent
+            if (!(Test-Path $DestDir)) {
+                New-Item -ItemType Directory -Path $DestDir -Force | Out-Null
+            }
+            Copy-Item $SourcePath $DestPath -Force
+        }
     }
 }
 
-# Remove excluded files from build directory
-Write-Host "Cleaning excluded files..." -ForegroundColor Blue
-foreach ($Pattern in $ExcludePatterns) {
-    Get-ChildItem $BuildDir -Recurse -Force | Where-Object {
-        $_.Name -like $Pattern -or $_.FullName -like "*\$Pattern\*"
-    } | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+# Verify main plugin file exists
+$MainPluginFile = Join-Path $StagingDir "wp-minpaku-connector.php"
+if (!(Test-Path $MainPluginFile)) {
+    Write-Host "ERROR: Main plugin file not found!" -ForegroundColor Red
+    exit 1
 }
 
-# Update version in main plugin file if specified
-$MainFile = Join-Path $BuildDir "wp-minpaku-connector.php"
-if (Test-Path $MainFile) {
-    Write-Host "Updating version to $Version..." -ForegroundColor Blue
-    $Content = Get-Content $MainFile -Raw
-    $Content = $Content -replace "Version:\s*[\d\.]+", "Version: $Version"
-    $Content = $Content -replace "define\s*\(\s*['`"]WP_MINPAKU_CONNECTOR_VERSION['`"]\s*,\s*['`"][\d\.]+['`"]\s*\)", "define('WP_MINPAKU_CONNECTOR_VERSION', '$Version')"
-    Set-Content $MainFile -Value $Content -NoNewline
+# Update version in plugin file if different
+$PluginContent = Get-Content $MainPluginFile -Raw
+if ($PluginContent -match " \* Version:\s*([0-9\.]+)") {
+    $CurrentVersion = $Matches[1]
+    if ($CurrentVersion -ne $Version) {
+        Write-Host "Updating version from $CurrentVersion to $Version" -ForegroundColor Yellow
+        $PluginContent = $PluginContent -replace " \* Version:\s*[0-9\.]+", " * Version: $Version"
+        $PluginContent = $PluginContent -replace "WP_MINPAKU_CONNECTOR_VERSION',\s*'[^']*'", "WP_MINPAKU_CONNECTOR_VERSION', '$Version'"
+        Set-Content $MainPluginFile $PluginContent -NoNewline
+    }
 }
 
-# Create ZIP archive
-$ZipPath = Join-Path $OutputDir "wp-minpaku-connector-v$Version.zip"
-if (Test-Path $ZipPath) {
-    Remove-Item $ZipPath -Force
-}
+Write-Host "Creating ZIP package..." -ForegroundColor Yellow
 
-Write-Host "Creating ZIP archive..." -ForegroundColor Blue
+# Create ZIP file
+$ZipPath = Join-Path $OutputDir "$PluginName-$Version.zip"
+
+# Use .NET compression if available (Windows 10+), otherwise use Compress-Archive
 try {
-    # Use .NET compression for better control
     Add-Type -AssemblyName System.IO.Compression.FileSystem
-    [System.IO.Compression.ZipFile]::CreateFromDirectory($BuildDir, $ZipPath)
-    Write-Host "✓ Created: $ZipPath" -ForegroundColor Green
+    [System.IO.Compression.ZipFile]::CreateFromDirectory($TempDir, $ZipPath, "Optimal", $false)
+    Write-Host "Package created using .NET compression" -ForegroundColor Green
 } catch {
     # Fallback to PowerShell Compress-Archive
-    Compress-Archive -Path "$BuildDir\*" -DestinationPath $ZipPath -Force
-    Write-Host "✓ Created: $ZipPath" -ForegroundColor Green
+    Compress-Archive -Path "$TempDir\*" -DestinationPath $ZipPath -Force
+    Write-Host "Package created using PowerShell compression" -ForegroundColor Green
 }
 
-# Clean up temporary build directory
-Remove-Item $BuildDir -Recurse -Force
+# Clean up temporary directory
+Remove-Item $TempDir -Recurse -Force
 
-# Show file size
-$ZipSize = (Get-Item $ZipPath).Length
-$ZipSizeMB = [math]::Round($ZipSize / 1MB, 2)
-Write-Host "Archive size: $ZipSizeMB MB" -ForegroundColor Cyan
+# Display results
+$ZipInfo = Get-Item $ZipPath
+$SizeKB = [math]::Round($ZipInfo.Length / 1KB, 2)
+$SizeMB = [math]::Round($ZipInfo.Length / 1MB, 2)
 
-# Verification
 Write-Host "`nBuild completed successfully!" -ForegroundColor Green
-Write-Host "Plugin archive: $ZipPath" -ForegroundColor White
+Write-Host "Package: $($ZipInfo.Name)" -ForegroundColor White
+Write-Host "Size: $SizeKB KB ($SizeMB MB)" -ForegroundColor White
+Write-Host "Location: $($ZipInfo.FullName)" -ForegroundColor White
 
-# Optional: Show contents of ZIP
-if ($VerbosePreference -eq 'Continue') {
-    Write-Host "`nArchive contents:" -ForegroundColor Yellow
-    Add-Type -AssemblyName System.IO.Compression.FileSystem
-    $zip = [System.IO.Compression.ZipFile]::OpenRead($ZipPath)
-    $zip.Entries | ForEach-Object { Write-Host "  $($_.FullName)" }
-    $zip.Dispose()
+# Optional: Open the output directory
+if ($PSVersionTable.PSVersion.Major -ge 3) {
+    $OpenChoice = Read-Host "`nOpen output directory? (y/N)"
+    if ($OpenChoice -eq "y" -or $OpenChoice -eq "Y") {
+        Invoke-Item $OutputDir
+    }
 }
 
-Write-Host "`nTo install:" -ForegroundColor Cyan
-Write-Host "  1. Upload $ZipPath to WordPress admin > Plugins > Add New > Upload Plugin" -ForegroundColor Gray
-Write-Host "  2. Or extract to wp-content/plugins/ directory" -ForegroundColor Gray
+Write-Host "`nBuild script completed." -ForegroundColor Green

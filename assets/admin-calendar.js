@@ -17,44 +17,12 @@ jQuery(document).ready(function($) {
         };
     }
 
-    // Click handler for booking creation (all available days)
+    // Direct navigation removed - admin calendar now uses unified interactions
+    // NOTE: This disables admin direct booking creation. If admin users need to create bookings,
+    // consider implementing a quote panel with a "Create Booking" action for admin users.
     $(document).on('click', '.mcs-day', function(e) {
         e.preventDefault();
-
-        var cell = $(this);
-        var date = cell.data('ymd');
-        var propertyId = cell.data('property');
-        var isDisabled = cell.data('disabled');
-
-        console.log('Day clicked:', {
-            date: date,
-            propertyId: propertyId,
-            isDisabled: isDisabled,
-            classes: cell.attr('class'),
-            adminUrl: adminUrl
-        });
-
-        // Only allow clicks on vacant (available) days that are not past dates
-        if (date && propertyId && !isDisabled && !cell.hasClass('mcs-day--past') && !cell.hasClass('mcs-day--empty') && cell.hasClass('mcs-day--vacant')) {
-            var nextDay = new Date(date + 'T00:00:00');
-            nextDay.setDate(nextDay.getDate() + 1);
-            var checkout = nextDay.toISOString().split('T')[0];
-
-            var bookingUrl = adminUrl + '&mcs_property=' + propertyId +
-                            '&mcs_checkin=' + date + '&mcs_checkout=' + checkout;
-
-            console.log('Navigating to:', bookingUrl);
-            window.location.href = bookingUrl;
-        } else {
-            console.log('Click ignored - conditions not met:', {
-                hasDate: !!date,
-                hasPropertyId: !!propertyId,
-                isDisabled: isDisabled,
-                isPast: cell.hasClass('mcs-day--past'),
-                isEmpty: cell.hasClass('mcs-day--empty'),
-                isVacant: cell.hasClass('mcs-day--vacant')
-            });
-        }
+        console.log('Admin calendar - direct navigation disabled, implement quote panel with admin actions if needed');
     });
 
     // Remove all legacy slot/status/legend elements on page load

@@ -1,0 +1,449 @@
+/**
+ * Quote functionality styles for Minpaku Connector
+ *
+ * @package WP_Minpaku_Connector
+ */
+
+/* Calendar range selection styles */
+.mpc-selection-mode .mcs-day {
+    cursor: pointer;
+}
+
+.mpc-selection-mode .mcs-day:hover:not(.mcs-day--empty):not(.mcs-day--past):not(.mcs-day--full) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(102, 126, 234, 0.3);
+}
+
+/* Selected date styles */
+.mcs-day.mpc-selected-checkin {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    color: white !important;
+    border: 2px solid #667eea !important;
+}
+
+.mcs-day.mpc-selected-checkout {
+    background: linear-gradient(135deg, #764ba2 0%, #667eea 100%) !important;
+    color: white !important;
+    border: 2px solid #764ba2 !important;
+}
+
+.mcs-day.mpc-selected-range {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%) !important;
+    border: 1px solid rgba(102, 126, 234, 0.3) !important;
+}
+
+.mcs-day.mpc-selected-checkin .mcs-day-number,
+.mcs-day.mpc-selected-checkout .mcs-day-number {
+    color: white !important;
+    font-weight: 700;
+}
+
+/* Quote form container */
+.mpc-quote-form-container {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 12px;
+    padding: 24px;
+    margin-top: 24px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.mpc-quote-selection-summary h4,
+.mpc-guest-form h4 {
+    margin: 0 0 16px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+/* Date range display */
+.mpc-date-range {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    border-radius: 8px;
+    margin-bottom: 24px;
+}
+
+.mpc-checkin-date,
+.mpc-checkout-date {
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.mpc-date-separator {
+    color: #64748b;
+}
+
+.mpc-nights-count {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 4px 12px;
+    border-radius: 16px;
+    font-size: 14px;
+    font-weight: 600;
+    margin-left: auto;
+}
+
+/* Guest form */
+.mpc-guest-inputs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.mpc-guest-input {
+    display: flex;
+    flex-direction: column;
+}
+
+.mpc-guest-input label {
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.mpc-guest-select {
+    padding: 10px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 16px;
+    background: white;
+    transition: border-color 0.2s ease;
+}
+
+.mpc-guest-select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* Quote actions */
+.mpc-quote-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.mpc-btn-primary,
+.mpc-btn-secondary {
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: none;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mpc-btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.mpc-btn-primary:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.mpc-btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.mpc-btn-secondary {
+    background: #f8fafc;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+}
+
+.mpc-btn-secondary:hover {
+    background: #f1f5f9;
+    color: #475569;
+}
+
+/* Quote modal */
+.mpc-quote-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 999999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.mpc-quote-modal.mpc-modal-active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.mpc-quote-modal-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+}
+
+.mpc-quote-modal-content {
+    position: relative;
+    background: white;
+    border-radius: 12px;
+    max-width: 90vw;
+    max-height: 90vh;
+    width: 600px;
+    overflow: hidden;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    transform: scale(0.9);
+    transition: transform 0.3s ease;
+}
+
+.mpc-modal-active .mpc-quote-modal-content {
+    transform: scale(1);
+}
+
+.mpc-quote-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.mpc-quote-modal-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.mpc-quote-modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: white;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+    line-height: 1;
+}
+
+.mpc-quote-modal-close:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.mpc-quote-modal-body {
+    padding: 24px;
+    max-height: calc(90vh - 80px);
+    overflow-y: auto;
+}
+
+/* Quote summary */
+.mpc-quote-summary {
+    margin-bottom: 24px;
+}
+
+.mpc-quote-dates {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    justify-content: center;
+    padding: 16px;
+    background: #f8fafc;
+    border-radius: 8px;
+}
+
+.mpc-quote-dates .mpc-checkin,
+.mpc-quote-dates .mpc-checkout {
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.mpc-quote-dates .mpc-separator {
+    color: #64748b;
+}
+
+.mpc-quote-dates .mpc-nights {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 4px 12px;
+    border-radius: 16px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+/* Quote breakdown */
+.mpc-quote-breakdown {
+    margin-bottom: 24px;
+}
+
+.mpc-quote-breakdown h4 {
+    margin: 0 0 16px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #2c3e50;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+/* Nightly breakdown */
+.mpc-nightly-breakdown {
+    background: #f8fafc;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+.mpc-nightly-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.mpc-nightly-item:last-child {
+    border-bottom: none;
+}
+
+.mpc-night-date {
+    font-size: 14px;
+    color: #64748b;
+}
+
+.mpc-night-price {
+    font-weight: 600;
+    color: #1e293b;
+}
+
+/* Quote line items */
+.mpc-quote-line-item,
+.mpc-quote-subtotal {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.mpc-quote-subtotal {
+    font-weight: 600;
+    color: #1e293b;
+    border-bottom: 2px solid #e2e8f0;
+    margin-bottom: 8px;
+}
+
+.mpc-quote-label {
+    color: #64748b;
+}
+
+.mpc-quote-amount {
+    font-weight: 600;
+    color: #1e293b;
+}
+
+/* Quote total */
+.mpc-quote-total {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    border-radius: 8px;
+    margin-bottom: 24px;
+}
+
+.mpc-quote-total-label {
+    font-size: 18px;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.mpc-quote-total-amount {
+    font-size: 24px;
+    font-weight: 700;
+    color: #667eea;
+}
+
+/* Quote actions in modal */
+.mpc-quote-actions {
+    text-align: center;
+}
+
+.mpc-booking-disabled-btn {
+    background: #f1f5f9;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+/* Body scroll lock */
+body.mpc-modal-open {
+    overflow: hidden;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .mpc-guest-inputs {
+        grid-template-columns: 1fr;
+    }
+
+    .mpc-quote-modal-content {
+        width: 95vw;
+        margin: 20px;
+    }
+
+    .mpc-quote-modal-body {
+        padding: 16px;
+    }
+
+    .mpc-date-range {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .mpc-nights-count {
+        margin-left: 0;
+    }
+
+    .mpc-quote-actions {
+        flex-direction: column;
+    }
+}
+
+@media (max-width: 480px) {
+    .mpc-quote-modal-content {
+        max-height: 95vh;
+    }
+
+    .mpc-quote-total {
+        flex-direction: column;
+        gap: 8px;
+        text-align: center;
+    }
+
+    .mpc-quote-dates {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+}

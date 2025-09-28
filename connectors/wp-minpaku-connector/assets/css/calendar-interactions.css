@@ -1,0 +1,460 @@
+/**
+ * Unified Calendar Interactions Styles
+ * Supports both portal and connector calendars with modal/inline modes
+ *
+ * @package MinpakuSuite
+ */
+
+/* Calendar selection states */
+.mcs-day {
+    cursor: pointer;
+    transition: all 0.2s ease;
+    outline: none;
+}
+
+.mcs-day:focus {
+    box-shadow: 0 0 0 2px #667eea;
+    z-index: 2;
+    position: relative;
+}
+
+.mcs-day[aria-disabled="true"] {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.mcs-day[aria-disabled="true"]:hover {
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* Selection states */
+.mcs-selected-start {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    color: white !important;
+    border: 2px solid #667eea !important;
+    position: relative;
+    z-index: 3;
+}
+
+.mcs-selected-end {
+    background: linear-gradient(135deg, #764ba2 0%, #667eea 100%) !important;
+    color: white !important;
+    border: 2px solid #764ba2 !important;
+    position: relative;
+    z-index: 3;
+}
+
+.mcs-selected-range {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%) !important;
+    border: 1px solid rgba(102, 126, 234, 0.4) !important;
+    position: relative;
+    z-index: 1;
+}
+
+.mcs-selected-start .mcs-day-number,
+.mcs-selected-end .mcs-day-number {
+    color: white !important;
+    font-weight: 700;
+}
+
+/* Range selection mode */
+.mcs-selecting-range {
+    cursor: crosshair;
+}
+
+.mcs-selecting-range .mcs-day:not([aria-disabled="true"]) {
+    background: rgba(102, 126, 234, 0.1) !important;
+}
+
+/* Quote panel base styles */
+.mcs-quote-panel {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 0;
+    margin-top: 24px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+/* Modal quote panel positioning */
+[data-mode="modal"] .mcs-quote-panel {
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: 320px;
+    margin: 0;
+    max-height: 100%;
+    overflow-y: auto;
+}
+
+/* Inline quote panel */
+[data-mode="inline"] .mcs-quote-panel {
+    width: 100%;
+    max-width: 400px;
+}
+
+/* Quote panel header */
+.mcs-quote-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.mcs-quote-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.mcs-clear-selection-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+    line-height: 1;
+}
+
+.mcs-clear-selection-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+/* Quote panel content */
+.mcs-quote-content {
+    padding: 20px;
+}
+
+.mcs-quote-placeholder {
+    text-align: center;
+    color: #64748b;
+    font-style: italic;
+    padding: 20px 0;
+}
+
+/* Quote summary */
+.mcs-quote-summary {
+    margin-bottom: 20px;
+}
+
+.mcs-quote-dates {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+    padding: 12px;
+    background: #f8fafc;
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+.mcs-checkin-date,
+.mcs-checkout-date {
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.mcs-date-separator {
+    color: #64748b;
+}
+
+.mcs-nights-count {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+/* Quote breakdown */
+.mcs-quote-breakdown {
+    margin-bottom: 20px;
+}
+
+.mcs-quote-line-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.mcs-quote-line-item:last-child {
+    border-bottom: none;
+}
+
+.mcs-quote-label {
+    color: #64748b;
+    font-size: 14px;
+}
+
+.mcs-quote-amount {
+    font-weight: 600;
+    color: #1e293b;
+    font-size: 14px;
+}
+
+/* Quote total */
+.mcs-quote-total {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    border-radius: 8px;
+    margin-bottom: 20px;
+    border: 1px solid #e2e8f0;
+}
+
+.mcs-quote-total-label {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.mcs-quote-total-amount {
+    font-size: 20px;
+    font-weight: 700;
+    color: #667eea;
+}
+
+/* Quote actions */
+.mcs-quote-actions {
+    text-align: center;
+}
+
+.mcs-btn-primary,
+.mcs-book-disabled-btn {
+    width: 100%;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: none;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mcs-btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.mcs-btn-primary:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.mcs-book-disabled-btn {
+    background: #f1f5f9;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+/* Loading state */
+.mcs-quote-loading {
+    text-align: center;
+    padding: 40px 20px;
+    color: #64748b;
+}
+
+.mcs-quote-loading::before {
+    content: '';
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid #e2e8f0;
+    border-top: 2px solid #667eea;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-right: 10px;
+    vertical-align: middle;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Error state */
+.mcs-quote-error {
+    text-align: center;
+    padding: 20px;
+    background: #fef2f2;
+    border: 1px solid #fca5a5;
+    border-radius: 8px;
+    color: #b91c1c;
+}
+
+.mcs-quote-error h4 {
+    margin: 0 0 8px 0;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.mcs-quote-error p {
+    margin: 0;
+    font-size: 14px;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    [data-mode="modal"] .mcs-quote-panel {
+        position: static;
+        width: 100%;
+        margin-top: 20px;
+    }
+
+    .mcs-quote-dates {
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .mcs-quote-total {
+        flex-direction: column;
+        gap: 8px;
+        text-align: center;
+    }
+
+    .mcs-quote-header {
+        padding: 12px 16px;
+    }
+
+    .mcs-quote-content {
+        padding: 16px;
+    }
+}
+
+/* Touch optimizations for mobile */
+@media (hover: none) and (pointer: coarse) {
+    .mcs-day {
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .mcs-day:active {
+        background: rgba(102, 126, 234, 0.1) !important;
+    }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .mcs-selected-start,
+    .mcs-selected-end {
+        border-width: 3px !important;
+    }
+
+    .mcs-quote-panel {
+        border-width: 2px;
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    .mcs-day,
+    .mcs-btn-primary,
+    .mcs-clear-selection-btn {
+        transition: none;
+    }
+
+    .mcs-quote-loading::before {
+        animation: none;
+    }
+}
+
+/* Calendar layout adjustments for quote panel */
+[data-mode="inline"] {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    align-items: flex-start;
+}
+
+[data-mode="inline"] .mcs-calendar-container {
+    flex: 1;
+}
+
+[data-mode="inline"] .mcs-quote-panel {
+    flex: 0 0 320px;
+    margin-top: 0;
+}
+
+/* Ensure proper stacking context */
+.mcs-day {
+    position: relative;
+}
+
+.mcs-selected-start,
+.mcs-selected-end {
+    z-index: 3;
+}
+
+.mcs-selected-range {
+    z-index: 1;
+}
+
+/* Calendar grid cell improvements */
+.mcs-day[role="gridcell"] {
+    position: relative;
+}
+
+.mcs-day[role="gridcell"]:focus-visible {
+    outline: 2px solid #667eea;
+    outline-offset: -2px;
+}
+
+/* Accessibility improvements */
+.mcs-quote-panel[role="region"] {
+    border: 2px solid transparent;
+}
+
+.mcs-quote-panel:focus-within {
+    border-color: #667eea;
+}
+
+/* Modern selection indicators */
+.mcs-day.mcs-selected-start::before {
+    content: '📅';
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    font-size: 10px;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mcs-day.mcs-selected-end::before {
+    content: '🏁';
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    font-size: 10px;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
