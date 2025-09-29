@@ -1,12 +1,16 @@
 /**
- * Connector Calendar JS - Live Data Display
- * Minimal calendar interaction with custom events for external WP sites
+ * Connector Calendar JS - New Checkin/Checkout Selection with Live Quote
+ * Implements the new calendar selection flow with real-time pricing
  */
 
 class MPCConnectorCalendar {
     constructor() {
         this.initialized = false;
         this.calendars = new Map();
+        this.selectedCheckin = null;
+        this.selectedCheckout = null;
+        this.currentPropertyId = null;
+        this.selectionState = 'waiting_checkin'; // waiting_checkin, waiting_checkout, completed
     }
 
     /**
@@ -55,8 +59,8 @@ class MPCConnectorCalendar {
             const propertyId = dayCell.data('property');
             const isDisabled = dayCell.data('disabled');
 
-            // Only handle clicks on available, non-disabled days
-            if (date && propertyId && !isDisabled && dayCell.hasClass('mcs-day--vacant')) {
+            // Only handle clicks on available, non-disabled days (new classes)
+            if (date && propertyId && !isDisabled && (dayCell.hasClass('mcs-day--available') || dayCell.hasClass('mcs-day--vacant'))) {
                 this.handleDayClick(dayCell, date, propertyId, calendarData);
             }
         });
@@ -74,50 +78,297 @@ class MPCConnectorCalendar {
     }
 
     /**
-     * Handle day click - dispatch custom event and redirect to portal
+     * Handle day click - NEW 2-click selection flow with live quote
      */
     handleDayClick(dayCell, date, propertyId, calendarData) {
-        // Calculate checkout date (next day)
-        const checkinDate = new Date(date + 'T00:00:00');
-        const checkoutDate = new Date(checkinDate);
-        checkoutDate.setDate(checkoutDate.getDate() + 1);
-        const checkout = checkoutDate.toISOString().split('T')[0];
+        const container = calendarData.container;
 
-        // Create custom event with booking data
-        const eventData = {
-            type: 'mcs:day-click',
-            propertyId: propertyId,
-            checkin: date,
-            checkout: checkout,
-            adults: calendarData.adults,
-            children: calendarData.children,
-            infants: calendarData.infants,
-            currency: calendarData.currency,
-            dayElement: dayCell[0],
-            originalEvent: event
-        };
+        if (this.selectionState === 'waiting_checkin') {
+            // First click - select checkin date
+            this.selectCheckinDate(dayCell, date, propertyId, container);
+        } else if (this.selectionState === 'waiting_checkout') {
+            // Second click - select checkout date
+            this.selectCheckoutDate(dayCell, date, propertyId, container, calendarData);
+        }
+    }
 
-        // Dispatch custom event on the day element
-        const customEvent = new CustomEvent('mcs:day-click', {
-            detail: eventData,
-            bubbles: true,
-            cancelable: true
+    /**
+     * Select checkin date (first click)
+     */
+    selectCheckinDate(dayCell, date, propertyId, container) {
+        // Clear any previous selections
+        this.clearSelection(container);
+
+        // Set checkin selection
+        this.selectedCheckin = date;
+        this.currentPropertyId = propertyId;
+        this.selectionState = 'waiting_checkout';
+
+        // Apply visual selection
+        dayCell.addClass('mcs-day--selected-checkin');
+        dayCell.attr('data-selection-type', 'checkin');
+
+        // Show instruction message
+        this.showMessage(container, 'チェックアウト日を選択してください', 'info');
+
+        // Disable past dates and dates before checkin
+        this.updateDateAvailability(container);
+
+        console.log('Checkin selected:', date);
+    }
+
+    /**
+     * Select checkout date (second click)
+     */
+    selectCheckoutDate(dayCell, date, propertyId, container, calendarData) {
+        // Validate selection
+        if (date <= this.selectedCheckin) {
+            this.showMessage(container, 'チェックアウト日はチェックイン日より後の日付を選択してください', 'error');
+            return;
+        }
+
+        if (propertyId !== this.currentPropertyId) {
+            this.showMessage(container, '同じ物件の日付を選択してください', 'error');
+            return;
+        }
+
+        // Set checkout selection
+        this.selectedCheckout = date;
+        this.selectionState = 'completed';
+
+        // Apply visual selection
+        dayCell.addClass('mcs-day--selected-checkout');
+        dayCell.attr('data-selection-type', 'checkout');
+
+        // Highlight range between dates
+        this.highlightDateRange(container);
+
+        // Show loading message
+        this.showMessage(container, '見積を取得中...', 'loading');
+
+        // Get live quote
+        this.getLiveQuote(propertyId, this.selectedCheckin, this.selectedCheckout, calendarData);
+
+        console.log('Checkout selected:', date, 'Range:', this.selectedCheckin, 'to', this.selectedCheckout);
+    }
+
+    /**
+     * Clear current selection
+     */
+    clearSelection(container) {
+        container.find('.mcs-day').removeClass('mcs-day--selected-checkin mcs-day--selected-checkout mcs-day--in-range');
+        container.find('.mcs-day').removeAttr('data-selection-type');
+        this.hideQuoteDisplay(container);
+        this.selectedCheckin = null;
+        this.selectedCheckout = null;
+        this.currentPropertyId = null;
+        this.selectionState = 'waiting_checkin';
+    }
+
+    /**
+     * Highlight date range between checkin and checkout
+     */
+    highlightDateRange(container) {
+        if (!this.selectedCheckin || !this.selectedCheckout) return;
+
+        const checkinDate = new Date(this.selectedCheckin);
+        const checkoutDate = new Date(this.selectedCheckout);
+
+        container.find('.mcs-day').each(function() {
+            const dayDate = new Date($(this).data('ymd'));
+            if (dayDate > checkinDate && dayDate < checkoutDate) {
+                $(this).addClass('mcs-day--in-range');
+            }
         });
+    }
 
-        dayCell[0].dispatchEvent(customEvent);
+    /**
+     * Update date availability based on selection state
+     */
+    updateDateAvailability(container) {
+        // This can be enhanced to disable unavailable checkout dates based on booking rules
+        // For now, just ensure past dates are disabled
+    }
 
-        // Also trigger jQuery event for backward compatibility
-        dayCell.trigger('mpc:day-selected', eventData);
-
-        // Log for development
-        if (window.console && window.console.log) {
-            console.log('MPC Calendar: Day clicked', eventData);
+    /**
+     * Show message to user
+     */
+    showMessage(container, message, type = 'info') {
+        let messageContainer = container.find('.mpc-selection-message');
+        if (messageContainer.length === 0) {
+            messageContainer = $('<div class="mpc-selection-message"></div>');
+            container.prepend(messageContainer);
         }
 
-        // Check if custom event was prevented
-        if (!customEvent.defaultPrevented) {
-            this.redirectToPortalBooking(eventData);
+        messageContainer.removeClass('mpc-message--info mpc-message--error mpc-message--loading mpc-message--success');
+        messageContainer.addClass('mpc-message--' + type);
+        messageContainer.text(message);
+        messageContainer.show();
+    }
+
+    /**
+     * Get live quote from the portal
+     */
+    getLiveQuote(propertyId, checkin, checkout, calendarData) {
+        const container = calendarData.container;
+
+        // Check if we have the necessary data
+        if (typeof mpcCalendarData === 'undefined') {
+            this.showMessage(container, '設定エラー: 見積を取得できません', 'error');
+            return;
         }
+
+        // Make AJAX request for quote
+        $.ajax({
+            url: mpcCalendarData.ajaxUrl,
+            type: 'POST',
+            data: {
+                action: 'mpc_get_quote',
+                property_id: propertyId,
+                checkin: checkin,
+                checkout: checkout,
+                adults: calendarData.adults || 2,
+                children: calendarData.children || 0,
+                infants: calendarData.infants || 0,
+                nonce: mpcCalendarData.nonce
+            },
+            success: (response) => {
+                if (response.success) {
+                    this.displayQuote(container, response.data, checkin, checkout);
+                } else {
+                    this.showMessage(container, '見積取得エラー: ' + (response.data || '不明なエラー'), 'error');
+                }
+            },
+            error: (xhr, status, error) => {
+                console.error('Quote AJAX error:', status, error);
+                this.showMessage(container, 'ネットワークエラー: 見積を取得できませんでした', 'error');
+            }
+        });
+    }
+
+    /**
+     * Display quote results
+     */
+    displayQuote(container, quoteData, checkin, checkout) {
+        this.showMessage(container, '見積を取得しました', 'success');
+
+        // Create or update quote display
+        let quoteContainer = container.find('.mpc-quote-container');
+        if (quoteContainer.length === 0) {
+            quoteContainer = $('<div class="mpc-quote-container"></div>');
+            container.after(quoteContainer);
+        }
+
+        // Calculate number of nights
+        const checkinDate = new Date(checkin);
+        const checkoutDate = new Date(checkout);
+        const nights = Math.ceil((checkoutDate - checkinDate) / (1000 * 60 * 60 * 24));
+
+        // Build quote HTML with Japanese labels
+        let quoteHtml = `
+            <div class="mpc-quote-title">見積詳細</div>
+            <div class="mpc-quote-details">
+                <div class="mpc-quote-item">
+                    <span class="mpc-quote-label">チェックイン:</span>
+                    <span class="mpc-quote-amount">${this.formatDateJP(checkin)}</span>
+                </div>
+                <div class="mpc-quote-item">
+                    <span class="mpc-quote-label">チェックアウト:</span>
+                    <span class="mpc-quote-amount">${this.formatDateJP(checkout)}</span>
+                </div>
+                <div class="mpc-quote-item">
+                    <span class="mpc-quote-label">宿泊日数:</span>
+                    <span class="mpc-quote-amount">${nights}泊</span>
+                </div>
+        `;
+
+        // Add pricing breakdown if available
+        if (quoteData.accommodation_total) {
+            quoteHtml += `
+                <div class="mpc-quote-item">
+                    <span class="mpc-quote-label">宿泊料金:</span>
+                    <span class="mpc-quote-amount">¥${this.formatNumber(quoteData.accommodation_total)}</span>
+                </div>
+            `;
+        }
+
+        if (quoteData.cleaning_fee && quoteData.cleaning_fee > 0) {
+            quoteHtml += `
+                <div class="mpc-quote-item">
+                    <span class="mpc-quote-label">清掃費:</span>
+                    <span class="mpc-quote-amount">¥${this.formatNumber(quoteData.cleaning_fee)}</span>
+                </div>
+            `;
+        }
+
+        // Total
+        if (quoteData.total) {
+            quoteHtml += `
+                <div class="mpc-quote-item">
+                    <span class="mpc-quote-label">合計:</span>
+                    <span class="mpc-quote-amount">¥${this.formatNumber(quoteData.total)}</span>
+                </div>
+            `;
+        }
+
+        // Nightly breakdown if available
+        if (quoteData.nightly_breakdown && quoteData.nightly_breakdown.length > 0) {
+            quoteHtml += `
+                <div class="mpc-quote-breakdown">
+                    <h5>日毎料金内訳</h5>
+                    <div class="mpc-nightly-breakdown">
+            `;
+
+            quoteData.nightly_breakdown.forEach(night => {
+                quoteHtml += `
+                    <div class="mpc-nightly-item">
+                        <span>${this.formatDateJP(night.date)}</span>
+                        <span>¥${this.formatNumber(night.price)}</span>
+                    </div>
+                `;
+            });
+
+            quoteHtml += `
+                    </div>
+                </div>
+            `;
+        }
+
+        quoteHtml += '</div>';
+
+        quoteContainer.html(quoteHtml);
+        quoteContainer.addClass('active');
+
+        // Scroll to quote display
+        quoteContainer[0].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    /**
+     * Hide quote display
+     */
+    hideQuoteDisplay(container) {
+        container.siblings('.mpc-quote-container').removeClass('active');
+    }
+
+    /**
+     * Format date for Japanese display
+     */
+    formatDateJP(dateStr) {
+        const date = new Date(dateStr);
+        const year = date.getFullYear();
+        const month = date.getMonth() + 1;
+        const day = date.getDate();
+        const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
+        const dayName = dayNames[date.getDay()];
+
+        return `${year}年${month}月${day}日 (${dayName})`;
+    }
+
+    /**
+     * Format number with commas
+     */
+    formatNumber(num) {
+        return Number(num).toLocaleString('ja-JP');
     }
 
     /**
