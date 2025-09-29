@@ -2,9 +2,9 @@
 # Copyright (C) 2024 Yato1214
 msgid ""
 msgstr ""
-"Project-Id-Version: WP Minpaku Connector 1.0.0\n"
+"Project-Id-Version: WP Minpaku Connector 1.1.5\n"
 "Report-Msgid-Bugs-To: https://github.com/yato1214/minpaku-suite\n"
-"POT-Creation-Date: 2025-09-22 12:00+0000\n"
+"POT-Creation-Date: 2025-09-29 12:00+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -304,4 +304,240 @@ msgstr ""
 
 #: assets/admin.js
 msgid "Connection failed. Please check your settings."
+msgstr ""
+
+#: includes/Admin/Menu.php
+msgid "Connector"
+msgstr ""
+
+#: includes/Admin/Menu.php
+msgid "Dashboard"
+msgstr ""
+
+#: includes/Admin/Menu.php
+msgid "Settings"
+msgstr ""
+
+#: includes/Admin/Menu.php
+msgid "Minpaku Connector Dashboard"
+msgstr ""
+
+#: includes/Admin/Menu.php
+msgid "Please configure your API settings to start using the connector."
+msgstr ""
+
+#: includes/Admin/Menu.php
+msgid "Go to Settings"
+msgstr ""
+
+#: includes/Admin/Menu.php
+msgid "Connection Status"
+msgstr ""
+
+#: includes/Admin/Menu.php
+msgid "Click to test connection"
+msgstr ""
+
+#: includes/Admin/Menu.php
+msgid "Not configured"
+msgstr ""
+
+#: includes/Admin/Menu.php
+msgid "Quick Actions"
+msgstr ""
+
+#: includes/Admin/Menu.php
+msgid "Create Availability Page"
+msgstr ""
+
+#: includes/Admin/Menu.php
+msgid "Use the shortcode to display availability forms:"
+msgstr ""
+
+#: includes/Admin/Menu.php
+msgid "You can also specify a property ID:"
+msgstr ""
+
+#: includes/Admin/Menu.php
+msgid "System Information"
+msgstr ""
+
+#: includes/Admin/Menu.php
+msgid "Plugin Version:"
+msgstr ""
+
+#: includes/Admin/Menu.php
+msgid "WordPress Version:"
+msgstr ""
+
+#: includes/Admin/Menu.php
+msgid "PHP Version:"
+msgstr ""
+
+#: includes/Admin/Menu.php
+msgid "API Base URL:"
+msgstr ""
+
+#: includes/Admin/Menu.php
+msgid "Not set"
+msgstr ""
+
+#: includes/Admin/Menu.php
+msgid "Connected"
+msgstr ""
+
+#: includes/Admin/SettingsPage.php
+msgid "API Settings"
+msgstr ""
+
+#: includes/Admin/SettingsPage.php
+msgid "Configure API connection settings for Minpaku Suite."
+msgstr ""
+
+#: includes/Admin/SettingsPage.php
+msgid "Enter the base URL for the Minpaku Suite API (e.g., https://your-portal.com)"
+msgstr ""
+
+#: includes/Admin/SettingsPage.php
+msgid "Enter your API key for authentication."
+msgstr ""
+
+#: includes/Admin/SettingsPage.php
+msgid "Current key:"
+msgstr ""
+
+#: includes/Admin/SettingsPage.php
+msgid "Timeout (seconds)"
+msgstr ""
+
+#: includes/Admin/SettingsPage.php
+msgid "API request timeout in seconds (1-300)."
+msgstr ""
+
+#: includes/Admin/SettingsPage.php
+msgid "Settings saved successfully."
+msgstr ""
+
+#: includes/Admin/SettingsPage.php
+msgid "Save your settings first, then use the test button to verify the connection."
+msgstr ""
+
+#: includes/Admin/SettingsPage.php
+msgid "Save Settings"
+msgstr ""
+
+#: includes/Ajax/AvailabilityAjax.php
+msgid "Security check failed."
+msgstr ""
+
+#: includes/Ajax/AvailabilityAjax.php
+msgid "Property ID is required."
+msgstr ""
+
+#: includes/Ajax/AvailabilityAjax.php
+msgid "From and To dates are required."
+msgstr ""
+
+#: includes/Ajax/AvailabilityAjax.php
+msgid "Invalid date format. Use YYYY-MM-DD."
+msgstr ""
+
+#: includes/Ajax/AvailabilityAjax.php
+msgid "Invalid dates provided."
+msgstr ""
+
+#: includes/Ajax/AvailabilityAjax.php
+msgid "From date must be before To date."
+msgstr ""
+
+#: includes/Ajax/AvailabilityAjax.php
+msgid "From date cannot be in the past."
+msgstr ""
+
+#: includes/Ajax/AvailabilityAjax.php
+msgid "Date range cannot exceed 1 year."
+msgstr ""
+
+#: includes/Ajax/AvailabilityAjax.php
+msgid "API is not configured. Please contact administrator."
+msgstr ""
+
+#: includes/Ajax/AvailabilityAjax.php
+msgid "Insufficient permissions."
+msgstr ""
+
+#: includes/Ajax/AvailabilityAjax.php
+msgid "API settings are not configured."
+msgstr ""
+
+#: includes/Ajax/AvailabilityAjax.php
+msgid "Connection successful!"
+msgstr ""
+
+#: includes/Ajax/AvailabilityAjax.php
+msgid "Connection failed with HTTP %d"
+msgstr ""
+
+#: includes/Ajax/AvailabilityAjax.php
+msgid "API returned HTTP %d: %s"
+msgstr ""
+
+#: includes/Ajax/AvailabilityAjax.php
+msgid "Invalid JSON response from API."
+msgstr ""
+
+#: includes/Shortcodes/AvailabilityForm.php
+msgid "Check Availability"
+msgstr ""
+
+#: includes/Shortcodes/AvailabilityForm.php
+msgid "From Date:"
+msgstr ""
+
+#: includes/Shortcodes/AvailabilityForm.php
+msgid "To Date:"
+msgstr ""
+
+#: includes/Shortcodes/AvailabilityForm.php
+msgid "Loading availability..."
+msgstr ""
+
+#: includes/Shortcodes/AvailabilityForm.php
+msgid "Availability Calendar"
+msgstr ""
+
+#: includes/Shortcodes/AvailabilityForm.php
+msgid "Availability Details"
+msgstr ""
+
+#: assets/js/availability-form.js
+msgid "Loading..."
+msgstr ""
+
+#: assets/js/availability-form.js
+msgid "An error occurred. Please try again."
+msgstr ""
+
+#: assets/js/availability-form.js
+msgid "Please select both from and to dates."
+msgstr ""
+
+#: assets/js/availability-form.js
+msgid "Please select valid dates."
+msgstr ""
+
+#: assets/js/availability-form.js
+msgid "No availability data found for the selected dates."
+msgstr ""
+
+#: assets/js/availability-form.js
+msgid "Not Available"
+msgstr ""
+
+#: assets/js/availability-form.js
+msgid "Price:"
+msgstr ""
+
+#: assets/js/availability-form.js
+msgid "¥"
 msgstr ""
